@@ -1,10 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildPaidOrder } from "./order";
 import type { CalculatedCart, PromotionConfig } from "./types";
 import { defaultPromotion, product } from "../test/fixtures";
 
 const now = "2026-06-15T12:34:56.789Z";
 const promotion = defaultPromotion();
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 function calculated(overrides: Partial<CalculatedCart> = {}): CalculatedCart {
   return {
@@ -194,6 +198,55 @@ describe("buildPaidOrder", () => {
         now
       })
     ).toThrow("商品 普通商品 库存不足，无法完成订单扣减");
+  });
+
+  it("uses calculated line product names and spus for order item snapshots", () => {
+    const result = buildPaidOrder({
+      products: products().map((item) =>
+        item.id === "normal" ? { ...item, name: "当前商品名", spu: "当前SPU" } : item
+      ),
+      calculated: calculated({
+        lines: [
+          {
+            productId: "normal",
+            productName: "下单时商品名",
+            spu: "下单时SPU",
+            quantity: 2,
+            originalUnitPrice: 20,
+            finalUnitPrice: 20,
+            lineType: "normal",
+            lineTotal: 40
+          }
+        ],
+        giftLines: [],
+        subtotalBeforeDiscount: 40,
+        discountAmount: 0,
+        payableAmount: 40
+      }),
+      promotion,
+      orderPrefix: "ECRM",
+      paymentMethod: "wechat",
+      now
+    });
+
+    expect(result.orderItems[0]).toMatchObject({
+      productId: "normal",
+      productNameSnapshot: "下单时商品名",
+      spuSnapshot: "下单时SPU"
+    });
+  });
+
+  it("throws a clear Chinese error when discounted addon inventory would become negative", () => {
+    expect(() =>
+      buildPaidOrder({
+        products: products().map((item) => (item.id === "addon" ? { ...item, stockQty: 2 } : item)),
+        calculated: calculated(),
+        promotion,
+        orderPrefix: "ECRM",
+        paymentMethod: "alipay",
+        now
+      })
+    ).toThrow("商品 优惠商品A 库存不足，无法完成订单扣减");
   });
 
   it("throws a clear Chinese error when gift inventory would become negative", () => {

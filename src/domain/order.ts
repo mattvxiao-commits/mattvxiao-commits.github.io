@@ -67,14 +67,14 @@ function makeOrderItem(
   orderId: string,
   productById: Map<string, Product>
 ): OrderItem {
-  const product = getProductForLine(line, productById);
+  getProductForLine(line, productById);
 
   return {
     id: makeLineId(),
     orderId,
     productId: line.productId,
-    productNameSnapshot: product.name,
-    spuSnapshot: product.spu,
+    productNameSnapshot: line.productName,
+    spuSnapshot: line.spu,
     quantity: line.quantity,
     originalUnitPrice: line.originalUnitPrice,
     finalUnitPrice: line.finalUnitPrice,
@@ -167,7 +167,7 @@ export function makeLineId(): string {
 
 function makeId(prefix: string): string {
   if (globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
+    return `${prefix}_${globalThis.crypto.randomUUID()}`;
   }
 
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
