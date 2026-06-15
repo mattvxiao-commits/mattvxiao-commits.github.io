@@ -8,6 +8,7 @@ import {
 import { useEffect } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import ProductsPage from "./pages/ProductsPage";
+import SalesPage from "./pages/SalesPage";
 import SettingsPage from "./pages/SettingsPage";
 import { revokeImageUrls } from "./utils/image";
 
@@ -119,9 +120,10 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/products" replace />} />
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/sales" element={<SalesPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           {pages.map((page) => (
-            page.to === "/products" || page.to === "/settings" ? null :
+            page.to === "/products" || page.to === "/sales" || page.to === "/settings" ? null :
             <Route
               key={page.to}
               path={page.to}
