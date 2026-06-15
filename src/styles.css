@@ -1108,6 +1108,7 @@ p {
   bottom: max(18px, env(safe-area-inset-bottom));
   z-index: 8;
   display: none;
+  width: auto;
   gap: 8px;
   align-items: center;
   min-height: 44px;

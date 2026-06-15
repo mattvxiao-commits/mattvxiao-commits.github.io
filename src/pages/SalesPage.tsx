@@ -278,14 +278,20 @@ export default function SalesPage() {
             decrement={decrement}
             clear={clearCart}
             checkout={() => setMode("checkout")}
+            hold={() => setStatus({ kind: "success", text: "购物车已暂存，可继续选择商品。" })}
           />
         )}
       </div>
 
-      <div className="salesDock" aria-hidden="true">
-        <ShoppingBasket size={18} />
+      <button
+        type="button"
+        className="salesDock"
+        aria-label={`打开购物车，当前 ${cartItems.reduce((sum, item) => sum + item.quantity, 0)} 件，应收 ${formatMoney(calculated.payableAmount)}`}
+        onClick={() => setMode("cart")}
+      >
+        <ShoppingBasket size={18} aria-hidden="true" />
         {cartItems.reduce((sum, item) => sum + item.quantity, 0)} 件 / {formatMoney(calculated.payableAmount)}
-      </div>
+      </button>
     </section>
   );
 }

@@ -47,6 +47,7 @@ test("shows normal, discount, gift tier, gift stock warning, and payable total",
   const onDecrement = vi.fn();
   const onClear = vi.fn();
   const onCheckout = vi.fn();
+  const onHold = vi.fn();
 
   render(
     <CartPanel
@@ -57,6 +58,7 @@ test("shows normal, discount, gift tier, gift stock warning, and payable total",
       decrement={onDecrement}
       clear={onClear}
       checkout={onCheckout}
+      hold={onHold}
     />
   );
 
@@ -73,9 +75,11 @@ test("shows normal, discount, gift tier, gift stock warning, and payable total",
   fireEvent.click(screen.getByRole("button", { name: "减少 优惠商品A" }));
   fireEvent.click(screen.getByRole("button", { name: "清空购物车" }));
   fireEvent.click(screen.getByRole("button", { name: "去收款" }));
+  fireEvent.click(screen.getByRole("button", { name: "暂存购物车" }));
 
   expect(onIncrement).toHaveBeenCalledWith("normal");
   expect(onDecrement).toHaveBeenCalledWith("addon");
   expect(onClear).toHaveBeenCalledTimes(1);
   expect(onCheckout).toHaveBeenCalledTimes(1);
+  expect(onHold).toHaveBeenCalledTimes(1);
 });
