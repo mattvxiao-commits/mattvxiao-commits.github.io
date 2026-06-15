@@ -6,6 +6,7 @@ import {
   Store,
 } from "lucide-react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
+import ProductsPage from "./pages/ProductsPage";
 
 const pages = [
   {
@@ -108,7 +109,9 @@ export default function App() {
       <main>
         <Routes>
           <Route path="/" element={<Navigate to="/products" replace />} />
+          <Route path="/products" element={<ProductsPage />} />
           {pages.map((page) => (
+            page.to === "/products" ? null :
             <Route
               key={page.to}
               path={page.to}

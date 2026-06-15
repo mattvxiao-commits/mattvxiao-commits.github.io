@@ -157,6 +157,30 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+input,
+select {
+  min-height: 46px;
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 0 12px;
+}
+
+input:focus,
+select:focus {
+  border-color: rgba(47, 111, 94, 0.72);
+  outline: 3px solid rgba(47, 111, 94, 0.16);
+  outline-offset: 0;
+}
+
+button:disabled,
+input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .page {
   width: min(1120px, calc(100vw - 32px));
   margin: 0 auto;
@@ -257,6 +281,352 @@ p {
   text-align: center;
 }
 
+.productsPage {
+  width: min(1180px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 24px 0 88px;
+}
+
+.productsToolbar {
+  display: flex;
+  gap: 18px;
+  align-items: end;
+  justify-content: space-between;
+  padding: 22px 0 18px;
+}
+
+.productsToolbar h1 {
+  font-size: clamp(36px, 7vw, 68px);
+}
+
+.toolbarActions {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.sortControl,
+.productForm label {
+  display: grid;
+  gap: 7px;
+}
+
+.sortControl {
+  min-width: 172px;
+}
+
+.sortControl span,
+.productForm label > span,
+.statusSelect span {
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.primaryButton,
+.secondaryButton,
+.iconButton {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+.primaryButton {
+  border-color: #153f36;
+  background: #173f36;
+  color: #fffdfa;
+  padding: 0 18px;
+}
+
+.secondaryButton {
+  background: #ffffff;
+  color: var(--muted-strong);
+  padding: 0 14px;
+}
+
+.dangerButton {
+  color: #8f2f22;
+}
+
+.iconButton {
+  width: 44px;
+  padding: 0;
+}
+
+.metricStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--line);
+}
+
+.metricStrip div {
+  min-height: 76px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.metricStrip span {
+  display: block;
+  color: var(--ink);
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.metricStrip p {
+  margin-top: 7px;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.formPanel {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgba(47, 111, 94, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 253, 250, 0.94);
+  box-shadow: 0 18px 38px rgba(36, 31, 26, 0.08);
+}
+
+.formPanelHeader {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.productForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 184px;
+  gap: 18px;
+  align-items: start;
+}
+
+.formMain {
+  display: grid;
+  gap: 14px;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.choiceRow {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.checkControl {
+  min-height: 46px;
+  display: inline-flex !important;
+  grid-template-columns: auto 1fr;
+  gap: 8px !important;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.checkControl input {
+  min-height: auto;
+  width: 19px;
+  height: 19px;
+}
+
+.statusSelect {
+  min-width: 150px;
+}
+
+.imageField {
+  display: grid;
+  gap: 10px;
+}
+
+.imagePreview,
+.productThumb {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(47, 111, 94, 0.11), rgba(184, 80, 54, 0.08)),
+    #ffffff;
+}
+
+.imagePreview {
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  color: var(--accent-strong);
+}
+
+.imagePreview img,
+.productThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.uploadButton {
+  position: relative;
+  min-height: 46px;
+  display: inline-flex !important;
+  gap: 8px !important;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px dashed rgba(47, 111, 94, 0.62);
+  border-radius: 8px;
+  background: #f6fbf8;
+  color: var(--accent-strong);
+  font-weight: 850;
+}
+
+.uploadButton input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.fieldError,
+.errorBanner {
+  color: #8f2f22;
+}
+
+.fieldError {
+  font-size: 13px;
+}
+
+.formActions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.errorBanner,
+.emptyState {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.productList {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.productCard {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(222, 214, 201, 0.94);
+  border-radius: 8px;
+  background: rgba(255, 253, 250, 0.9);
+}
+
+.productThumb {
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+}
+
+.productThumb span {
+  color: var(--accent-strong);
+  font-size: 30px;
+  font-weight: 900;
+}
+
+.productInfo {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.productTitleRow {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.productTitleRow h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.productTitleRow p {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.statusBadge {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.statusBadge.isActive {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.statusBadge.isInactive {
+  background: #eee4df;
+  color: #765348;
+}
+
+.productFacts {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.productFacts span {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.cardActions {
+  display: flex;
+  gap: 8px;
+}
+
 @media (max-width: 720px) {
   .topBar {
     align-items: flex-start;
@@ -289,6 +659,49 @@ p {
   .pillGrid {
     grid-template-columns: 1fr;
   }
+
+  .productsPage {
+    width: min(100% - 20px, 1180px);
+    padding-top: 14px;
+  }
+
+  .productsToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .toolbarActions,
+  .toolbarActions .primaryButton,
+  .sortControl {
+    width: 100%;
+  }
+
+  .metricStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .productForm,
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .imageField {
+    grid-row: 1;
+  }
+
+  .imagePreview {
+    max-height: 220px;
+  }
+
+  .productCard {
+    grid-template-columns: 74px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .cardActions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
 }
 
 @media (max-width: 420px) {
@@ -298,5 +711,22 @@ p {
 
   .nav a {
     min-width: calc(50% - 4px);
+  }
+
+  .metricStrip {
+    grid-template-columns: 1fr;
+  }
+
+  .choiceRow,
+  .formActions,
+  .cardActions {
+    flex-direction: column;
+  }
+
+  .formActions button,
+  .cardActions button,
+  .checkControl,
+  .statusSelect {
+    width: 100%;
   }
 }
