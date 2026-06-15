@@ -27,10 +27,11 @@ export class EcrmDatabase extends Dexie {
   constructor() {
     super("ecrm-offline-pos");
     this.version(1).stores({
-      products: "id, spu, name, status, createdAt",
+      products:
+        "id, spu, name, status, salePrice, stockQty, isSellable, isGiftEligible, createdAt, [status+isSellable], [status+isGiftEligible]",
       images: "id, createdAt",
       settings: "id",
-      orders: "id, orderNo, status, createdAt, paidAt",
+      orders: "id, &orderNo, status, createdAt, paidAt, [status+paidAt]",
       orderItems: "id, orderId, productId, lineType",
       inventoryLogs: "id, productId, orderId, createdAt"
     });
@@ -40,29 +41,17 @@ export class EcrmDatabase extends Dexie {
 export const db = new EcrmDatabase();
 
 const defaultPromotion: PromotionConfig = {
-  enabled: true,
+  enabled: false,
   addonDiscount: {
-    enabled: true,
-    discountSpu: "优惠SPU",
+    enabled: false,
+    discountSpu: "",
     discountPrice: 3,
     maxDiscountQty: 3
   },
   giftTiers: [
-    { threshold: 35, gifts: [{ productId: "gift-a", quantity: 1 }] },
-    {
-      threshold: 68,
-      gifts: [
-        { productId: "gift-a", quantity: 2 },
-        { productId: "gift-b", quantity: 1 }
-      ]
-    },
-    {
-      threshold: 148,
-      gifts: [
-        { productId: "gift-a", quantity: 5 },
-        { productId: "gift-b", quantity: 1 }
-      ]
-    }
+    { threshold: 35, gifts: [] },
+    { threshold: 68, gifts: [] },
+    { threshold: 148, gifts: [] }
   ]
 };
 

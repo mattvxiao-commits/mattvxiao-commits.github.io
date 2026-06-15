@@ -59,6 +59,26 @@ export async function savePaidOrder(input: {
   inventoryLogs: InventoryLog[];
   updatedProducts: Product[];
 }): Promise<void> {
+  if (input.order.status !== "paid") {
+    throw new Error("订单状态必须为已支付");
+  }
+
+  if (input.orderItems.length === 0) {
+    throw new Error("订单明细不能为空");
+  }
+
+  if (input.orderItems.some((item) => item.orderId !== input.order.id)) {
+    throw new Error("订单明细归属订单不一致");
+  }
+
+  if (input.inventoryLogs.some((log) => log.orderId !== input.order.id)) {
+    throw new Error("库存流水归属订单不一致");
+  }
+
+  if (input.updatedProducts.length === 0) {
+    throw new Error("更新商品不能为空");
+  }
+
   await db.transaction("rw", db.orders, db.orderItems, db.inventoryLogs, db.products, async () => {
     await db.orders.put(input.order);
     await db.orderItems.bulkPut(input.orderItems);
@@ -80,6 +100,7 @@ export async function listOrderItems(orderId: string): Promise<OrderItem[]> {
 }
 
 export async function clearAllData(): Promise<void> {
+  // Only for full data replacement or backup restore flows. Callers must complete backup validation first.
   await db.transaction(
     "rw",
     [db.products, db.images, db.settings, db.orders, db.orderItems, db.inventoryLogs],
