@@ -19,10 +19,11 @@ function toNumber(value: string, fallback: number): number {
 function selectedGiftIds(settings?: AppSettings): { giftA: string; giftB: string } {
   const tier35 = settings?.promotion.giftTiers.find((tier) => tier.threshold === 35);
   const tier68 = settings?.promotion.giftTiers.find((tier) => tier.threshold === 68);
+  const giftA = tier35?.gifts[0]?.productId ?? "";
 
   return {
-    giftA: tier35?.gifts[0]?.productId ?? "",
-    giftB: tier68?.gifts.find((gift) => gift.quantity === 1)?.productId ?? ""
+    giftA,
+    giftB: tier68?.gifts.find((gift) => gift.productId !== giftA && gift.quantity === 1)?.productId ?? ""
   };
 }
 
@@ -64,8 +65,11 @@ export default function SettingsPage() {
   const [giftB, setGiftB] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [status, setStatus] = useState<StatusMessage>();
   const importInputRef = useRef<HTMLInputElement>(null);
+  const isBusy = isSaving || isExporting || isImporting;
 
   useEffect(() => {
     let isCurrent = true;
@@ -140,7 +144,7 @@ export default function SettingsPage() {
   }
 
   async function handleSave() {
-    if (!settings) {
+    if (!settings || isBusy) {
       return;
     }
 
@@ -158,6 +162,11 @@ export default function SettingsPage() {
   }
 
   async function handleExport() {
+    if (isBusy) {
+      return;
+    }
+
+    setIsExporting(true);
     setStatus(undefined);
 
     try {
@@ -165,6 +174,8 @@ export default function SettingsPage() {
       setStatus({ kind: "success", text: `备份已导出。${IMAGE_BACKUP_NOTE}。` });
     } catch {
       setStatus({ kind: "error", text: "备份导出失败，请稍后重试。" });
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -176,8 +187,12 @@ export default function SettingsPage() {
       return;
     }
 
+    if (isBusy) {
+      return;
+    }
+
     setStatus(undefined);
-    setIsLoading(true);
+    setIsImporting(true);
 
     try {
       await importJsonBackup(file);
@@ -193,7 +208,7 @@ export default function SettingsPage() {
         text: error instanceof Error ? `备份导入失败：${error.message}` : "备份导入失败，请确认文件格式。"
       });
     } finally {
-      setIsLoading(false);
+      setIsImporting(false);
     }
   }
 
@@ -205,7 +220,7 @@ export default function SettingsPage() {
           <h1 id="settings-title">设置</h1>
           <p>维护摊位资料、收款码、促销规则和本机 JSON 备份。</p>
         </div>
-        <button type="button" className="primaryButton" disabled={!settings || isSaving} onClick={() => void handleSave()}>
+        <button type="button" className="primaryButton" disabled={!settings || isBusy} onClick={() => void handleSave()}>
           <Save size={18} aria-hidden="true" />
           {isSaving ? "保存中..." : "保存设置"}
         </button>
@@ -423,14 +438,14 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="backupActions">
-              <button type="button" className="secondaryButton" onClick={() => void handleExport()}>
+              <button type="button" className="secondaryButton" disabled={isBusy} onClick={() => void handleExport()}>
                 <Download size={18} aria-hidden="true" />
-                导出备份
+                {isExporting ? "导出中..." : "导出备份"}
               </button>
               <input ref={importInputRef} className="visuallyHidden" type="file" accept="application/json,.json" onChange={(event) => void handleImport(event)} />
-              <button type="button" className="secondaryButton" onClick={() => importInputRef.current?.click()}>
+              <button type="button" className="secondaryButton" disabled={isBusy} onClick={() => importInputRef.current?.click()}>
                 <Upload size={18} aria-hidden="true" />
-                导入备份
+                {isImporting ? "导入中..." : "导入备份"}
               </button>
             </div>
           </section>

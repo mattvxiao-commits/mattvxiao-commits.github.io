@@ -1,9 +1,42 @@
 import { describe, expect, test, vi } from "vitest";
-import { importJsonBackupFromText } from "./backup";
+import { db } from "../db/db";
+import { importJsonBackupFromText, replaceAllDataInTransaction } from "./backup";
+
+function validPayload(overrides: Record<string, unknown> = {}) {
+  return {
+    version: 1,
+    exportedAt: "2026-06-15T00:00:00.000Z",
+    note: "图片暂不包含在 JSON 备份中",
+    data: {
+      products: [],
+      settings: [
+        {
+          id: "settings",
+          shopName: "ECRM 摊位",
+          orderPrefix: "ECRM",
+          promotion: {
+            enabled: false,
+            addonDiscount: {
+              enabled: false,
+              discountSpu: "",
+              discountPrice: 3,
+              maxDiscountQty: 3
+            },
+            giftTiers: []
+          }
+        }
+      ],
+      orders: [],
+      orderItems: [],
+      inventoryLogs: [],
+      ...overrides
+    }
+  };
+}
 
 describe("backup utilities", () => {
   test("rejects unsupported backup versions before clearing existing data", async () => {
-    const clearAllData = vi.fn();
+    const importData = vi.fn();
 
     await expect(
       importJsonBackupFromText(
@@ -19,10 +52,129 @@ describe("backup utilities", () => {
             inventoryLogs: []
           }
         }),
-        { clearAllData }
+        { importData }
       )
     ).rejects.toThrow("不支持的备份版本");
 
-    expect(clearAllData).not.toHaveBeenCalled();
+    expect(importData).not.toHaveBeenCalled();
+  });
+
+  test("rejects malformed settings before replacing data", async () => {
+    const importData = vi.fn();
+
+    await expect(
+      importJsonBackupFromText(JSON.stringify(validPayload({ settings: [] })), { importData })
+    ).rejects.toThrow("备份文件格式不正确");
+
+    expect(importData).not.toHaveBeenCalled();
+  });
+
+  test("rejects malformed products before replacing data", async () => {
+    const importData = vi.fn();
+
+    await expect(
+      importJsonBackupFromText(
+        JSON.stringify(
+          validPayload({
+            products: [
+              {
+                id: "product-1",
+                name: "口红",
+                spu: "SPU-1",
+                costPrice: 1,
+                salePrice: 2,
+                stockQty: 1.5,
+                isSellable: true,
+                isGiftEligible: true,
+                status: "active",
+                createdAt: "2026-06-15T00:00:00.000Z",
+                updatedAt: "2026-06-15T00:00:00.000Z"
+              }
+            ]
+          })
+        ),
+        { importData }
+      )
+    ).rejects.toThrow("备份文件格式不正确");
+
+    expect(importData).not.toHaveBeenCalled();
+  });
+
+  test("default import replacement keeps old data when transaction fails", async () => {
+    const tableStubs = [
+      db.products,
+      db.images,
+      db.settings,
+      db.orders,
+      db.orderItems,
+      db.inventoryLogs
+    ].map((table) => ({
+      table,
+      clear: vi.spyOn(table, "clear"),
+      bulkPut: vi.spyOn(table, "bulkPut")
+    }));
+    const transaction = vi.spyOn(db, "transaction").mockRejectedValue(new Error("transaction failed"));
+
+    await expect(
+      replaceAllDataInTransaction({
+        products: [
+          {
+            id: "existing-product",
+            name: "重复商品",
+            spu: "DUP",
+            costPrice: 1,
+            salePrice: 2,
+            stockQty: 1,
+            isSellable: true,
+            isGiftEligible: false,
+            status: "active",
+            createdAt: "2026-06-15T00:00:00.000Z",
+            updatedAt: "2026-06-15T00:00:00.000Z"
+          },
+          {
+            id: "existing-product",
+            name: "重复商品 2",
+            spu: "DUP2",
+            costPrice: 1,
+            salePrice: 2,
+            stockQty: 1,
+            isSellable: true,
+            isGiftEligible: false,
+            status: "active",
+            createdAt: "2026-06-15T00:00:00.000Z",
+            updatedAt: "2026-06-15T00:00:00.000Z"
+          }
+        ],
+        settings: [
+          {
+            id: "settings",
+            shopName: "新店铺",
+            orderPrefix: "NEW",
+            promotion: {
+              enabled: false,
+              addonDiscount: {
+                enabled: false,
+                discountSpu: "",
+                discountPrice: 3,
+                maxDiscountQty: 3
+              },
+              giftTiers: []
+            }
+          }
+        ],
+        orders: [],
+        orderItems: [],
+        inventoryLogs: []
+      })
+    ).rejects.toThrow("transaction failed");
+
+    expect(transaction).toHaveBeenCalledOnce();
+    for (const table of tableStubs) {
+      expect(table.clear).not.toHaveBeenCalled();
+      expect(table.bulkPut).not.toHaveBeenCalled();
+      table.clear.mockRestore();
+      table.bulkPut.mockRestore();
+    }
+    transaction.mockRestore();
   });
 });
