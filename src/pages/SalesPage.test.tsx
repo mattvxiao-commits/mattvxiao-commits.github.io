@@ -167,3 +167,40 @@ test("shows recent paid order history behind a toggle", async () => {
   expect(within(history).getByText("¥42.50")).toBeVisible();
   expect(within(history).queryByText("ECRM-PENDING")).not.toBeInTheDocument();
 });
+
+test("sorts recent paid order history by paid time with created time fallback", async () => {
+  repositories.listOrders.mockResolvedValue([
+    order({
+      id: "created-newer",
+      orderNo: "ECRM-CREATED-NEWER",
+      createdAt: "2026-06-15T12:00:00.000Z",
+      paidAt: "2026-06-15T12:05:00.000Z"
+    }),
+    order({
+      id: "paid-newest",
+      orderNo: "ECRM-PAID-NEWEST",
+      createdAt: "2026-06-15T08:00:00.000Z",
+      paidAt: "2026-06-15T12:30:00.000Z"
+    }),
+    order({
+      id: "fallback-middle",
+      orderNo: "ECRM-FALLBACK-MIDDLE",
+      createdAt: "2026-06-15T12:10:00.000Z",
+      paidAt: undefined
+    })
+  ]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+
+  const orderNumbers = within(await screen.findByRole("region", { name: "最近订单记录" }))
+    .getAllByText(/ECRM-/)
+    .map((item) => item.textContent);
+
+  expect(orderNumbers).toEqual([
+    "ECRM-PAID-NEWEST",
+    "ECRM-FALLBACK-MIDDLE",
+    "ECRM-CREATED-NEWER"
+  ]);
+});

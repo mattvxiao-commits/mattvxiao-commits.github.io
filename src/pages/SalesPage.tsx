@@ -27,6 +27,10 @@ function orderPaidTime(order: Order): string {
   return order.paidAt ?? order.createdAt;
 }
 
+function compareRecentPaidOrders(left: Order, right: Order): number {
+  return orderPaidTime(right).localeCompare(orderPaidTime(left));
+}
+
 function formatPaidTime(value: string): string {
   return new Intl.DateTimeFormat("zh-CN", {
     month: "2-digit",
@@ -180,7 +184,7 @@ export default function SalesPage() {
   );
 
   const recentPaidOrders = useMemo(
-    () => orders.filter((order) => order.status === "paid").slice(0, 10),
+    () => orders.filter((order) => order.status === "paid").sort(compareRecentPaidOrders).slice(0, 10),
     [orders]
   );
 
