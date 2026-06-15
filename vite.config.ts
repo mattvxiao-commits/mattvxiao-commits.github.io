@@ -1,10 +1,15 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   server: {
     port: 5173
+  },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: "src/test/setup.ts"
   },
   plugins: [
     react(),
@@ -15,6 +20,7 @@ export default defineConfig({
         name: "ECRM Booth POS",
         short_name: "ECRM",
         description: "面向摊位现场的离线售卖与经营看板工具",
+        lang: "zh-CN",
         theme_color: "#f7f4ee",
         background_color: "#f7f4ee",
         display: "standalone",
