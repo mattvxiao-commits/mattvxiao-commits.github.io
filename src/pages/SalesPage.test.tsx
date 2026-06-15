@@ -101,6 +101,9 @@ test("saves paid order, clears cart, refreshes products, and includes gift inven
   repositories.listProducts
     .mockResolvedValueOnce([sellableProduct, giftProduct])
     .mockResolvedValueOnce([{ ...sellableProduct, stockQty: 9 }, { ...giftProduct, stockQty: 2 }]);
+  repositories.listOrders
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([order({ orderNo: "ECRM-SAVED", payableAmount: 20, paymentMethod: "cash" })]);
   repositories.getSettings.mockResolvedValue({
     ...settings,
     promotion: {
@@ -127,6 +130,11 @@ test("saves paid order, clears cart, refreshes products, and includes gift inven
   expect(await screen.findByText(/订单 .* 已保存，库存已扣减。/)).toBeVisible();
   expect(await screen.findByText("还没有选择商品。")).toBeVisible();
   expect(repositories.listProducts.mock.calls.length).toBeGreaterThanOrEqual(2);
+  expect(repositories.listOrders.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+  fireEvent.click(screen.getByRole("button", { name: /订单记录/ }));
+
+  expect(await screen.findByText("ECRM-SAVED")).toBeVisible();
 });
 
 test("keeps cart items when paid order save fails", async () => {

@@ -98,7 +98,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <section className="dashboardSection" aria-labelledby="low-stock-title" aria-label="低库存商品">
+      <section className="dashboardSection" aria-labelledby="low-stock-title">
         <div className="sectionTitle">
           <AlertTriangle size={21} aria-hidden="true" />
           <div>

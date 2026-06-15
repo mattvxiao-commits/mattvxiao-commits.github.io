@@ -1,5 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { Order } from "../domain/types";
 import { defaultPromotion, product } from "../test/fixtures";
 import DashboardPage from "./DashboardPage";
@@ -32,8 +32,14 @@ function paidOrder(overrides: Partial<Order> = {}): Order {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  vi.setSystemTime(new Date("2026-06-15T10:00:00.000Z"));
   repositories.listOrders.mockResolvedValue([]);
   repositories.listProducts.mockResolvedValue([]);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 test("shows today's paid sales amount and order count using paidAt with createdAt fallback", async () => {
