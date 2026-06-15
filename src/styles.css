@@ -640,6 +640,148 @@ p {
   gap: 8px;
 }
 
+.settingsPage {
+  width: min(1180px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 24px 0 88px;
+}
+
+.settingsHeader {
+  display: flex;
+  gap: 18px;
+  align-items: end;
+  justify-content: space-between;
+  padding: 22px 0 18px;
+}
+
+.settingsHeader h1 {
+  font-size: clamp(36px, 7vw, 68px);
+}
+
+.settingsHeader p:not(.eyebrow) {
+  margin-top: 8px;
+  max-width: 620px;
+  font-size: 15px;
+}
+
+.successBanner {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgba(47, 111, 94, 0.24);
+  border-radius: 8px;
+  background: rgba(219, 233, 228, 0.86);
+  color: var(--accent-strong);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.settingsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.settingsSection {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  padding: 18px;
+  border: 1px solid rgba(222, 214, 201, 0.94);
+  border-radius: 8px;
+  background: rgba(255, 253, 250, 0.92);
+  box-shadow: 0 14px 32px rgba(36, 31, 26, 0.06);
+}
+
+.wideSection {
+  grid-column: 1 / -1;
+}
+
+.sectionTitle {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+}
+
+.sectionTitle svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--accent-strong);
+}
+
+.sectionTitle h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.sectionTitle p {
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.settingsFieldGrid,
+.qrUploadGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.settingsFieldGrid.threeColumns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settingsFieldGrid label {
+  display: grid;
+  gap: 7px;
+}
+
+.settingsFieldGrid label > span {
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.qrStatusGrid,
+.tierPreview {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qrStatusGrid span,
+.tierPreview span {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.toggleRow,
+.backupActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
 @media (max-width: 720px) {
   .topBar {
     align-items: flex-start;
@@ -681,6 +823,28 @@ p {
   .productsToolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .settingsPage {
+    width: min(100% - 20px, 1180px);
+    padding-top: 14px;
+  }
+
+  .settingsHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settingsGrid,
+  .settingsFieldGrid,
+  .settingsFieldGrid.threeColumns,
+  .qrUploadGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .settingsHeader .primaryButton,
+  .backupActions button {
+    width: 100%;
   }
 
   .toolbarActions,
@@ -732,12 +896,15 @@ p {
 
   .choiceRow,
   .formActions,
-  .cardActions {
+  .cardActions,
+  .toggleRow,
+  .backupActions {
     flex-direction: column;
   }
 
   .formActions button,
   .cardActions button,
+  .toggleRow .checkControl,
   .checkControl,
   .statusSelect {
     width: 100%;
