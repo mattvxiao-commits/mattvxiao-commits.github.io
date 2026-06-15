@@ -134,7 +134,7 @@ function compactPricedUnits(units: PricedUnit[]): CalculatedCartLine[] {
       return lines;
     }
 
-    lines.push(toLine(unit.product, 1, unit.finalUnitPrice, unit.finalUnitPrice, unit.lineType));
+    lines.push(toLine(unit.product, 1, unit.product.salePrice, unit.finalUnitPrice, unit.lineType));
     return lines;
   }, []);
 }

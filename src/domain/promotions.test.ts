@@ -62,6 +62,7 @@ describe("calculateCart", () => {
       expect.objectContaining({
         productId: "addon",
         quantity: 3,
+        originalUnitPrice: 5,
         finalUnitPrice: 3,
         lineType: "discount_addon",
         lineTotal: 9
@@ -89,6 +90,30 @@ describe("calculateCart", () => {
     expect(result.payableAmount).toBe(34);
     expect(result.appliedDiscountQty).toBe(3);
     expect(result.discountAmount).toBe(6);
+    expect(result.lines).toEqual([
+      expect.objectContaining({
+        productId: "normal",
+        quantity: 1,
+        finalUnitPrice: 20,
+        lineType: "normal",
+        lineTotal: 20
+      }),
+      expect.objectContaining({
+        productId: "addon",
+        quantity: 3,
+        originalUnitPrice: 5,
+        finalUnitPrice: 3,
+        lineType: "discount_addon",
+        lineTotal: 9
+      }),
+      expect.objectContaining({
+        productId: "addon",
+        quantity: 1,
+        finalUnitPrice: 5,
+        lineType: "normal",
+        lineTotal: 5
+      })
+    ]);
   });
 
   it("uses final payable amount after discount for gift threshold", () => {
