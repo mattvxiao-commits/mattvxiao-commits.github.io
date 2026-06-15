@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, expect, test, vi } from "vitest";
-import type { AppSettings } from "../domain/types";
+import type { AppSettings, Order } from "../domain/types";
 import { useCartStore } from "../state/cartStore";
 import { defaultPromotion, product } from "../test/fixtures";
 import SalesPage from "./SalesPage";
@@ -22,6 +22,7 @@ const settings: AppSettings = {
 
 const repositories = vi.hoisted(() => ({
   getSettings: vi.fn(),
+  listOrders: vi.fn(),
   listProducts: vi.fn(),
   savePaidOrder: vi.fn()
 }));
@@ -35,10 +36,28 @@ vi.mock("../utils/image", () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   repositories.getSettings.mockResolvedValue(settings);
+  repositories.listOrders.mockResolvedValue([]);
   repositories.listProducts.mockResolvedValue([sellableProduct]);
   repositories.savePaidOrder.mockResolvedValue(undefined);
   useCartStore.getState().replace([]);
 });
+
+function order(overrides: Partial<Order> = {}): Order {
+  return {
+    id: "order-1",
+    orderNo: "ECRM-001",
+    status: "paid",
+    paymentMethod: "wechat",
+    subtotalBeforeDiscount: 20,
+    discountAmount: 0,
+    payableAmount: 20,
+    promotionSnapshot: defaultPromotion(),
+    giftStockWarning: false,
+    createdAt: "2026-06-15T09:20:00.000Z",
+    paidAt: "2026-06-15T09:25:00.000Z",
+    ...overrides
+  };
+}
 
 test("floating cart button returns from checkout to the cart panel without clearing items", async () => {
   render(<SalesPage />);
@@ -125,4 +144,26 @@ test("keeps cart items when paid order save fails", async () => {
 
   const cartPanel = await screen.findByRole("complementary", { name: "购物车" });
   expect(within(cartPanel).getByRole("heading", { level: 3, name: "普通商品" })).toBeVisible();
+});
+
+test("shows recent paid order history behind a toggle", async () => {
+  repositories.listOrders.mockResolvedValue([
+    order({ orderNo: "ECRM-PAID", paymentMethod: "alipay", payableAmount: 42.5 }),
+    order({ id: "pending", orderNo: "ECRM-PENDING", status: "pending_payment", paymentMethod: "cash", payableAmount: 18 })
+  ]);
+
+  render(<SalesPage />);
+
+  const toggle = await screen.findByRole("button", { name: /订单记录/ });
+
+  expect(screen.queryByText("ECRM-PAID")).not.toBeInTheDocument();
+
+  fireEvent.click(toggle);
+
+  const history = await screen.findByRole("region", { name: "最近订单记录" });
+
+  expect(within(history).getByText("ECRM-PAID")).toBeVisible();
+  expect(within(history).getByText("支付宝")).toBeVisible();
+  expect(within(history).getByText("¥42.50")).toBeVisible();
+  expect(within(history).queryByText("ECRM-PENDING")).not.toBeInTheDocument();
 });

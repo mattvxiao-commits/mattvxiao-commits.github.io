@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useEffect } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
+import DashboardPage from "./pages/DashboardPage";
 import ProductsPage from "./pages/ProductsPage";
 import SalesPage from "./pages/SalesPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -121,9 +122,10 @@ export default function App() {
           <Route path="/" element={<Navigate to="/products" replace />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/sales" element={<SalesPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           {pages.map((page) => (
-            page.to === "/products" || page.to === "/sales" || page.to === "/settings" ? null :
+            page.to === "/products" || page.to === "/sales" || page.to === "/dashboard" || page.to === "/settings" ? null :
             <Route
               key={page.to}
               path={page.to}

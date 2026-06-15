@@ -1,11 +1,12 @@
-import { Plus, RefreshCw, Search, ShoppingBasket } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, ReceiptText, RefreshCw, Search, ShoppingBasket } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import CartPanel from "../components/CartPanel";
 import CheckoutPanel from "../components/CheckoutPanel";
-import { getSettings, listProducts, savePaidOrder } from "../db/repositories";
+import { getSettings, listOrders, listProducts, savePaidOrder } from "../db/repositories";
+import { formatMoney } from "../domain/money";
 import { buildPaidOrder } from "../domain/order";
 import { calculateCart } from "../domain/promotions";
-import type { AppSettings, PaymentMethod, Product } from "../domain/types";
+import type { AppSettings, Order, PaymentMethod, Product } from "../domain/types";
 import { useCartStore } from "../state/cartStore";
 import { getImageUrl } from "../utils/image";
 
@@ -15,8 +16,24 @@ type StatusMessage = {
   text: string;
 };
 
-function formatMoney(value: number): string {
-  return `¥${value.toFixed(2)}`;
+const paymentMethodLabels: Record<PaymentMethod, string> = {
+  wechat: "微信",
+  alipay: "支付宝",
+  cash: "现金",
+  other: "其他"
+};
+
+function orderPaidTime(order: Order): string {
+  return order.paidAt ?? order.createdAt;
+}
+
+function formatPaidTime(value: string): string {
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
 }
 
 function SalesProductImage({ product }: { product: Product }) {
@@ -51,10 +68,12 @@ function SalesProductImage({ product }: { product: Product }) {
 
 export default function SalesPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [settings, setSettings] = useState<AppSettings>();
   const [selectedSpu, setSelectedSpu] = useState("全部");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("wechat");
   const [mode, setMode] = useState<SalesMode>("cart");
+  const [isOrderHistoryOpen, setIsOrderHistoryOpen] = useState(false);
   const [qrImageUrls, setQrImageUrls] = useState<{ wechat?: string; alipay?: string }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState<StatusMessage>();
@@ -71,9 +90,10 @@ export default function SalesPage() {
     }
 
     try {
-      const [loadedProducts, loadedSettings] = await Promise.all([listProducts(), getSettings()]);
+      const [loadedProducts, loadedSettings, loadedOrders] = await Promise.all([listProducts(), getSettings(), listOrders()]);
       setProducts(loadedProducts);
       setSettings(loadedSettings);
+      setOrders(loadedOrders);
     } catch {
       setStatus({ kind: "error", text: "售卖数据加载失败，请刷新后重试。" });
     } finally {
@@ -157,6 +177,11 @@ export default function SalesPage() {
         }
       }),
     [cartItems, products, settings]
+  );
+
+  const recentPaidOrders = useMemo(
+    () => orders.filter((order) => order.status === "paid").slice(0, 10),
+    [orders]
   );
 
   async function handleConfirmPaid() {
@@ -307,6 +332,42 @@ export default function SalesPage() {
         <ShoppingBasket size={18} aria-hidden="true" />
         {cartItems.reduce((sum, item) => sum + item.quantity, 0)} 件 / {formatMoney(calculated.payableAmount)}
       </button>
+
+      <section className="orderHistorySection" aria-labelledby="order-history-title">
+        <button
+          type="button"
+          className="orderHistoryToggle"
+          aria-expanded={isOrderHistoryOpen}
+          aria-controls="recent-order-history"
+          onClick={() => setIsOrderHistoryOpen((current) => !current)}
+        >
+          <span>
+            <ReceiptText size={18} aria-hidden="true" />
+            <strong id="order-history-title">订单记录</strong>
+            <em>{recentPaidOrders.length} 笔已支付</em>
+          </span>
+          {isOrderHistoryOpen ? <ChevronUp size={18} aria-hidden="true" /> : <ChevronDown size={18} aria-hidden="true" />}
+        </button>
+
+        {isOrderHistoryOpen ? (
+          <div id="recent-order-history" className="orderHistoryPanel" role="region" aria-label="最近订单记录">
+            {isLoading ? <p className="emptyState">正在加载订单记录...</p> : null}
+            {!isLoading && recentPaidOrders.length === 0 ? <p className="emptyState">暂无已支付订单。</p> : null}
+            {recentPaidOrders.map((order) => (
+              <article className="orderHistoryRow" key={order.id}>
+                <div>
+                  <h3>{order.orderNo}</h3>
+                  <p>{formatPaidTime(orderPaidTime(order))}</p>
+                </div>
+                <div className="orderHistoryMeta">
+                  <span>{paymentMethodLabels[order.paymentMethod ?? "other"]}</span>
+                  <strong>{formatMoney(order.payableAmount)}</strong>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : null}
+      </section>
     </section>
   );
 }
