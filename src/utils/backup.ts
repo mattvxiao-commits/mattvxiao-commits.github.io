@@ -63,6 +63,10 @@ function isPositiveInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value > 0;
 }
 
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
 function assertString(record: Record<string, unknown>, key: string): void {
   if (!isString(record[key])) {
     throw new Error("备份文件格式不正确。");
@@ -208,11 +212,15 @@ function validateOrderItems(orderItems: unknown[]): asserts orderItems is OrderI
     assertString(item, "productId");
     assertString(item, "productNameSnapshot");
     assertString(item, "spuSnapshot");
-    assertFiniteNumber(item, "quantity");
+
+    if (!isPositiveInteger(item.quantity)) {
+      throw new Error("备份文件格式不正确。");
+    }
+
     assertNonNegativeNumber(item, "originalUnitPrice");
     assertNonNegativeNumber(item, "finalUnitPrice");
     assertEnum(item, "lineType", ORDER_LINE_TYPES);
-    assertFiniteNumber(item, "lineTotal");
+    assertNonNegativeNumber(item, "lineTotal");
   }
 }
 
@@ -222,10 +230,24 @@ function validateInventoryLogs(inventoryLogs: unknown[]): asserts inventoryLogs 
     assertString(log, "id");
     assertString(log, "productId");
     assertString(log, "orderId");
-    assertFiniteNumber(log, "changeQty");
+    const changeQty = log.changeQty;
+    const beforeQty = log.beforeQty;
+    const afterQty = log.afterQty;
+
+    if (typeof changeQty !== "number" || !Number.isInteger(changeQty) || changeQty === 0) {
+      throw new Error("备份文件格式不正确。");
+    }
+
     assertEnum(log, "reason", INVENTORY_REASONS);
-    assertFiniteNumber(log, "beforeQty");
-    assertFiniteNumber(log, "afterQty");
+
+    if (!isNonNegativeInteger(beforeQty) || !isNonNegativeInteger(afterQty)) {
+      throw new Error("备份文件格式不正确。");
+    }
+
+    if (afterQty !== beforeQty + changeQty) {
+      throw new Error("备份文件格式不正确。");
+    }
+
     assertString(log, "createdAt");
   }
 }

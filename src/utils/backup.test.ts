@@ -100,6 +100,67 @@ describe("backup utilities", () => {
     expect(importData).not.toHaveBeenCalled();
   });
 
+  test.each([0, 1.5])(
+    "rejects malformed order item quantity %s before replacing data",
+    async (quantity) => {
+      const importData = vi.fn();
+
+      await expect(
+        importJsonBackupFromText(
+          JSON.stringify(
+            validPayload({
+              orderItems: [
+                {
+                  id: "order-item-1",
+                  orderId: "order-1",
+                  productId: "product-1",
+                  productNameSnapshot: "口红",
+                  spuSnapshot: "SPU-1",
+                  quantity,
+                  originalUnitPrice: 10,
+                  finalUnitPrice: 8,
+                  lineType: "normal",
+                  lineTotal: 8
+                }
+              ]
+            })
+          ),
+          { importData }
+        )
+      ).rejects.toThrow("备份文件格式不正确");
+
+      expect(importData).not.toHaveBeenCalled();
+    }
+  );
+
+  test("rejects malformed inventory log quantity mismatch before replacing data", async () => {
+    const importData = vi.fn();
+
+    await expect(
+      importJsonBackupFromText(
+        JSON.stringify(
+          validPayload({
+            inventoryLogs: [
+              {
+                id: "inventory-log-1",
+                productId: "product-1",
+                orderId: "order-1",
+                changeQty: -2,
+                reason: "order_paid",
+                beforeQty: 5,
+                afterQty: 4,
+                createdAt: "2026-06-15T00:00:00.000Z"
+              }
+            ]
+          })
+        ),
+        { importData }
+      )
+    ).rejects.toThrow("备份文件格式不正确");
+
+    expect(importData).not.toHaveBeenCalled();
+  });
+
   test("default import replacement keeps old data when transaction fails", async () => {
     const tableStubs = [
       db.products,
