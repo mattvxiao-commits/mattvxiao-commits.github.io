@@ -39,3 +39,30 @@ test("disables save until required fields are valid and submits numeric fields a
     })
   );
 });
+
+test("ignores duplicate submit while save is pending", async () => {
+  let resolveSave: () => void = () => undefined;
+  const onSave = vi.fn(
+    () =>
+      new Promise<void>((resolve) => {
+        resolveSave = resolve;
+      })
+  );
+
+  render(<ProductForm mode="create" onCancel={() => undefined} onSave={onSave} />);
+
+  fireEvent.change(screen.getByLabelText("商品名称"), {
+    target: { value: "手作柠檬茶" }
+  });
+  fireEvent.change(screen.getByLabelText("SPU"), {
+    target: { value: "DRINK-LEMON" }
+  });
+
+  const saveButton = screen.getByRole("button", { name: "保存商品" });
+  fireEvent.click(saveButton);
+  fireEvent.click(saveButton);
+
+  expect(onSave).toHaveBeenCalledTimes(1);
+
+  resolveSave();
+});

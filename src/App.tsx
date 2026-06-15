@@ -5,8 +5,10 @@ import {
   Settings,
   Store,
 } from "lucide-react";
+import { useEffect } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import ProductsPage from "./pages/ProductsPage";
+import { revokeImageUrls } from "./utils/image";
 
 const pages = [
   {
@@ -82,6 +84,12 @@ function PagePlaceholder({ page }: PagePlaceholderProps) {
 }
 
 export default function App() {
+  useEffect(() => {
+    return () => {
+      revokeImageUrls();
+    };
+  }, []);
+
   return (
     <div className="appShell">
       <header className="topBar">

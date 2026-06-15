@@ -28,6 +28,10 @@ function ProductImage({ imageId, name }: { imageId?: string; name: string }) {
       if (isCurrent) {
         setImageUrl(url);
       }
+    }).catch(() => {
+      if (isCurrent) {
+        setImageUrl(undefined);
+      }
     });
 
     return () => {
@@ -48,6 +52,7 @@ export default function ProductsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product>();
   const [isLoading, setIsLoading] = useState(true);
+  const [deactivatingProductId, setDeactivatingProductId] = useState<string>();
   const [error, setError] = useState<string>();
 
   async function refreshProducts() {
@@ -121,16 +126,25 @@ export default function ProductsPage() {
   }
 
   async function deactivateProduct(product: Product) {
-    if (product.status === "inactive") {
+    if (product.status === "inactive" || deactivatingProductId) {
       return;
     }
 
-    await upsertProduct({
-      ...product,
-      status: "inactive",
-      updatedAt: new Date().toISOString()
-    });
-    await refreshProducts();
+    setError(undefined);
+    setDeactivatingProductId(product.id);
+
+    try {
+      await upsertProduct({
+        ...product,
+        status: "inactive",
+        updatedAt: new Date().toISOString()
+      });
+      await refreshProducts();
+    } catch {
+      setError("商品停用失败，请稍后重试。");
+    } finally {
+      setDeactivatingProductId(undefined);
+    }
   }
 
   return (
@@ -246,11 +260,11 @@ export default function ProductsPage() {
               <button
                 type="button"
                 className="secondaryButton dangerButton"
-                disabled={product.status === "inactive"}
+                disabled={product.status === "inactive" || deactivatingProductId === product.id}
                 onClick={() => void deactivateProduct(product)}
               >
                 <Power size={17} aria-hidden="true" />
-                停用
+                {deactivatingProductId === product.id ? "停用中..." : "停用"}
               </button>
             </div>
           </article>

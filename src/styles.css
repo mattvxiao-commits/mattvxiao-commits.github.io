@@ -502,12 +502,19 @@ p {
 }
 
 .fieldError,
+.formError,
 .errorBanner {
   color: #8f2f22;
 }
 
 .fieldError {
   font-size: 13px;
+}
+
+.formError {
+  grid-column: 1 / -1;
+  font-size: 14px;
+  font-weight: 750;
 }
 
 .formActions {
@@ -569,17 +576,23 @@ p {
   justify-content: space-between;
 }
 
+.productTitleRow > div {
+  min-width: 0;
+}
+
 .productTitleRow h2 {
   margin: 0;
   color: var(--ink);
   font-size: 20px;
   line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .productTitleRow p {
   margin-top: 4px;
   font-size: 13px;
   font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 .statusBadge {

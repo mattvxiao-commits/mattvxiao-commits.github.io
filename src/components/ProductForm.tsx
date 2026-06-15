@@ -76,7 +76,9 @@ export default function ProductForm({
   const [draft, setDraft] = useState<Draft>(() => productToDraft(initialProduct));
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [isSavingImage, setIsSavingImage] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageError, setImageError] = useState<string>();
+  const [saveError, setSaveError] = useState<string>();
 
   useEffect(() => {
     setDraft(productToDraft(initialProduct));
@@ -85,11 +87,17 @@ export default function ProductForm({
   useEffect(() => {
     let isCurrent = true;
 
-    getImageUrl(draft.imageId).then((url) => {
-      if (isCurrent) {
-        setPreviewUrl(url);
-      }
-    });
+    getImageUrl(draft.imageId)
+      .then((url) => {
+        if (isCurrent) {
+          setPreviewUrl(url);
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setPreviewUrl(undefined);
+        }
+      });
 
     return () => {
       isCurrent = false;
@@ -127,25 +135,35 @@ export default function ProductForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!isValid || isSavingImage) {
+    if (!isValid || isSavingImage || isSubmitting) {
       return;
     }
+
+    setSaveError(undefined);
 
     if (mode === "edit" && !window.confirm("确认保存商品修改？")) {
       return;
     }
 
-    await onSave({
-      name: draft.name.trim(),
-      spu: draft.spu.trim(),
-      imageId: draft.imageId,
-      costPrice: Number(draft.costPrice),
-      salePrice: Number(draft.salePrice),
-      stockQty: Number(draft.stockQty),
-      isSellable: draft.isSellable,
-      isGiftEligible: draft.isGiftEligible,
-      status: draft.status
-    });
+    setIsSubmitting(true);
+
+    try {
+      await onSave({
+        name: draft.name.trim(),
+        spu: draft.spu.trim(),
+        imageId: draft.imageId,
+        costPrice: Number(draft.costPrice),
+        salePrice: Number(draft.salePrice),
+        stockQty: Number(draft.stockQty),
+        isSellable: draft.isSellable,
+        isGiftEligible: draft.isGiftEligible,
+        status: draft.status
+      });
+    } catch {
+      setSaveError("商品保存失败，请稍后重试。");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -262,12 +280,14 @@ export default function ProductForm({
         {imageError ? <p className="fieldError">{imageError}</p> : null}
       </div>
 
+      {saveError ? <p className="formError">{saveError}</p> : null}
+
       <div className="formActions">
-        <button type="button" className="secondaryButton" onClick={onCancel}>
+        <button type="button" className="secondaryButton" onClick={onCancel} disabled={isSubmitting}>
           取消
         </button>
-        <button type="submit" className="primaryButton" disabled={!isValid || isSavingImage}>
-          保存商品
+        <button type="submit" className="primaryButton" disabled={!isValid || isSavingImage || isSubmitting}>
+          {isSubmitting ? "保存中..." : "保存商品"}
         </button>
       </div>
     </form>
