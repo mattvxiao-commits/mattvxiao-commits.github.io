@@ -33,8 +33,10 @@ export default function CartPanel({
   hold
 }: CartPanelProps) {
   const productById = new Map(products.map((product) => [product.id, product]));
+  const cartQuantityByProduct = new Map(cartItems.map((item) => [item.productId, item.quantity]));
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const hasCartItems = itemCount > 0;
+  const hasGiftStockWarnings = calculated.giftStockWarnings.length > 0;
 
   return (
     <aside className="cartPanel" aria-labelledby="cart-title">
@@ -82,7 +84,7 @@ export default function CartPanel({
                   type="button"
                   className="iconButton"
                   aria-label={`增加 ${line.productName}`}
-                  disabled={(productById.get(line.productId)?.stockQty ?? 0) <= 0}
+                  disabled={(cartQuantityByProduct.get(line.productId) ?? 0) >= (productById.get(line.productId)?.stockQty ?? 0)}
                   onClick={() => increment(line.productId)}
                 >
                   <Plus size={18} aria-hidden="true" />
@@ -148,9 +150,14 @@ export default function CartPanel({
           <PauseCircle size={17} aria-hidden="true" />
           暂存购物车
         </button>
-        <button type="button" className="primaryButton" disabled={!hasCartItems} onClick={checkout}>
+        <button
+          type="button"
+          className="primaryButton"
+          disabled={!hasCartItems || hasGiftStockWarnings}
+          onClick={checkout}
+        >
           <ShoppingCart size={18} aria-hidden="true" />
-          去收款
+          {hasGiftStockWarnings ? "赠品库存不足，无法去收款" : "去收款"}
         </button>
       </div>
     </aside>

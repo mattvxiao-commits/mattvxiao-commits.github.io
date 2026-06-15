@@ -37,9 +37,10 @@ export default function CheckoutPanel({
 }: CheckoutPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
   const isEmpty = calculated.lines.length === 0;
+  const hasGiftStockWarnings = calculated.giftStockWarnings.length > 0;
 
   async function handleConfirmPaid() {
-    if (isSaving || isEmpty) {
+    if (isSaving || isEmpty || hasGiftStockWarnings) {
       return;
     }
 
@@ -79,6 +80,7 @@ export default function CheckoutPanel({
             key={option.value}
             type="button"
             className={paymentMethod === option.value ? "isSelected" : ""}
+            aria-pressed={paymentMethod === option.value}
             onClick={() => setPaymentMethod(option.value)}
           >
             {option.value === "cash" ? <Banknote size={17} aria-hidden="true" /> : <QrCode size={17} aria-hidden="true" />}
@@ -107,15 +109,30 @@ export default function CheckoutPanel({
       </div>
 
       <div className="manualConfirm">
+        {hasGiftStockWarnings ? (
+          <div className="cartWarning" role="alert">
+            {calculated.giftStockWarnings.map((warning) => (
+              <p key={warning.productId}>
+                赠品库存不足：{warning.productName} 需要 {warning.requiredQty}，当前 {warning.availableQty}
+              </p>
+            ))}
+          </div>
+        ) : null}
         <p>确认线下已收到对应金额后，再保存为已支付订单并扣减库存。</p>
         <button
           type="button"
           className="primaryButton"
-          disabled={isSaving || isEmpty}
+          disabled={isSaving || isEmpty || hasGiftStockWarnings}
           onClick={() => void handleConfirmPaid()}
         >
           <CheckCircle2 size={18} aria-hidden="true" />
-          {isSaving ? "保存中..." : isEmpty ? "购物车为空，无法确认" : "确认已收款并保存订单"}
+          {isSaving
+            ? "保存中..."
+            : isEmpty
+              ? "购物车为空，无法确认"
+              : hasGiftStockWarnings
+                ? "赠品库存不足，无法确认"
+                : "确认已收款并保存订单"}
         </button>
       </div>
     </aside>

@@ -29,6 +29,11 @@ const giftA = product({
   isGiftEligible: true
 });
 
+const stockedGiftA = {
+  ...giftA,
+  stockQty: 3
+};
+
 test("shows normal, discount, gift tier, gift stock warning, and payable total", () => {
   const items: CartItem[] = [
     { productId: "normal", quantity: 1, addedAt: "2026-06-15T00:00:00.000Z" },
@@ -74,12 +79,74 @@ test("shows normal, discount, gift tier, gift stock warning, and payable total",
   fireEvent.click(screen.getByRole("button", { name: "增加 普通商品" }));
   fireEvent.click(screen.getByRole("button", { name: "减少 优惠商品A" }));
   fireEvent.click(screen.getByRole("button", { name: "清空购物车" }));
-  fireEvent.click(screen.getByRole("button", { name: "去收款" }));
   fireEvent.click(screen.getByRole("button", { name: "暂存购物车" }));
+  fireEvent.click(screen.getByRole("button", { name: "赠品库存不足，无法去收款" }));
 
   expect(onIncrement).toHaveBeenCalledWith("normal");
   expect(onDecrement).toHaveBeenCalledWith("addon");
   expect(onClear).toHaveBeenCalledTimes(1);
-  expect(onCheckout).toHaveBeenCalledTimes(1);
+  expect(onCheckout).not.toHaveBeenCalled();
   expect(onHold).toHaveBeenCalledTimes(1);
+});
+
+test("allows checkout when gift inventory is available", () => {
+  const items: CartItem[] = [{ productId: "normal", quantity: 1, addedAt: "2026-06-15T00:00:00.000Z" }];
+  const products = [normal, stockedGiftA];
+  const calculated = calculateCart({
+    items,
+    products,
+    promotion: {
+      ...defaultPromotion(),
+      giftTiers: [{ threshold: 35, gifts: [{ productId: "gift-a", quantity: 1 }] }]
+    }
+  });
+  const onCheckout = vi.fn();
+
+  render(
+    <CartPanel
+      products={products}
+      calculated={calculated}
+      cartItems={items}
+      increment={() => undefined}
+      decrement={() => undefined}
+      clear={() => undefined}
+      checkout={onCheckout}
+      hold={() => undefined}
+    />
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "去收款" }));
+
+  expect(onCheckout).toHaveBeenCalledTimes(1);
+});
+
+test("blocks checkout when triggered gifts do not have enough stock", () => {
+  const items: CartItem[] = [{ productId: "normal", quantity: 1, addedAt: "2026-06-15T00:00:00.000Z" }];
+  const products = [normal, giftA];
+  const calculated = calculateCart({
+    items,
+    products,
+    promotion: {
+      ...defaultPromotion(),
+      giftTiers: [{ threshold: 35, gifts: [{ productId: "gift-a", quantity: 1 }] }]
+    }
+  });
+  const onCheckout = vi.fn();
+
+  render(
+    <CartPanel
+      products={products}
+      calculated={calculated}
+      cartItems={items}
+      increment={() => undefined}
+      decrement={() => undefined}
+      clear={() => undefined}
+      checkout={onCheckout}
+      hold={() => undefined}
+    />
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "赠品库存不足，无法去收款" }));
+
+  expect(onCheckout).not.toHaveBeenCalled();
 });

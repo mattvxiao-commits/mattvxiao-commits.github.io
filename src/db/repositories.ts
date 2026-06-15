@@ -75,20 +75,91 @@ export async function savePaidOrder(input: {
     throw new Error("库存流水归属订单不一致");
   }
 
+  if (input.inventoryLogs.length === 0) {
+    throw new Error("库存流水不能为空");
+  }
+
+  validateInventoryLogsMatchOrderItems(input.orderItems, input.inventoryLogs);
+
   if (input.updatedProducts.length === 0) {
     throw new Error("更新商品不能为空");
   }
 
   await db.transaction("rw", db.orders, db.orderItems, db.inventoryLogs, db.products, async () => {
+    const { inventoryLogs, updatedProducts } = await applyInventoryChanges(input.inventoryLogs, input.order.paidAt ?? input.order.createdAt);
+
     await db.orders.put(input.order);
     await db.orderItems.bulkPut(input.orderItems);
+    await db.inventoryLogs.bulkPut(inventoryLogs);
+    await db.products.bulkPut(updatedProducts);
+  });
+}
 
-    if (input.inventoryLogs.length > 0) {
-      await db.inventoryLogs.bulkPut(input.inventoryLogs);
+function validateInventoryLogsMatchOrderItems(orderItems: OrderItem[], inventoryLogs: InventoryLog[]): void {
+  const itemQuantities = sumQuantitiesByProduct(orderItems.map((item) => ({
+    productId: item.productId,
+    quantity: item.quantity
+  })));
+  const logQuantities = sumQuantitiesByProduct(inventoryLogs.map((log) => ({
+    productId: log.productId,
+    quantity: -log.changeQty
+  })));
+
+  if (itemQuantities.size !== logQuantities.size) {
+    throw new Error("订单明细与库存流水不一致");
+  }
+
+  for (const [productId, quantity] of itemQuantities) {
+    if (logQuantities.get(productId) !== quantity) {
+      throw new Error("订单明细与库存流水不一致");
+    }
+  }
+}
+
+function sumQuantitiesByProduct(items: Array<{ productId: string; quantity: number }>): Map<string, number> {
+  return items.reduce((quantities, item) => {
+    quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity);
+    return quantities;
+  }, new Map<string, number>());
+}
+
+async function applyInventoryChanges(
+  inventoryLogs: InventoryLog[],
+  updatedAt: string
+): Promise<{ inventoryLogs: InventoryLog[]; updatedProducts: Product[] }> {
+  const changedProducts = new Map<string, Product>();
+  const adjustedLogs: InventoryLog[] = [];
+
+  for (const log of inventoryLogs) {
+    const product = changedProducts.get(log.productId) ?? await db.products.get(log.productId);
+
+    if (!product) {
+      throw new Error(`订单明细商品 ${log.productId} 不存在，无法生成订单快照`);
     }
 
-    await db.products.bulkPut(input.updatedProducts);
-  });
+    const beforeQty = product.stockQty;
+    const afterQty = beforeQty + log.changeQty;
+
+    if (afterQty < 0) {
+      throw new Error(`商品 ${product.name} 库存不足，无法完成订单扣减`);
+    }
+
+    changedProducts.set(log.productId, {
+      ...product,
+      stockQty: afterQty,
+      updatedAt
+    });
+    adjustedLogs.push({
+      ...log,
+      beforeQty,
+      afterQty
+    });
+  }
+
+  return {
+    inventoryLogs: adjustedLogs,
+    updatedProducts: [...changedProducts.values()]
+  };
 }
 
 export async function listOrders(): Promise<Order[]> {

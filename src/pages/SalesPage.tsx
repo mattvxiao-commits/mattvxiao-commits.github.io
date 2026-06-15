@@ -135,6 +135,10 @@ export default function SalesPage() {
     () => sellableProducts.filter((product) => selectedSpu === "全部" || product.spu === selectedSpu),
     [sellableProducts, selectedSpu]
   );
+  const cartQuantityByProduct = useMemo(
+    () => new Map(cartItems.map((item) => [item.productId, item.quantity])),
+    [cartItems]
+  );
 
   const calculated = useMemo(
     () =>
@@ -158,6 +162,11 @@ export default function SalesPage() {
   async function handleConfirmPaid() {
     if (!settings || calculated.lines.length === 0) {
       setStatus({ kind: "error", text: "购物车为空，无法保存订单。" });
+      return;
+    }
+
+    if (calculated.giftStockWarnings.length > 0) {
+      setStatus({ kind: "error", text: "赠品库存不足，无法保存订单。" });
       return;
     }
 
@@ -208,12 +217,11 @@ export default function SalesPage() {
 
       <div className="salesLayout">
         <div className="salesProductsArea">
-          <div className="spuFilter" role="tablist" aria-label="按 SPU 筛选商品">
+          <div className="spuFilter" aria-label="按 SPU 筛选商品">
             {spuList.map((spu) => (
               <button
                 type="button"
-                role="tab"
-                aria-selected={selectedSpu === spu}
+                aria-pressed={selectedSpu === spu}
                 className={selectedSpu === spu ? "isSelected" : ""}
                 key={spu}
                 onClick={() => setSelectedSpu(spu)}
@@ -232,30 +240,37 @@ export default function SalesPage() {
           ) : null}
 
           <div className="salesProductGrid" aria-live="polite">
-            {visibleProducts.map((product) => (
-              <article className="salesProductCard" key={product.id}>
-                <SalesProductImage product={product} />
-                <div className="salesProductBody">
-                  <div>
-                    <h2>{product.name}</h2>
-                    <p>{product.spu}</p>
+            {visibleProducts.map((product) => {
+              const quantityInCart = cartQuantityByProduct.get(product.id) ?? 0;
+              const remainingStock = product.stockQty - quantityInCart;
+              const hasReachedStock = remainingStock <= 0;
+
+              return (
+                <article className="salesProductCard" key={product.id}>
+                  <SalesProductImage product={product} />
+                  <div className="salesProductBody">
+                    <div>
+                      <h2>{product.name}</h2>
+                      <p>{product.spu}</p>
+                    </div>
+                    <div className="salesProductFacts">
+                      <span>{formatMoney(product.salePrice)}</span>
+                      <span>库存 {product.stockQty}</span>
+                      {hasReachedStock ? <span>已达库存</span> : null}
+                    </div>
                   </div>
-                  <div className="salesProductFacts">
-                    <span>{formatMoney(product.salePrice)}</span>
-                    <span>库存 {product.stockQty}</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="addSaleButton"
-                  aria-label={`加入 ${product.name}`}
-                  disabled={product.stockQty <= 0}
-                  onClick={() => addProduct(product.id)}
-                >
-                  <Plus size={21} aria-hidden="true" />
-                </button>
-              </article>
-            ))}
+                  <button
+                    type="button"
+                    className="addSaleButton"
+                    aria-label={`加入 ${product.name}`}
+                    disabled={hasReachedStock}
+                    onClick={() => addProduct(product.id)}
+                  >
+                    <Plus size={21} aria-hidden="true" />
+                  </button>
+                </article>
+              );
+            })}
           </div>
         </div>
 
