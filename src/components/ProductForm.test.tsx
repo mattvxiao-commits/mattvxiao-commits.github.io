@@ -2,13 +2,53 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import ProductForm from "./ProductForm";
 
-test("disables save until required fields are valid and submits numeric fields as numbers", async () => {
+test("keeps save clickable and explains missing required fields before submit", async () => {
   const onSave = vi.fn();
 
   render(<ProductForm mode="create" onCancel={() => undefined} onSave={onSave} />);
 
   const saveButton = screen.getByRole("button", { name: "保存商品" });
-  expect(saveButton).toBeDisabled();
+  expect(saveButton).toBeEnabled();
+
+  fireEvent.change(screen.getByLabelText("商品名称"), {
+    target: { value: "手作柠檬茶" }
+  });
+  fireEvent.change(screen.getByLabelText("SPU"), {
+    target: { value: "DRINK-LEMON" }
+  });
+  fireEvent.change(screen.getByLabelText("SPU 编码"), {
+    target: { value: "DRINK-LEMON" }
+  });
+
+  fireEvent.click(saveButton);
+
+  expect(screen.getByText("请补全必填信息：SKU 编码。")).toBeVisible();
+  expect(screen.getByText("请填写 SKU 编码。")).toBeVisible();
+  expect(onSave).not.toHaveBeenCalled();
+
+  fireEvent.change(screen.getByLabelText("SKU 编码"), {
+    target: { value: "COLD" }
+  });
+  fireEvent.click(saveButton);
+
+  expect(onSave).toHaveBeenCalledWith(
+    expect.objectContaining({
+      name: "手作柠檬茶",
+      spu: "DRINK-LEMON",
+      spuCode: "DRINK-LEMON",
+      skuCode: "COLD",
+      productCode: "DRINK-LEMON-COLD",
+      costPrice: 0,
+      salePrice: 0,
+      stockQty: 0
+    })
+  );
+});
+
+test("submits numeric fields as numbers", async () => {
+  const onSave = vi.fn();
+
+  render(<ProductForm mode="create" onCancel={() => undefined} onSave={onSave} />);
 
   fireEvent.change(screen.getByLabelText("商品名称"), {
     target: { value: "手作柠檬茶" }
@@ -32,6 +72,7 @@ test("disables save until required fields are valid and submits numeric fields a
     target: { value: "18" }
   });
 
+  const saveButton = screen.getByRole("button", { name: "保存商品" });
   expect(saveButton).toBeEnabled();
   fireEvent.click(saveButton);
 

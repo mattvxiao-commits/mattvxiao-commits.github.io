@@ -41,6 +41,18 @@ type Draft = {
   status: ProductStatus;
 };
 
+type FieldErrors = Partial<Record<keyof Draft, string>>;
+
+const requiredFieldLabels: Partial<Record<keyof Draft, string>> = {
+  name: "商品名称",
+  spu: "SPU",
+  spuCode: "SPU 编码",
+  skuCode: "SKU 编码",
+  costPrice: "成本价",
+  salePrice: "售价",
+  stockQty: "库存"
+};
+
 function productToDraft(product?: Product): Draft {
   return {
     name: product?.name ?? "",
@@ -75,6 +87,53 @@ function isNonNegativeInteger(value: string): boolean {
   return Number.isInteger(numberValue) && numberValue >= 0;
 }
 
+function validateDraft(draft: Draft): { fieldErrors: FieldErrors; formError?: string } {
+  const fieldErrors: FieldErrors = {};
+  const invalidFields: Array<keyof Draft> = [];
+
+  function addError(field: keyof Draft, message: string) {
+    fieldErrors[field] = message;
+    invalidFields.push(field);
+  }
+
+  if (draft.name.trim().length === 0) {
+    addError("name", "请填写商品名称。");
+  }
+
+  if (draft.spu.trim().length === 0) {
+    addError("spu", "请填写 SPU。");
+  }
+
+  if (draft.spuCode.trim().length === 0) {
+    addError("spuCode", "请填写 SPU 编码。");
+  }
+
+  if (draft.skuCode.trim().length === 0) {
+    addError("skuCode", "请填写 SKU 编码。");
+  }
+
+  if (!isNonNegativeNumber(draft.costPrice)) {
+    addError("costPrice", "请填写有效的成本价。");
+  }
+
+  if (!isNonNegativeNumber(draft.salePrice)) {
+    addError("salePrice", "请填写有效的售价。");
+  }
+
+  if (!isNonNegativeInteger(draft.stockQty)) {
+    addError("stockQty", "请填写有效的库存。");
+  }
+
+  if (invalidFields.length === 0) {
+    return { fieldErrors };
+  }
+
+  return {
+    fieldErrors,
+    formError: `请补全必填信息：${invalidFields.map((field) => requiredFieldLabels[field]).join("、")}。`
+  };
+}
+
 export default function ProductForm({
   mode,
   initialProduct,
@@ -87,6 +146,7 @@ export default function ProductForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageError, setImageError] = useState<string>();
   const [saveError, setSaveError] = useState<string>();
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const productCodePreview = useMemo(() => {
     return buildProductCode(draft.spuCode, draft.skuCode);
@@ -116,18 +176,6 @@ export default function ProductForm({
     };
   }, [draft.imageId]);
 
-  const isValid = useMemo(() => {
-    return (
-      draft.name.trim().length > 0 &&
-      draft.spu.trim().length > 0 &&
-      draft.spuCode.trim().length > 0 &&
-      draft.skuCode.trim().length > 0 &&
-      isNonNegativeNumber(draft.costPrice) &&
-      isNonNegativeNumber(draft.salePrice) &&
-      isNonNegativeInteger(draft.stockQty)
-    );
-  }, [draft]);
-
   async function handleImageChange(file?: File) {
     if (!file) {
       return;
@@ -149,11 +197,17 @@ export default function ProductForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!isValid || isSavingImage || isSubmitting) {
+    if (isSavingImage || isSubmitting) {
       return;
     }
 
-    setSaveError(undefined);
+    const validation = validateDraft(draft);
+    setFieldErrors(validation.fieldErrors);
+
+    if (validation.formError) {
+      setSaveError(validation.formError);
+      return;
+    }
 
     const codeValidation = validateProductCodeParts(draft.spuCode, draft.skuCode);
     if (!codeValidation.ok) {
@@ -189,6 +243,20 @@ export default function ProductForm({
     }
   }
 
+  function updateDraft<K extends keyof Draft>(field: K, value: Draft[K]) {
+    setDraft((current) => ({ ...current, [field]: value }));
+    setFieldErrors((current) => {
+      if (!current[field]) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+    setSaveError(undefined);
+  }
+
   return (
     <form className="productForm" onSubmit={handleSubmit} aria-label={mode === "edit" ? "编辑商品" : "新增商品"}>
       <div className="formMain">
@@ -197,9 +265,11 @@ export default function ProductForm({
           <input
             aria-label="商品名称"
             value={draft.name}
-            onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+            aria-invalid={fieldErrors.name ? "true" : undefined}
+            onChange={(event) => updateDraft("name", event.target.value)}
             placeholder="例如：手作柠檬茶"
           />
+          {fieldErrors.name ? <p className="fieldError">{fieldErrors.name}</p> : null}
         </label>
 
         <label>
@@ -207,9 +277,11 @@ export default function ProductForm({
           <input
             aria-label="SPU"
             value={draft.spu}
-            onChange={(event) => setDraft((current) => ({ ...current, spu: event.target.value }))}
+            aria-invalid={fieldErrors.spu ? "true" : undefined}
+            onChange={(event) => updateDraft("spu", event.target.value)}
             placeholder="例如：DRINK-LEMON"
           />
+          {fieldErrors.spu ? <p className="fieldError">{fieldErrors.spu}</p> : null}
         </label>
 
         <div className="fieldGrid">
@@ -218,9 +290,11 @@ export default function ProductForm({
             <input
               aria-label="SPU 编码"
               value={draft.spuCode}
-              onChange={(event) => setDraft((current) => ({ ...current, spuCode: event.target.value }))}
+              aria-invalid={fieldErrors.spuCode ? "true" : undefined}
+              onChange={(event) => updateDraft("spuCode", event.target.value)}
               placeholder="例如：CLTH-24001"
             />
+            {fieldErrors.spuCode ? <p className="fieldError">{fieldErrors.spuCode}</p> : null}
           </label>
 
           <label>
@@ -228,9 +302,11 @@ export default function ProductForm({
             <input
               aria-label="SKU 编码"
               value={draft.skuCode}
-              onChange={(event) => setDraft((current) => ({ ...current, skuCode: event.target.value }))}
+              aria-invalid={fieldErrors.skuCode ? "true" : undefined}
+              onChange={(event) => updateDraft("skuCode", event.target.value)}
               placeholder="例如：BLK-M"
             />
+            {fieldErrors.skuCode ? <p className="fieldError">{fieldErrors.skuCode}</p> : null}
           </label>
 
           <label>
@@ -249,8 +325,10 @@ export default function ProductForm({
               min="0"
               step="0.01"
               value={draft.costPrice}
-              onChange={(event) => setDraft((current) => ({ ...current, costPrice: event.target.value }))}
+              aria-invalid={fieldErrors.costPrice ? "true" : undefined}
+              onChange={(event) => updateDraft("costPrice", event.target.value)}
             />
+            {fieldErrors.costPrice ? <p className="fieldError">{fieldErrors.costPrice}</p> : null}
           </label>
 
           <label>
@@ -262,8 +340,10 @@ export default function ProductForm({
               min="0"
               step="0.01"
               value={draft.salePrice}
-              onChange={(event) => setDraft((current) => ({ ...current, salePrice: event.target.value }))}
+              aria-invalid={fieldErrors.salePrice ? "true" : undefined}
+              onChange={(event) => updateDraft("salePrice", event.target.value)}
             />
+            {fieldErrors.salePrice ? <p className="fieldError">{fieldErrors.salePrice}</p> : null}
           </label>
 
           <label>
@@ -275,8 +355,10 @@ export default function ProductForm({
               min="0"
               step="1"
               value={draft.stockQty}
-              onChange={(event) => setDraft((current) => ({ ...current, stockQty: event.target.value }))}
+              aria-invalid={fieldErrors.stockQty ? "true" : undefined}
+              onChange={(event) => updateDraft("stockQty", event.target.value)}
             />
+            {fieldErrors.stockQty ? <p className="fieldError">{fieldErrors.stockQty}</p> : null}
           </label>
         </div>
 
@@ -285,7 +367,7 @@ export default function ProductForm({
             <input
               type="checkbox"
               checked={draft.isSellable}
-              onChange={(event) => setDraft((current) => ({ ...current, isSellable: event.target.checked }))}
+              onChange={(event) => updateDraft("isSellable", event.target.checked)}
             />
             <span>可售卖</span>
           </label>
@@ -293,7 +375,7 @@ export default function ProductForm({
             <input
               type="checkbox"
               checked={draft.isGiftEligible}
-              onChange={(event) => setDraft((current) => ({ ...current, isGiftEligible: event.target.checked }))}
+              onChange={(event) => updateDraft("isGiftEligible", event.target.checked)}
             />
             <span>可作为赠品</span>
           </label>
@@ -302,9 +384,7 @@ export default function ProductForm({
             <select
               aria-label="状态"
               value={draft.status}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, status: event.target.value as ProductStatus }))
-              }
+              onChange={(event) => updateDraft("status", event.target.value as ProductStatus)}
             >
               <option value="active">启用</option>
               <option value="inactive">停用</option>
@@ -336,7 +416,7 @@ export default function ProductForm({
         <button type="button" className="secondaryButton" onClick={onCancel} disabled={isSubmitting}>
           取消
         </button>
-        <button type="submit" className="primaryButton" disabled={!isValid || isSavingImage || isSubmitting}>
+        <button type="submit" className="primaryButton" disabled={isSavingImage || isSubmitting}>
           {isSubmitting ? "保存中..." : "保存商品"}
         </button>
       </div>
