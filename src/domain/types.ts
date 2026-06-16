@@ -4,6 +4,9 @@ export type Product = {
   id: string;
   name: string;
   spu: string;
+  spuCode?: string;
+  skuCode?: string;
+  productCode?: string;
   imageId?: string;
   costPrice: number;
   salePrice: number;
