@@ -899,48 +899,50 @@ p {
 
 .salesProductList {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr));
   gap: 8px;
 }
 
 .salesProductRow {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) 48px;
-  gap: 10px;
+  grid-template-columns: 54px minmax(0, 1fr) 42px;
+  gap: 8px;
   align-items: center;
-  padding: 8px;
+  min-height: 76px;
+  padding: 7px;
   border: 1px solid rgba(222, 214, 201, 0.94);
   border-radius: 8px;
   background: rgba(255, 253, 250, 0.92);
 }
 
 .salesProductRow .salesProductImage {
-  width: 64px;
-  height: 64px;
-  padding: 6px;
+  width: 54px;
+  height: 54px;
+  padding: 5px;
   border: 1px solid var(--line);
   border-radius: 8px;
 }
 
 .salesProductRow .salesProductImage span {
-  font-size: 24px;
+  font-size: 21px;
 }
 
 .salesProductRowMain {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .salesProductRowMain h2 {
   margin: 0;
   color: var(--ink);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.18;
   overflow-wrap: anywhere;
 }
 
 .salesProductRowMain p {
-  margin-top: 3px;
+  margin-top: 2px;
   font-size: 12px;
   font-weight: 800;
   overflow-wrap: anywhere;
@@ -953,15 +955,15 @@ p {
 }
 
 .salesProductRowMeta span {
-  min-height: 28px;
+  min-height: 24px;
   display: inline-flex;
   align-items: center;
-  padding: 0 8px;
+  padding: 0 7px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.74);
   color: var(--muted-strong);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 850;
 }
 
@@ -1063,9 +1065,9 @@ p {
 
 .salesProductRow .addSaleButton {
   position: static;
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
 }
 
 .orderHistorySection {
@@ -1776,6 +1778,10 @@ p {
 
   .salesProductGrid {
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
+
+  .salesProductList {
+    grid-template-columns: 1fr;
   }
 
   .cartDrawerLayer {

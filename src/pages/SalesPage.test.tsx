@@ -94,6 +94,23 @@ test("shows compact sales list by default and can switch to image grid", async (
   expect(await screen.findByRole("list", { name: "售卖商品紧凑列表" })).toBeVisible();
 });
 
+test("renders multiple products in the compact list without switching to image grid", async () => {
+  repositories.listProducts.mockResolvedValue([
+    sellableProduct,
+    product({ id: "pin", name: "徽章商品", spu: "徽章SPU", salePrice: 15, stockQty: 8 }),
+    product({ id: "stand", name: "立牌商品", spu: "立牌SPU", salePrice: 30, stockQty: 5 })
+  ]);
+
+  render(<SalesPage />);
+
+  const list = await screen.findByRole("list", { name: "售卖商品紧凑列表" });
+
+  expect(within(list).getByRole("heading", { level: 2, name: "普通商品" })).toBeVisible();
+  expect(within(list).getByRole("heading", { level: 2, name: "徽章商品" })).toBeVisible();
+  expect(within(list).getByRole("heading", { level: 2, name: "立牌商品" })).toBeVisible();
+  expect(screen.queryByRole("list", { name: "售卖商品图片网格" })).not.toBeInTheDocument();
+});
+
 test("opens and closes the cart drawer from the floating cart button", async () => {
   render(<SalesPage />);
 
