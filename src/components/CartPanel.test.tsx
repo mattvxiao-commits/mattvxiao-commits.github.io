@@ -15,6 +15,7 @@ const normal = product({
   id: "normal",
   name: "普通商品",
   spu: "普通SPU",
+  productCode: "NORMAL-BASE",
   salePrice: 35
 });
 
@@ -22,6 +23,7 @@ const addon = product({
   id: "addon",
   name: "优惠商品A",
   spu: "优惠SPU",
+  productCode: "ADDON-A",
   salePrice: 5
 });
 
@@ -29,6 +31,7 @@ const giftA = product({
   id: "gift-a",
   name: "商品A赠品",
   spu: "赠品SPU-A",
+  productCode: "GIFT-A",
   salePrice: 0,
   stockQty: 0,
   isSellable: false,
@@ -108,7 +111,9 @@ test("shows normal, discount, gift tier, gift stock warning, and payable total",
   );
 
   expect(screen.getByText("普通商品")).toBeVisible();
+  expect(screen.getByText("NORMAL-BASE")).toBeVisible();
   expect(screen.getByText("优惠商品A")).toBeVisible();
+  expect(screen.getByText("ADDON-A")).toBeVisible();
   expect(screen.getByText("加购优惠")).toBeVisible();
   expect(screen.getByText("已享加购优惠 3/3 个")).toBeVisible();
   expect(screen.getByText("已触发满 35 赠品")).toBeVisible();

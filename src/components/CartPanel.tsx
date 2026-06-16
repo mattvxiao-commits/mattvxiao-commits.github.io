@@ -1,5 +1,6 @@
 import { Minus, PauseCircle, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { displayProductCode } from "../domain/productCode";
 import type { CalculatedCart, CartItem, Product } from "../domain/types";
 import { getImageUrl } from "../utils/image";
 
@@ -111,6 +112,7 @@ export default function CartPanel({
                   <div>
                     <h3>{line.productName}</h3>
                     <p>{line.spu}</p>
+                    <p className="productCodeText">{displayProductCode(line.productCode)}</p>
                   </div>
                   <span>{lineTypeLabels[line.lineType]}</span>
                 </div>

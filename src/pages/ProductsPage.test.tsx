@@ -34,7 +34,9 @@ beforeEach(() => {
 test("rejects saving a product when the generated product code already exists", async () => {
   render(<ProductsPage />);
 
-  fireEvent.click(await screen.findByRole("button", { name: "新增商品" }));
+  expect(await screen.findByText("编码 CLTH-24001-BLK-M")).toBeVisible();
+
+  fireEvent.click(screen.getByRole("button", { name: "新增商品" }));
 
   fireEvent.change(screen.getByLabelText("商品名称"), {
     target: { value: "重复编码商品" }

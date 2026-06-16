@@ -2,6 +2,7 @@ import { Edit3, PackagePlus, Power, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import ProductForm, { type ProductFormValues } from "../components/ProductForm";
 import { listProducts, makeId, upsertProduct } from "../db/repositories";
+import { displayProductCode } from "../domain/productCode";
 import type { Product } from "../domain/types";
 import { getImageUrl } from "../utils/image";
 
@@ -262,6 +263,7 @@ export default function ProductsPage() {
               </div>
               <div className="productFacts">
                 <span>售价 {formatMoney(product.salePrice)}</span>
+                <span>编码 {displayProductCode(product.productCode)}</span>
                 <span>成本 {formatMoney(product.costPrice)}</span>
                 <span>库存 {product.stockQty}</span>
                 <span>{product.isSellable ? "可售卖" : "不可售卖"}</span>

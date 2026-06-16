@@ -53,6 +53,7 @@ export type CalculatedCartLine = {
   productId: string;
   productName: string;
   spu: string;
+  productCode?: string;
   quantity: number;
   originalUnitPrice: number;
   finalUnitPrice: number;
@@ -110,6 +111,7 @@ export type OrderItem = {
   productId: string;
   productNameSnapshot: string;
   spuSnapshot: string;
+  productCodeSnapshot?: string;
   quantity: number;
   originalUnitPrice: number;
   finalUnitPrice: number;

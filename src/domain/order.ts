@@ -75,6 +75,7 @@ function makeOrderItem(
     productId: line.productId,
     productNameSnapshot: line.productName,
     spuSnapshot: line.spu,
+    productCodeSnapshot: line.productCode,
     quantity: line.quantity,
     originalUnitPrice: line.originalUnitPrice,
     finalUnitPrice: line.finalUnitPrice,

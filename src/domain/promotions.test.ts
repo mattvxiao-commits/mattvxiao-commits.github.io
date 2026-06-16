@@ -7,6 +7,7 @@ const normal = product({
   id: "normal",
   name: "普通商品",
   spu: "普通SPU",
+  productCode: "NORMAL-BASE",
   salePrice: 20
 });
 
@@ -14,6 +15,7 @@ const addon = product({
   id: "addon",
   name: "优惠商品A",
   spu: "优惠SPU",
+  productCode: "ADDON-A",
   salePrice: 5,
   isGiftEligible: true
 });
@@ -22,6 +24,7 @@ const giftA = product({
   id: "gift-a",
   name: "商品A赠品",
   spu: "赠品SPU-A",
+  productCode: "GIFT-A",
   salePrice: 5,
   stockQty: 10,
   isGiftEligible: true
@@ -31,6 +34,7 @@ const giftB = product({
   id: "gift-b",
   name: "商品B赠品",
   spu: "赠品SPU-B",
+  productCode: "GIFT-B",
   salePrice: 0,
   stockQty: 10,
   isSellable: false,
@@ -93,6 +97,7 @@ describe("calculateCart", () => {
     expect(result.lines).toEqual([
       expect.objectContaining({
         productId: "normal",
+        productCode: "NORMAL-BASE",
         quantity: 1,
         finalUnitPrice: 20,
         lineType: "normal",
@@ -100,6 +105,7 @@ describe("calculateCart", () => {
       }),
       expect.objectContaining({
         productId: "addon",
+        productCode: "ADDON-A",
         quantity: 3,
         originalUnitPrice: 5,
         finalUnitPrice: 3,
@@ -108,6 +114,7 @@ describe("calculateCart", () => {
       }),
       expect.objectContaining({
         productId: "addon",
+        productCode: "ADDON-A",
         quantity: 1,
         finalUnitPrice: 5,
         lineType: "normal",
@@ -142,8 +149,8 @@ describe("calculateCart", () => {
 
     expect(result.triggeredGiftTier?.threshold).toBe(148);
     expect(result.giftLines).toEqual([
-      expect.objectContaining({ productId: "gift-a", quantity: 5, lineType: "gift", lineTotal: 0 }),
-      expect.objectContaining({ productId: "gift-b", quantity: 1, lineType: "gift", lineTotal: 0 })
+      expect.objectContaining({ productId: "gift-a", productCode: "GIFT-A", quantity: 5, lineType: "gift", lineTotal: 0 }),
+      expect.objectContaining({ productId: "gift-b", productCode: "GIFT-B", quantity: 1, lineType: "gift", lineTotal: 0 })
     ]);
   });
 

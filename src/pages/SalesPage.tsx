@@ -15,6 +15,7 @@ import CheckoutPanel from "../components/CheckoutPanel";
 import { getSettings, listOrders, listProducts, savePaidOrder } from "../db/repositories";
 import { formatMoney } from "../domain/money";
 import { buildPaidOrder } from "../domain/order";
+import { displayProductCode } from "../domain/productCode";
 import { calculateCart } from "../domain/promotions";
 import type { AppSettings, Order, PaymentMethod, Product } from "../domain/types";
 import { useCartStore } from "../state/cartStore";
@@ -318,6 +319,7 @@ export default function SalesPage() {
                       <div>
                         <h2>{product.name}</h2>
                         <p>{product.spu}</p>
+                        <p className="productCodeText">{displayProductCode(product.productCode)}</p>
                       </div>
                       <div className="salesProductRowMeta">
                         <span>{formatMoney(product.salePrice)}</span>
@@ -353,6 +355,7 @@ export default function SalesPage() {
                       <div>
                         <h2>{product.name}</h2>
                         <p>{product.spu}</p>
+                        <p className="productCodeText">{displayProductCode(product.productCode)}</p>
                       </div>
                       <div className="salesProductFacts">
                         <span>{formatMoney(product.salePrice)}</span>

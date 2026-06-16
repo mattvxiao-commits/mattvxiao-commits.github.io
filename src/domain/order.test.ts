@@ -17,6 +17,7 @@ function calculated(overrides: Partial<CalculatedCart> = {}): CalculatedCart {
         productId: "normal",
         productName: "普通商品",
         spu: "普通SPU",
+        productCode: "NORMAL-BASE",
         quantity: 2,
         originalUnitPrice: 20,
         finalUnitPrice: 20,
@@ -27,6 +28,7 @@ function calculated(overrides: Partial<CalculatedCart> = {}): CalculatedCart {
         productId: "addon",
         productName: "优惠商品A",
         spu: "优惠SPU",
+        productCode: "ADDON-A",
         quantity: 3,
         originalUnitPrice: 5,
         finalUnitPrice: 3,
@@ -39,6 +41,7 @@ function calculated(overrides: Partial<CalculatedCart> = {}): CalculatedCart {
         productId: "gift-a",
         productName: "商品A赠品",
         spu: "赠品SPU-A",
+        productCode: "GIFT-A",
         quantity: 1,
         originalUnitPrice: 0,
         finalUnitPrice: 0,
@@ -59,12 +62,13 @@ function calculated(overrides: Partial<CalculatedCart> = {}): CalculatedCart {
 
 function products() {
   return [
-    product({ id: "normal", name: "普通商品", spu: "普通SPU", salePrice: 20, stockQty: 10 }),
-    product({ id: "addon", name: "优惠商品A", spu: "优惠SPU", salePrice: 5, stockQty: 8 }),
+    product({ id: "normal", name: "普通商品", spu: "普通SPU", productCode: "NORMAL-BASE", salePrice: 20, stockQty: 10 }),
+    product({ id: "addon", name: "优惠商品A", spu: "优惠SPU", productCode: "ADDON-A", salePrice: 5, stockQty: 8 }),
     product({
       id: "gift-a",
       name: "商品A赠品",
       spu: "赠品SPU-A",
+      productCode: "GIFT-A",
       salePrice: 0,
       stockQty: 4,
       isSellable: false,
@@ -107,6 +111,7 @@ describe("buildPaidOrder", () => {
         productId: "normal",
         productNameSnapshot: "普通商品",
         spuSnapshot: "普通SPU",
+        productCodeSnapshot: "NORMAL-BASE",
         quantity: 2,
         originalUnitPrice: 20,
         finalUnitPrice: 20,
@@ -118,6 +123,7 @@ describe("buildPaidOrder", () => {
         productId: "addon",
         productNameSnapshot: "优惠商品A",
         spuSnapshot: "优惠SPU",
+        productCodeSnapshot: "ADDON-A",
         quantity: 3,
         originalUnitPrice: 5,
         finalUnitPrice: 3,
@@ -129,6 +135,7 @@ describe("buildPaidOrder", () => {
         productId: "gift-a",
         productNameSnapshot: "商品A赠品",
         spuSnapshot: "赠品SPU-A",
+        productCodeSnapshot: "GIFT-A",
         quantity: 1,
         originalUnitPrice: 0,
         finalUnitPrice: 0,
@@ -211,6 +218,7 @@ describe("buildPaidOrder", () => {
             productId: "normal",
             productName: "下单时商品名",
             spu: "下单时SPU",
+            productCode: "下单时编码",
             quantity: 2,
             originalUnitPrice: 20,
             finalUnitPrice: 20,
@@ -232,7 +240,8 @@ describe("buildPaidOrder", () => {
     expect(result.orderItems[0]).toMatchObject({
       productId: "normal",
       productNameSnapshot: "下单时商品名",
-      spuSnapshot: "下单时SPU"
+      spuSnapshot: "下单时SPU",
+      productCodeSnapshot: "下单时编码"
     });
   });
 

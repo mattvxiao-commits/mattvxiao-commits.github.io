@@ -172,6 +172,7 @@ function toLine(
     productId: product.id,
     productName: product.name,
     spu: product.spu,
+    productCode: product.productCode,
     quantity,
     originalUnitPrice: normalizeMoney(originalUnitPrice),
     finalUnitPrice: normalizeMoney(finalUnitPrice),
