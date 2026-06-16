@@ -60,7 +60,7 @@ function order(overrides: Partial<Order> = {}): Order {
   };
 }
 
-test("floating cart button returns from checkout to the cart panel without clearing items", async () => {
+test("checkout back button returns to the cart panel without clearing items", async () => {
   render(<SalesPage />);
 
   fireEvent.click(await screen.findByRole("button", { name: "加入 普通商品" }));
@@ -69,12 +69,34 @@ test("floating cart button returns from checkout to the cart panel without clear
 
   expect(await screen.findByRole("heading", { level: 2, name: "收款确认" })).toBeVisible();
 
-  fireEvent.click(screen.getByRole("button", { name: "打开购物车，当前 1 件，应收 ¥20.00" }));
+  fireEvent.click(screen.getByRole("button", { name: "返回" }));
 
   const cartPanel = await screen.findByRole("complementary", { name: "购物车" });
 
   expect(within(cartPanel).getByRole("heading", { level: 2, name: "购物车" })).toBeVisible();
   expect(within(cartPanel).getByRole("heading", { level: 3, name: "普通商品" })).toBeVisible();
+});
+
+test("shows order review instead of sellable products while checking out", async () => {
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "加入 普通商品" }));
+  fireEvent.click(screen.getByRole("button", { name: "打开购物车，当前 1 件，应收 ¥20.00" }));
+  fireEvent.click(screen.getByRole("button", { name: "去收款" }));
+
+  const review = await screen.findByRole("region", { name: "本单商品" });
+
+  expect(within(review).getByRole("heading", { level: 2, name: "本单商品" })).toBeVisible();
+  expect(within(review).getByRole("heading", { level: 3, name: "普通商品" })).toBeVisible();
+  expect(within(review).getByText("正常")).toBeVisible();
+  expect(within(review).getByText("单价 ¥20.00")).toBeVisible();
+  const payableRow = within(review).getByText("应收").closest("div");
+  expect(payableRow).not.toBeNull();
+  expect(within(payableRow as HTMLElement).getByText("¥20.00")).toBeVisible();
+  expect(screen.queryByRole("list", { name: "售卖商品紧凑列表" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("group", { name: "按 SPU 筛选商品" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("group", { name: "切换商品展示方式" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "打开购物车，当前 1 件，应收 ¥20.00" })).not.toBeInTheDocument();
 });
 
 test("shows compact sales list by default and can switch to image grid", async () => {
@@ -262,7 +284,7 @@ test("keeps cart items when paid order save fails", async () => {
 
   expect(await screen.findByText("商品 普通商品 库存不足，无法完成订单扣减")).toBeVisible();
 
-  fireEvent.click(screen.getByRole("button", { name: "打开购物车，当前 1 件，应收 ¥20.00" }));
+  fireEvent.click(screen.getByRole("button", { name: "返回" }));
 
   const cartPanel = await screen.findByRole("complementary", { name: "购物车" });
   expect(within(cartPanel).getByRole("heading", { level: 3, name: "普通商品" })).toBeVisible();

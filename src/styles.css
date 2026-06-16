@@ -1224,7 +1224,8 @@ p {
 }
 
 .cartPanel,
-.checkoutPanel {
+.checkoutPanel,
+.checkoutOrderReview {
   position: sticky;
   top: 92px;
   display: grid;
@@ -1234,6 +1235,12 @@ p {
   border-radius: 8px;
   background: rgba(255, 253, 250, 0.96);
   box-shadow: 0 18px 38px rgba(36, 31, 26, 0.08);
+}
+
+.checkoutOrderReview {
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  max-height: calc(100vh - 116px);
+  overflow: hidden;
 }
 
 .cartDrawerLayer {
@@ -1308,6 +1315,10 @@ p {
   max-height: min(58vh, 620px);
   overflow: auto;
   padding-right: 2px;
+}
+
+.checkoutReviewLines {
+  max-height: none;
 }
 
 .cartLine {
@@ -1403,6 +1414,13 @@ p {
   color: var(--muted-strong);
   font-size: 12px;
   font-weight: 800;
+}
+
+.checkoutReviewLine .lineMeta strong {
+  margin-left: auto;
+  color: var(--ink);
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .unitPrice {
@@ -1968,7 +1986,8 @@ p {
   }
 
   .cartPanel,
-  .checkoutPanel {
+  .checkoutPanel,
+  .checkoutOrderReview {
     position: static;
   }
 
