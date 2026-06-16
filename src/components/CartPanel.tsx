@@ -1,6 +1,5 @@
 import { Minus, PauseCircle, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { displayProductCode } from "../domain/productCode";
 import type { CalculatedCart, CartItem, Product } from "../domain/types";
 import { getImageUrl } from "../utils/image";
 
@@ -47,6 +46,12 @@ export default function CartPanel({
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const hasCartItems = itemCount > 0;
   const hasGiftStockWarnings = calculated.giftStockWarnings.length > 0;
+  const giftSummaryText =
+    calculated.triggeredGiftTier && calculated.giftEntitlements.length > 0
+      ? `已触发满 ${calculated.triggeredGiftTier.threshold}：${calculated.giftEntitlements
+          .map((gift) => `${gift.label} x${gift.quantity}`)
+          .join("、")}`
+      : undefined;
 
   useEffect(() => {
     let isCurrent = true;
@@ -100,50 +105,45 @@ export default function CartPanel({
               className={`cartLine cartLine-${line.lineType}`}
               key={`${line.productId}-${line.lineType}-${line.finalUnitPrice}-${index}`}
             >
-              <div className="cartLineContent">
-                <div className="cartLineThumb">
-                  {imageUrlsByProductId[line.productId] ? (
-                    <img src={imageUrlsByProductId[line.productId]} alt={line.productName} />
-                  ) : (
-                    <span aria-hidden="true">{line.productName.slice(0, 1) || "商"}</span>
-                  )}
-                </div>
-                <div className="lineMain">
-                  <div>
-                    <h3>{line.productName}</h3>
-                    <p>{line.spu}</p>
-                    <p className="productCodeText">{displayProductCode(line.productCode)}</p>
-                  </div>
+              <div className="cartLineThumb">
+                {imageUrlsByProductId[line.productId] ? (
+                  <img src={imageUrlsByProductId[line.productId]} alt={line.productName} />
+                ) : (
+                  <span aria-hidden="true">{line.productName.slice(0, 1) || "商"}</span>
+                )}
+              </div>
+              <div className="lineMain">
+                <div className="lineTitleRow">
+                  <h3>{line.productName}</h3>
                   <span>{lineTypeLabels[line.lineType]}</span>
                 </div>
-              </div>
-              <div className="lineMeta">
-                <span>
-                  {formatMoney(line.finalUnitPrice)} x {line.quantity}
-                </span>
-                {line.originalUnitPrice !== line.finalUnitPrice ? (
-                  <span className="strikePrice">{formatMoney(line.originalUnitPrice)}</span>
-                ) : null}
-                <strong>{formatMoney(line.lineTotal)}</strong>
-              </div>
-              <div className="lineActions">
-                <button
-                  type="button"
-                  className="iconButton"
-                  aria-label={`减少 ${line.productName}`}
-                  onClick={() => decrement(line.productId)}
-                >
-                  <Minus size={18} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className="iconButton"
-                  aria-label={`增加 ${line.productName}`}
-                  disabled={(cartQuantityByProduct.get(line.productId) ?? 0) >= (productById.get(line.productId)?.stockQty ?? 0)}
-                  onClick={() => increment(line.productId)}
-                >
-                  <Plus size={18} aria-hidden="true" />
-                </button>
+                <p>{line.spu}</p>
+                <div className="lineMeta">
+                  <span className="unitPrice">单价 {formatMoney(line.finalUnitPrice)}</span>
+                  {line.originalUnitPrice !== line.finalUnitPrice ? (
+                    <span className="strikePrice">{formatMoney(line.originalUnitPrice)}</span>
+                  ) : null}
+                  <div className="quantityStepper" aria-label={`${line.productName} 数量`}>
+                    <button
+                      type="button"
+                      className="iconButton"
+                      aria-label={`减少 ${line.productName}`}
+                      onClick={() => decrement(line.productId)}
+                    >
+                      <Minus size={16} aria-hidden="true" />
+                    </button>
+                    <span>{line.quantity}</span>
+                    <button
+                      type="button"
+                      className="iconButton"
+                      aria-label={`增加 ${line.productName}`}
+                      disabled={(cartQuantityByProduct.get(line.productId) ?? 0) >= (productById.get(line.productId)?.stockQty ?? 0)}
+                      onClick={() => increment(line.productId)}
+                    >
+                      <Plus size={16} aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           ))}
@@ -154,22 +154,8 @@ export default function CartPanel({
 
       <div className="promotionSummary" aria-label="促销信息">
         <p>已享加购优惠 {calculated.appliedDiscountQty}/{calculated.maxDiscountQty} 个</p>
-        {calculated.triggeredGiftTier ? (
-          <p>已触发满 {calculated.triggeredGiftTier.threshold} 赠品</p>
-        ) : (
-          <p>暂未触发满额赠品</p>
-        )}
+        <p>{giftSummaryText ?? "暂未触发满额赠品"}</p>
       </div>
-
-      {calculated.giftLines.length > 0 ? (
-        <div className="giftSummary" aria-label="赠品明细">
-          {calculated.giftLines.map((line) => (
-            <p key={`${line.productId}-gift`}>
-              {line.productName} x{line.quantity}
-            </p>
-          ))}
-        </div>
-      ) : null}
 
       {calculated.giftStockWarnings.length > 0 ? (
         <div className="cartWarning" role="alert">

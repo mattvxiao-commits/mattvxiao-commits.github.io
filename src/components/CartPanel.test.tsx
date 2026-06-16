@@ -111,13 +111,13 @@ test("shows normal, discount, gift tier, gift stock warning, and payable total",
   );
 
   expect(screen.getByText("普通商品")).toBeVisible();
-  expect(screen.getByText("NORMAL-BASE")).toBeVisible();
+  expect(screen.queryByText("NORMAL-BASE")).not.toBeInTheDocument();
   expect(screen.getByText("优惠商品A")).toBeVisible();
-  expect(screen.getByText("ADDON-A")).toBeVisible();
+  expect(screen.queryByText("ADDON-A")).not.toBeInTheDocument();
   expect(screen.getByText("加购优惠")).toBeVisible();
   expect(screen.getByText("已享加购优惠 3/3 个")).toBeVisible();
-  expect(screen.getByText("已触发满 35 赠品")).toBeVisible();
-  expect(screen.getByText("商品A赠品 x1")).toBeVisible();
+  expect(screen.getByText("已触发满 35：商品A赠品 x1")).toBeVisible();
+  expect(screen.getAllByText("¥44.00")).toHaveLength(1);
   expect(screen.getByText("赠品库存不足：商品A赠品 需要 1，当前 0")).toBeVisible();
   expect(screen.getByText("¥44.00")).toBeVisible();
 
@@ -132,6 +132,34 @@ test("shows normal, discount, gift tier, gift stock warning, and payable total",
   expect(onClear).toHaveBeenCalledTimes(1);
   expect(onCheckout).not.toHaveBeenCalled();
   expect(onHold).toHaveBeenCalledTimes(1);
+});
+
+test("shows compact gift entitlement summary for spu gifts before sku selection", () => {
+  const items: CartItem[] = [{ productId: "normal", quantity: 2, addedAt: "2026-06-15T00:00:00.000Z" }];
+  const products = [normal];
+  const calculated = calculateCart({
+    items,
+    products,
+    promotion: {
+      ...defaultPromotion(),
+      giftTiers: [{ threshold: 35, gifts: [{ targetType: "spu", spu: "赠品SPU-A", quantity: 2 }] }]
+    }
+  });
+
+  render(
+    <CartPanel
+      products={products}
+      calculated={calculated}
+      cartItems={items}
+      increment={() => undefined}
+      decrement={() => undefined}
+      clear={() => undefined}
+      checkout={() => undefined}
+      hold={() => undefined}
+    />
+  );
+
+  expect(screen.getByText("已触发满 35：赠品SPU-A x2")).toBeVisible();
 });
 
 test("allows checkout when gift inventory is available", () => {

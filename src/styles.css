@@ -1185,8 +1185,8 @@ p {
   position: sticky;
   top: 92px;
   display: grid;
-  gap: 14px;
-  padding: 16px;
+  gap: 10px;
+  padding: 12px;
   border: 1px solid rgba(222, 214, 201, 0.94);
   border-radius: 8px;
   background: rgba(255, 253, 250, 0.96);
@@ -1207,9 +1207,10 @@ p {
   position: relative;
   top: auto;
   z-index: 1;
-  width: min(420px, calc(100vw - 28px));
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto auto;
+  width: min(500px, calc(100vw - 28px));
   max-height: calc(100vh - 28px);
-  overflow: auto;
+  overflow: hidden;
   pointer-events: auto;
 }
 
@@ -1239,15 +1240,15 @@ p {
 .panelHeading h2 {
   margin: 2px 0 0;
   color: var(--ink);
-  font-size: 24px;
+  font-size: 21px;
   line-height: 1.12;
 }
 
 .cartCount {
-  min-height: 34px;
+  min-height: 30px;
   display: inline-flex;
   align-items: center;
-  padding: 0 10px;
+  padding: 0 9px;
   border-radius: 8px;
   background: var(--accent-soft);
   color: var(--accent-strong);
@@ -1258,32 +1259,29 @@ p {
 
 .cartLineList {
   display: grid;
-  gap: 8px;
-  max-height: min(44vh, 460px);
+  align-content: start;
+  gap: 6px;
+  min-height: 0;
+  max-height: min(58vh, 620px);
   overflow: auto;
   padding-right: 2px;
 }
 
 .cartLine {
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
 }
 
-.cartLineContent {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
-  gap: 10px;
-  align-items: start;
-}
-
 .cartLineThumb {
   display: grid;
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   place-items: center;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -1292,7 +1290,7 @@ p {
     linear-gradient(135deg, rgba(47, 111, 94, 0.1), rgba(184, 80, 54, 0.08)),
     #ffffff;
   color: var(--accent-strong);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 900;
 }
 
@@ -1308,59 +1306,64 @@ p {
 }
 
 .lineMain {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.lineTitleRow {
   display: flex;
-  gap: 10px;
-  align-items: flex-start;
+  gap: 8px;
+  align-items: center;
   justify-content: space-between;
 }
 
 .lineMain h3 {
   margin: 0;
   color: var(--ink);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.18;
   overflow-wrap: anywhere;
 }
 
 .lineMain p {
-  margin-top: 4px;
-  font-size: 12px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
 
-.lineMain span {
-  min-height: 28px;
+.lineTitleRow span {
+  min-height: 22px;
   display: inline-flex;
   align-items: center;
-  padding: 0 8px;
-  border-radius: 8px;
+  padding: 0 6px;
+  border-radius: 6px;
   background: #eee4df;
   color: var(--muted-strong);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 900;
   white-space: nowrap;
 }
 
-.cartLine-discount_addon .lineMain span {
+.cartLine-discount_addon .lineTitleRow span {
   background: var(--accent-soft);
   color: var(--accent-strong);
 }
 
 .lineMeta {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   flex-wrap: wrap;
   color: var(--muted-strong);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
 }
 
-.lineMeta strong {
-  margin-left: auto;
-  color: var(--ink);
-  font-size: 16px;
+.unitPrice {
+  white-space: nowrap;
 }
 
 .strikePrice {
@@ -1368,10 +1371,31 @@ p {
   text-decoration: line-through;
 }
 
-.lineActions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
+.quantityStepper {
+  margin-left: auto;
+  display: inline-grid;
+  grid-template-columns: 28px minmax(24px, auto) 28px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.quantityStepper .iconButton {
+  width: 28px;
+  min-height: 28px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.quantityStepper span {
+  min-width: 24px;
+  text-align: center;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .promotionSummary,
@@ -1380,8 +1404,8 @@ p {
 .manualConfirm,
 .checkoutAmount {
   display: grid;
-  gap: 6px;
-  padding: 12px;
+  gap: 4px;
+  padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.78);
@@ -1391,7 +1415,7 @@ p {
 .giftSummary p,
 .manualConfirm p {
   color: var(--muted-strong);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -1402,14 +1426,14 @@ p {
 
 .cartWarning p {
   color: #8a4512;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 850;
 }
 
 .cartTotals {
   display: grid;
-  gap: 8px;
-  padding-top: 4px;
+  gap: 4px;
+  padding-top: 2px;
 }
 
 .cartTotals div {
@@ -1417,7 +1441,7 @@ p {
   gap: 12px;
   justify-content: space-between;
   color: var(--muted-strong);
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .cartTotals strong {
@@ -1426,29 +1450,35 @@ p {
 
 .cartTotals .payableRow {
   align-items: baseline;
-  padding-top: 8px;
+  padding-top: 5px;
   border-top: 1px solid var(--line);
   color: var(--ink);
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 900;
 }
 
 .payableRow strong,
 .checkoutAmount strong {
   color: var(--accent-strong);
-  font-size: 34px;
+  font-size: 28px;
   line-height: 1;
 }
 
 .cartActions {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
+  grid-template-columns: 0.9fr 0.9fr 1.2fr;
+  gap: 6px;
 }
 
 .cartActions button,
 .manualConfirm button {
   width: 100%;
+}
+
+.cartActions button {
+  min-height: 38px;
+  padding: 0 8px;
+  font-size: 12px;
 }
 
 .cartEmpty,
