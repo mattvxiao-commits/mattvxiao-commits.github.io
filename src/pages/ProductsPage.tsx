@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import ProductForm, { type ProductFormValues } from "../components/ProductForm";
 import { listProducts, makeId, upsertProduct } from "../db/repositories";
 import { displayProductCode } from "../domain/productCode";
-import type { Product } from "../domain/types";
+import type { Product, ProductStatus } from "../domain/types";
 import { getImageUrl } from "../utils/image";
 
 type SortKey = "createdAt" | "name" | "spu" | "salePrice";
@@ -54,7 +54,7 @@ export default function ProductsPage() {
   const [formMode, setFormMode] = useState<ProductFormMode>();
   const [editingProduct, setEditingProduct] = useState<Product>();
   const [isLoading, setIsLoading] = useState(true);
-  const [deactivatingProductId, setDeactivatingProductId] = useState<string>();
+  const [statusChangingProductId, setStatusChangingProductId] = useState<string>();
   const [error, setError] = useState<string>();
 
   async function refreshProducts() {
@@ -159,25 +159,33 @@ export default function ProductsPage() {
     await refreshProducts();
   }
 
-  async function deactivateProduct(product: Product) {
-    if (product.status === "inactive" || deactivatingProductId) {
+  async function updateProductStatus(product: Product, nextStatus: ProductStatus) {
+    if (product.status === nextStatus || statusChangingProductId) {
+      return;
+    }
+
+    const confirmationMessage = nextStatus === "inactive"
+      ? "确认停用商品？停用后该商品不会出现在售卖商品列表中，已有订单记录不受影响。"
+      : "确认启用商品？启用后该商品会重新出现在符合条件的售卖商品列表中。";
+
+    if (!window.confirm(confirmationMessage)) {
       return;
     }
 
     setError(undefined);
-    setDeactivatingProductId(product.id);
+    setStatusChangingProductId(product.id);
 
     try {
       await upsertProduct({
         ...product,
-        status: "inactive",
+        status: nextStatus,
         updatedAt: new Date().toISOString()
       });
       await refreshProducts();
     } catch {
-      setError("商品停用失败，请稍后重试。");
+      setError(nextStatus === "inactive" ? "商品停用失败，请稍后重试。" : "商品启用失败，请稍后重试。");
     } finally {
-      setDeactivatingProductId(undefined);
+      setStatusChangingProductId(undefined);
     }
   }
 
@@ -278,9 +286,6 @@ export default function ProductsPage() {
                   <h2>{product.name}</h2>
                   <p>{product.spu}</p>
                 </div>
-                <span className={`statusBadge ${product.status === "active" ? "isActive" : "isInactive"}`}>
-                  {product.status === "active" ? "启用" : "停用"}
-                </span>
               </div>
               <div className="productFacts">
                 <span>售价 {formatMoney(product.salePrice)}</span>
@@ -292,6 +297,9 @@ export default function ProductsPage() {
               </div>
             </div>
             <div className="cardActions">
+              <span className={`statusBadge ${product.status === "active" ? "isActive" : "isInactive"}`}>
+                {product.status === "active" ? "启用" : "停用"}
+              </span>
               <button
                 type="button"
                 className="secondaryButton"
@@ -312,12 +320,15 @@ export default function ProductsPage() {
               </button>
               <button
                 type="button"
-                className="secondaryButton dangerButton"
-                disabled={product.status === "inactive" || deactivatingProductId === product.id}
-                onClick={() => void deactivateProduct(product)}
+                className={product.status === "active" ? "secondaryButton dangerButton" : "secondaryButton"}
+                aria-label={`${product.status === "active" ? "停用" : "启用"} ${product.name}`}
+                disabled={statusChangingProductId === product.id}
+                onClick={() => void updateProductStatus(product, product.status === "active" ? "inactive" : "active")}
               >
                 <Power size={17} aria-hidden="true" />
-                {deactivatingProductId === product.id ? "停用中..." : "停用"}
+                {statusChangingProductId === product.id
+                  ? product.status === "active" ? "停用中..." : "启用中..."
+                  : product.status === "active" ? "停用" : "启用"}
               </button>
             </div>
           </article>

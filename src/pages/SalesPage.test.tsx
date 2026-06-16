@@ -88,6 +88,7 @@ test("shows order review instead of sellable products while checking out", async
 
   expect(within(review).getByRole("heading", { level: 2, name: "本单商品" })).toBeVisible();
   expect(within(review).getByRole("heading", { level: 3, name: "普通商品" })).toBeVisible();
+  expect(within(review).queryByText("NORMAL-BASE")).not.toBeInTheDocument();
   expect(within(review).getByText("正常")).toBeVisible();
   expect(within(review).getByText("单价 ¥20.00")).toBeVisible();
   const payableRow = within(review).getByText("应收").closest("div");

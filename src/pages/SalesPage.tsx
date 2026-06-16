@@ -157,7 +157,6 @@ function CheckoutOrderReview({ calculated, products }: { calculated: ReturnType<
                   <span>{lineTypeLabels[line.lineType]}</span>
                 </div>
                 <p>{line.spu}</p>
-                {line.productCode ? <p className="productCodeText">{line.productCode}</p> : null}
                 <div className="lineMeta">
                   <span className="unitPrice">单价 {formatMoney(line.finalUnitPrice)}</span>
                   {line.originalUnitPrice !== line.finalUnitPrice ? (

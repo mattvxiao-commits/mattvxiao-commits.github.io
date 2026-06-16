@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { product } from "../test/fixtures";
 import ProductsPage from "./ProductsPage";
 
@@ -29,6 +29,10 @@ beforeEach(() => {
       productCode: "CLTH-24001-BLK-M"
     })
   ]);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 test("rejects saving a product when the generated product code already exists", async () => {
@@ -85,4 +89,54 @@ test("copies an existing product into a new dialog draft with blank SKU and zero
   expect(screen.getByLabelText("SKU 编码")).toHaveValue("");
   expect(screen.getByLabelText("库存")).toHaveValue(0);
   expect(screen.getByLabelText("完整商品编码")).toHaveValue("未设置编码");
+});
+
+test("confirms before disabling an active product", async () => {
+  const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+
+  render(<ProductsPage />);
+
+  expect(await screen.findByText("编码 CLTH-24001-BLK-M")).toBeVisible();
+
+  fireEvent.click(screen.getByRole("button", { name: "停用 已有商品" }));
+
+  expect(confirmSpy).toHaveBeenCalledWith("确认停用商品？停用后该商品不会出现在售卖商品列表中，已有订单记录不受影响。");
+  expect(repositories.upsertProduct).not.toHaveBeenCalled();
+
+  confirmSpy.mockReturnValue(true);
+
+  fireEvent.click(screen.getByRole("button", { name: "停用 已有商品" }));
+
+  await waitFor(() => expect(repositories.upsertProduct).toHaveBeenCalledTimes(1));
+  expect(repositories.upsertProduct).toHaveBeenCalledWith(expect.objectContaining({
+    id: "existing",
+    status: "inactive"
+  }));
+});
+
+test("shows enable action for inactive products and confirms before enabling", async () => {
+  repositories.listProducts.mockResolvedValue([
+    product({
+      id: "inactive",
+      name: "停用商品",
+      status: "inactive",
+      spu: "服装",
+      productCode: "CLTH-24001-BLK-M"
+    })
+  ]);
+  const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+  render(<ProductsPage />);
+
+  expect(await screen.findByText("编码 CLTH-24001-BLK-M")).toBeVisible();
+  expect(screen.getByText("停用")).toBeVisible();
+
+  fireEvent.click(screen.getByRole("button", { name: "启用 停用商品" }));
+
+  expect(confirmSpy).toHaveBeenCalledWith("确认启用商品？启用后该商品会重新出现在符合条件的售卖商品列表中。");
+  await waitFor(() => expect(repositories.upsertProduct).toHaveBeenCalledTimes(1));
+  expect(repositories.upsertProduct).toHaveBeenCalledWith(expect.objectContaining({
+    id: "inactive",
+    status: "active"
+  }));
 });
