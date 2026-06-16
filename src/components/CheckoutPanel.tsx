@@ -2,10 +2,11 @@ import { ArrowLeft, Banknote, CheckCircle2, QrCode } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   buildGiftSelectionRequirements,
+  type GiftSelectionOption,
+  type GiftSelectionRequirement,
   type GiftSelections,
   validateGiftSelections
 } from "../domain/giftSelection";
-import { displayProductCode } from "../domain/productCode";
 import type { AppSettings, CalculatedCart, PaymentMethod, Product } from "../domain/types";
 
 type CheckoutPanelProps = {
@@ -33,6 +34,30 @@ const paymentOptions: Array<{ value: PaymentMethod; label: string }> = [
 
 function formatMoney(value: number): string {
   return `¥${value.toFixed(2)}`;
+}
+
+function formatGiftOptionLabel(option: GiftSelectionOption): string {
+  const code = option.productCode?.trim();
+  return code
+    ? `${code} / ${option.productName} / 库存 ${option.availableQty}`
+    : `${option.productName} / 库存 ${option.availableQty}`;
+}
+
+function sumSelection(selection: Record<string, number> | undefined): number {
+  return Object.values(selection ?? {}).reduce((sum, quantity) => sum + Math.max(0, quantity), 0);
+}
+
+function buildSelectionRows(requirement: GiftSelectionRequirement, giftSelections: GiftSelections) {
+  const selected = giftSelections[requirement.key] ?? {};
+  const rows = Object.entries(selected)
+    .filter(([, quantity]) => quantity > 0)
+    .map(([productId, quantity]) => ({ productId, quantity }));
+
+  if (rows.length > 0) {
+    return rows;
+  }
+
+  return [{ productId: "", quantity: 0 }];
 }
 
 export default function CheckoutPanel({
@@ -135,27 +160,78 @@ export default function CheckoutPanel({
             <section className="giftSelectionGroup" key={requirement.key}>
               <div>
                 <h3>{requirement.label}</h3>
-                <p>需选择 {requirement.requiredQty} 个实际赠品 SKU</p>
+                <p>需选 {requirement.requiredQty} 个，已选 {sumSelection(giftSelections[requirement.key])} 个</p>
               </div>
-              <div className="giftSelectionOptions">
-                {requirement.options.map((option) => (
-                  <label key={option.productId}>
-                    <span>
-                      {displayProductCode(option.productCode)} / {option.productName}，库存 {option.availableQty}
-                    </span>
-                    <input
-                      aria-label={`${option.productName} 赠品数量`}
-                      type="number"
-                      min="0"
-                      max={option.availableQty}
-                      step="1"
-                      value={giftSelections[requirement.key]?.[option.productId] ?? 0}
-                      onChange={(event) =>
-                        setGiftSelection?.(requirement.key, option.productId, Number(event.target.value))
-                      }
-                    />
-                  </label>
-                ))}
+              <div className="giftSelectionRows">
+                {buildSelectionRows(requirement, giftSelections).map((row, index) => {
+                  const selectedOption = requirement.options.find((option) => option.productId === row.productId);
+                  const quantity = row.quantity;
+                  const rowKey = row.productId || `empty-${index}`;
+
+                  return (
+                    <div className="giftSelectionRow" key={rowKey}>
+                      <select
+                        aria-label={`${requirement.label} 第 ${index + 1} 行 SKU`}
+                        value={row.productId}
+                        onChange={(event) => {
+                          const nextProductId = event.target.value;
+                          if (row.productId) {
+                            setGiftSelection?.(requirement.key, row.productId, 0);
+                          }
+                          if (nextProductId) {
+                            setGiftSelection?.(requirement.key, nextProductId, Math.max(1, quantity));
+                          }
+                        }}
+                      >
+                        <option value="">选择赠品 SKU</option>
+                        {requirement.options.map((option) => (
+                          <option key={option.productId} value={option.productId}>
+                            {formatGiftOptionLabel(option)}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="quantityStepper giftQuantityStepper">
+                        <button
+                          type="button"
+                          className="iconButton"
+                          aria-label={`减少 ${selectedOption?.productName ?? requirement.label} 赠品数量`}
+                          disabled={!row.productId || quantity <= 0}
+                          onClick={() => setGiftSelection?.(requirement.key, row.productId, Math.max(0, quantity - 1))}
+                        >
+                          -
+                        </button>
+                        <span>{quantity}</span>
+                        <button
+                          type="button"
+                          className="iconButton"
+                          aria-label={`增加 ${selectedOption?.productName ?? requirement.label} 赠品数量`}
+                          disabled={!row.productId || quantity >= (selectedOption?.availableQty ?? 0)}
+                          onClick={() => setGiftSelection?.(requirement.key, row.productId, quantity + 1)}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  className="secondaryButton compactAddButton"
+                  aria-label={`添加 ${requirement.label} 选择行`}
+                  disabled={
+                    requirement.options.length === 0 ||
+                    requirement.options.every((option) => (giftSelections[requirement.key]?.[option.productId] ?? 0) > 0)
+                  }
+                  onClick={() => {
+                    const selected = giftSelections[requirement.key] ?? {};
+                    const nextOption = requirement.options.find((option) => !selected[option.productId]);
+                    if (nextOption) {
+                      setGiftSelection?.(requirement.key, nextOption.productId, 1);
+                    }
+                  }}
+                >
+                  添加一行
+                </button>
               </div>
             </section>
           ))}

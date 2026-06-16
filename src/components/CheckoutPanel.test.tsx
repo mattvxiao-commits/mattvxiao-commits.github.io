@@ -1,8 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
 import { expect, test, vi } from "vitest";
 import CheckoutPanel from "./CheckoutPanel";
 import { defaultPromotion, product } from "../test/fixtures";
 import type { AppSettings, CalculatedCart, Product } from "../domain/types";
+import type { GiftSelections } from "../domain/giftSelection";
 
 const calculated: CalculatedCart = {
   lines: [
@@ -127,8 +129,9 @@ test("requires SPU gift SKU selection before confirming paid order", () => {
   expect(confirmPaid).not.toHaveBeenCalled();
 });
 
-test("enables paid confirmation when required SPU gifts are selected", () => {
+test("uses compact dropdown rows for SPU gift SKU selection", () => {
   const confirmPaid = vi.fn();
+  const setGiftSelection = vi.fn();
   const giftProducts: Product[] = [
     product({
       id: "gift-a-1",
@@ -136,6 +139,14 @@ test("enables paid confirmation when required SPU gifts are selected", () => {
       spu: "赠品A",
       productCode: "GFTA-BLK",
       stockQty: 2,
+      isGiftEligible: true
+    }),
+    product({
+      id: "gift-a-2",
+      name: "赠品A蓝色",
+      spu: "赠品A",
+      productCode: undefined,
+      stockQty: 5,
       isGiftEligible: true
     })
   ];
@@ -150,7 +161,7 @@ test("enables paid confirmation when required SPU gifts are selected", () => {
       settings={settings}
       products={giftProducts}
       giftSelections={{ "spu:赠品A": { "gift-a-1": 1 } }}
-      setGiftSelection={() => undefined}
+      setGiftSelection={setGiftSelection}
       qrImageUrls={{}}
       paymentMethod="cash"
       setPaymentMethod={() => undefined}
@@ -159,7 +170,70 @@ test("enables paid confirmation when required SPU gifts are selected", () => {
     />
   );
 
-  expect(screen.getByText("GFTA-BLK / 赠品A黑色，库存 2")).toBeVisible();
+  expect(screen.getByText("需选 1 个，已选 1 个")).toBeVisible();
+  expect(screen.getByLabelText("赠品A 第 1 行 SKU")).toHaveValue("gift-a-1");
+  expect(screen.getByRole("option", { name: "GFTA-BLK / 赠品A黑色 / 库存 2" })).toBeInTheDocument();
+  expect(screen.getByRole("option", { name: "赠品A蓝色 / 库存 5" })).toBeInTheDocument();
+  expect(screen.queryByText(/未设置编码/)).not.toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText("赠品A 第 1 行 SKU"), { target: { value: "gift-a-2" } });
+
+  expect(setGiftSelection).toHaveBeenCalledWith("spu:赠品A", "gift-a-1", 0);
+  expect(setGiftSelection).toHaveBeenCalledWith("spu:赠品A", "gift-a-2", 1);
   fireEvent.click(screen.getByRole("button", { name: "确认已收款并保存订单" }));
   expect(confirmPaid).toHaveBeenCalledTimes(1);
+});
+
+test("adds compact SPU gift selection rows with steppers", () => {
+  const setGiftSelection = vi.fn();
+  const giftProducts: Product[] = [
+    product({
+      id: "gift-a-1",
+      name: "赠品A黑色",
+      spu: "赠品A",
+      productCode: "GFTA-BLK",
+      stockQty: 5,
+      isGiftEligible: true
+    })
+  ];
+
+  function Harness() {
+    const [giftSelections, setSelections] = useState<GiftSelections>({});
+
+    return (
+      <CheckoutPanel
+        calculated={{
+          ...calculated,
+          payableAmount: 68,
+          giftEntitlements: [{ targetType: "spu", spu: "赠品A", label: "赠品A", quantity: 2 }]
+        }}
+        settings={settings}
+        products={giftProducts}
+        giftSelections={giftSelections}
+        setGiftSelection={(requirementKey, productId, quantity) => {
+          setGiftSelection(requirementKey, productId, quantity);
+          setSelections((current) => ({
+            ...current,
+            [requirementKey]: {
+              ...(current[requirementKey] ?? {}),
+              [productId]: quantity
+            }
+          }));
+        }}
+        qrImageUrls={{}}
+        paymentMethod="cash"
+        setPaymentMethod={() => undefined}
+        confirmPaid={() => Promise.resolve()}
+        back={() => undefined}
+      />
+    );
+  }
+
+  render(<Harness />);
+
+  fireEvent.click(screen.getByRole("button", { name: "添加 赠品A 选择行" }));
+  fireEvent.click(screen.getByRole("button", { name: "增加 赠品A黑色 赠品数量" }));
+
+  expect(setGiftSelection).toHaveBeenCalledWith("spu:赠品A", "gift-a-1", 1);
+  expect(setGiftSelection).toHaveBeenCalledWith("spu:赠品A", "gift-a-1", 2);
 });

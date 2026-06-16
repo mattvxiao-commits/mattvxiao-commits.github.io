@@ -239,7 +239,7 @@ test("requires selecting actual SKU before saving an SPU gift order", async () =
   fireEvent.click(screen.getByRole("button", { name: "赠品未选择完整，无法确认" }));
   expect(repositories.savePaidOrder).not.toHaveBeenCalled();
 
-  fireEvent.change(screen.getByLabelText("赠品A黑色 赠品数量"), { target: { value: "1" } });
+  fireEvent.change(screen.getByLabelText("赠品SPU 第 1 行 SKU"), { target: { value: "gift-a-1" } });
   fireEvent.click(screen.getByRole("button", { name: "确认已收款并保存订单" }));
 
   await waitFor(() => expect(repositories.savePaidOrder).toHaveBeenCalledTimes(1));
