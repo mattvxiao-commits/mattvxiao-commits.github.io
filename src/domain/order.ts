@@ -12,6 +12,7 @@ import type {
 export type BuildPaidOrderInput = {
   products: Product[];
   calculated: CalculatedCart;
+  resolvedGiftLines?: CalculatedCartLine[];
   promotion: PromotionConfig;
   orderPrefix: string;
   paymentMethod: PaymentMethod;
@@ -30,7 +31,8 @@ export function buildPaidOrder(input: BuildPaidOrderInput): BuildPaidOrderResult
   const orderId = makeOrderId();
   const productById = new Map(input.products.map((product) => [product.id, product]));
   const stockById = new Map(input.products.map((product) => [product.id, product.stockQty]));
-  const allLines = [...input.calculated.lines, ...input.calculated.giftLines];
+  const giftLines = input.resolvedGiftLines ?? input.calculated.giftLines;
+  const allLines = [...input.calculated.lines, ...giftLines];
 
   const order: Order = {
     id: orderId,

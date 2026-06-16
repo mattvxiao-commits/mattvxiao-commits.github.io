@@ -1,10 +1,19 @@
 import { ArrowLeft, Banknote, CheckCircle2, QrCode } from "lucide-react";
-import { useState } from "react";
-import type { AppSettings, CalculatedCart, PaymentMethod } from "../domain/types";
+import { useMemo, useState } from "react";
+import {
+  buildGiftSelectionRequirements,
+  type GiftSelections,
+  validateGiftSelections
+} from "../domain/giftSelection";
+import { displayProductCode } from "../domain/productCode";
+import type { AppSettings, CalculatedCart, PaymentMethod, Product } from "../domain/types";
 
 type CheckoutPanelProps = {
   calculated: CalculatedCart;
   settings: AppSettings;
+  products?: Product[];
+  giftSelections?: GiftSelections;
+  setGiftSelection?: (requirementKey: string, productId: string, quantity: number) => void;
   qrImageUrls: {
     wechat?: string;
     alipay?: string;
@@ -29,6 +38,9 @@ function formatMoney(value: number): string {
 export default function CheckoutPanel({
   calculated,
   settings,
+  products = [],
+  giftSelections = {},
+  setGiftSelection,
   qrImageUrls,
   paymentMethod,
   setPaymentMethod,
@@ -38,9 +50,18 @@ export default function CheckoutPanel({
   const [isSaving, setIsSaving] = useState(false);
   const isEmpty = calculated.lines.length === 0;
   const hasGiftStockWarnings = calculated.giftStockWarnings.length > 0;
+  const giftRequirements = useMemo(
+    () => buildGiftSelectionRequirements(calculated, products),
+    [calculated, products]
+  );
+  const giftSelectionValidation = useMemo(
+    () => validateGiftSelections({ requirements: giftRequirements, selections: giftSelections }),
+    [giftRequirements, giftSelections]
+  );
+  const hasIncompleteGiftSelections = !giftSelectionValidation.ok;
 
   async function handleConfirmPaid() {
-    if (isSaving || isEmpty || hasGiftStockWarnings) {
+    if (isSaving || isEmpty || hasGiftStockWarnings || hasIncompleteGiftSelections) {
       return;
     }
 
@@ -108,6 +129,40 @@ export default function CheckoutPanel({
         </section>
       </div>
 
+      {giftRequirements.length > 0 ? (
+        <div className="giftSelectionPanel" aria-label="赠品选择">
+          {giftRequirements.map((requirement) => (
+            <section className="giftSelectionGroup" key={requirement.key}>
+              <div>
+                <h3>{requirement.label}</h3>
+                <p>需选择 {requirement.requiredQty} 个实际赠品 SKU</p>
+              </div>
+              <div className="giftSelectionOptions">
+                {requirement.options.map((option) => (
+                  <label key={option.productId}>
+                    <span>
+                      {displayProductCode(option.productCode)} / {option.productName}，库存 {option.availableQty}
+                    </span>
+                    <input
+                      aria-label={`${option.productName} 赠品数量`}
+                      type="number"
+                      min="0"
+                      max={option.availableQty}
+                      step="1"
+                      value={giftSelections[requirement.key]?.[option.productId] ?? 0}
+                      onChange={(event) =>
+                        setGiftSelection?.(requirement.key, option.productId, Number(event.target.value))
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
+            </section>
+          ))}
+          {giftSelectionValidation.ok ? null : <p className="fieldHint isWarning">{giftSelectionValidation.message}</p>}
+        </div>
+      ) : null}
+
       <div className="manualConfirm">
         {hasGiftStockWarnings ? (
           <div className="cartWarning" role="alert">
@@ -122,7 +177,7 @@ export default function CheckoutPanel({
         <button
           type="button"
           className="primaryButton"
-          disabled={isSaving || isEmpty || hasGiftStockWarnings}
+          disabled={isSaving || isEmpty || hasGiftStockWarnings || hasIncompleteGiftSelections}
           onClick={() => void handleConfirmPaid()}
         >
           <CheckCircle2 size={18} aria-hidden="true" />
@@ -132,7 +187,9 @@ export default function CheckoutPanel({
               ? "购物车为空，无法确认"
               : hasGiftStockWarnings
                 ? "赠品库存不足，无法确认"
-                : "确认已收款并保存订单"}
+                : hasIncompleteGiftSelections
+                  ? "赠品未选择完整，无法确认"
+                  : "确认已收款并保存订单"}
         </button>
       </div>
     </aside>

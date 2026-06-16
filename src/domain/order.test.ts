@@ -295,4 +295,54 @@ describe("buildPaidOrder", () => {
     expect(result.order.giftStockWarning).toBe(true);
     expect(result.order.triggeredGiftTier).toBe(49);
   });
+
+  it("uses resolved gift lines when they are provided", () => {
+    const selectedGift = product({
+      id: "selected-gift",
+      name: "手动选择赠品",
+      spu: "赠品SPU",
+      productCode: "GIFT-SELECTED",
+      stockQty: 2,
+      isGiftEligible: true
+    });
+
+    const result = buildPaidOrder({
+      products: [...products(), selectedGift],
+      calculated: calculated({
+        giftLines: [],
+        giftEntitlements: [{ targetType: "spu", spu: "赠品SPU", label: "赠品SPU", quantity: 1 }]
+      }),
+      resolvedGiftLines: [
+        {
+          productId: "selected-gift",
+          productName: "手动选择赠品",
+          spu: "赠品SPU",
+          productCode: "GIFT-SELECTED",
+          quantity: 1,
+          originalUnitPrice: 0,
+          finalUnitPrice: 0,
+          lineType: "gift",
+          lineTotal: 0
+        }
+      ],
+      promotion,
+      orderPrefix: "ECRM",
+      paymentMethod: "cash",
+      now
+    });
+
+    expect(result.orderItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: "selected-gift",
+          productCodeSnapshot: "GIFT-SELECTED",
+          quantity: 1,
+          lineType: "gift"
+        })
+      ])
+    );
+    expect(result.updatedProducts).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "selected-gift", stockQty: 1 })])
+    );
+  });
 });

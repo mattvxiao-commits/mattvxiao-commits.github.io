@@ -208,6 +208,48 @@ test("saves paid order, clears cart, refreshes products, and includes gift inven
   expect(await screen.findByText("ECRM-SAVED")).toBeVisible();
 });
 
+test("requires selecting actual SKU before saving an SPU gift order", async () => {
+  const giftProduct = product({
+    id: "gift-a-1",
+    name: "赠品A黑色",
+    spu: "赠品SPU",
+    productCode: "GFTA-BLK",
+    salePrice: 0,
+    stockQty: 2,
+    isSellable: false,
+    isGiftEligible: true
+  });
+
+  repositories.listProducts.mockResolvedValue([sellableProduct, giftProduct]);
+  repositories.getSettings.mockResolvedValue({
+    ...settings,
+    promotion: {
+      ...settings.promotion,
+      giftTiers: [{ threshold: 20, gifts: [{ targetType: "spu", spu: "赠品SPU", quantity: 1 }] }]
+    }
+  });
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "加入 普通商品" }));
+  fireEvent.click(screen.getByRole("button", { name: "打开购物车，当前 1 件，应收 ¥20.00" }));
+  fireEvent.click(screen.getByRole("button", { name: "去收款" }));
+
+  expect(await screen.findByText("赠品SPU 还需要选择 1 个赠品。")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "赠品未选择完整，无法确认" }));
+  expect(repositories.savePaidOrder).not.toHaveBeenCalled();
+
+  fireEvent.change(screen.getByLabelText("赠品A黑色 赠品数量"), { target: { value: "1" } });
+  fireEvent.click(screen.getByRole("button", { name: "确认已收款并保存订单" }));
+
+  await waitFor(() => expect(repositories.savePaidOrder).toHaveBeenCalledTimes(1));
+  expect(repositories.savePaidOrder.mock.calls[0][0].orderItems).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ productId: "gift-a-1", lineType: "gift", quantity: 1 })
+    ])
+  );
+});
+
 test("keeps cart items when paid order save fails", async () => {
   repositories.savePaidOrder.mockRejectedValue(new Error("商品 普通商品 库存不足，无法完成订单扣减"));
 

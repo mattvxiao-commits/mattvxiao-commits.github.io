@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import CartPanel from "../components/CartPanel";
 import CheckoutPanel from "../components/CheckoutPanel";
 import { getSettings, listOrders, listProducts, savePaidOrder } from "../db/repositories";
+import { resolveGiftLines, type GiftSelections } from "../domain/giftSelection";
 import { formatMoney } from "../domain/money";
 import { buildPaidOrder } from "../domain/order";
 import { displayProductCode } from "../domain/productCode";
@@ -92,6 +93,7 @@ export default function SalesPage() {
   const [salesViewMode, setSalesViewMode] = useState<SalesViewMode>("list");
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isOrderHistoryOpen, setIsOrderHistoryOpen] = useState(false);
+  const [giftSelections, setGiftSelections] = useState<GiftSelections>({});
   const [qrImageUrls, setQrImageUrls] = useState<{ wechat?: string; alipay?: string }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState<StatusMessage>();
@@ -197,6 +199,10 @@ export default function SalesPage() {
     [cartItems, products, settings]
   );
 
+  useEffect(() => {
+    setGiftSelections({});
+  }, [cartItems, products, settings?.promotion]);
+
   const recentPaidOrders = useMemo(
     () => orders.filter((order) => order.status === "paid").sort(compareRecentPaidOrders).slice(0, 10),
     [orders]
@@ -219,6 +225,7 @@ export default function SalesPage() {
       const paidOrder = buildPaidOrder({
         products,
         calculated,
+        resolvedGiftLines: resolveGiftLines({ calculated, products, selections: giftSelections }),
         promotion: settings.promotion,
         orderPrefix: settings.orderPrefix,
         paymentMethod
@@ -384,6 +391,17 @@ export default function SalesPage() {
           <CheckoutPanel
             calculated={calculated}
             settings={settings}
+            products={products}
+            giftSelections={giftSelections}
+            setGiftSelection={(requirementKey, productId, quantity) => {
+              setGiftSelections((current) => ({
+                ...current,
+                [requirementKey]: {
+                  ...(current[requirementKey] ?? {}),
+                  [productId]: Math.max(0, quantity)
+                }
+              }));
+            }}
             qrImageUrls={qrImageUrls}
             paymentMethod={paymentMethod}
             setPaymentMethod={setPaymentMethod}
