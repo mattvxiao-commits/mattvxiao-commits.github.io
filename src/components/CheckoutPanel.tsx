@@ -60,6 +60,10 @@ function buildSelectionRows(requirement: GiftSelectionRequirement, giftSelection
   return [{ productId: "", quantity: 0 }];
 }
 
+function giftGroupLabel(requirement: GiftSelectionRequirement, index: number): string {
+  return `赠品${String.fromCharCode(65 + index)}：${requirement.label}`;
+}
+
 export default function CheckoutPanel({
   calculated,
   settings,
@@ -135,106 +139,123 @@ export default function CheckoutPanel({
         ))}
       </div>
 
-      <div className="qrGrid">
-        <section className="qrBox" aria-labelledby="wechat-qr-title">
-          <h3 id="wechat-qr-title">微信收款码</h3>
-          {qrImageUrls.wechat ? (
-            <img src={qrImageUrls.wechat} alt="微信收款码" />
-          ) : (
-            <p>微信收款码未设置</p>
-          )}
-        </section>
-        <section className="qrBox" aria-labelledby="alipay-qr-title">
-          <h3 id="alipay-qr-title">支付宝收款码</h3>
-          {qrImageUrls.alipay ? (
-            <img src={qrImageUrls.alipay} alt="支付宝收款码" />
-          ) : (
-            <p>支付宝收款码未设置</p>
-          )}
-        </section>
-      </div>
+      {paymentMethod === "wechat" ? (
+        <div className="qrGrid">
+          <section className="qrBox" aria-labelledby="wechat-qr-title">
+            <h3 id="wechat-qr-title">微信收款码</h3>
+            {qrImageUrls.wechat ? (
+              <img src={qrImageUrls.wechat} alt="微信收款码" />
+            ) : (
+              <p>微信收款码未设置</p>
+            )}
+          </section>
+        </div>
+      ) : null}
+
+      {paymentMethod === "alipay" ? (
+        <div className="qrGrid">
+          <section className="qrBox" aria-labelledby="alipay-qr-title">
+            <h3 id="alipay-qr-title">支付宝收款码</h3>
+            {qrImageUrls.alipay ? (
+              <img src={qrImageUrls.alipay} alt="支付宝收款码" />
+            ) : (
+              <p>支付宝收款码未设置</p>
+            )}
+          </section>
+        </div>
+      ) : null}
+
+      {paymentMethod === "cash" || paymentMethod === "other" ? (
+        <div className="qrBox singleQrNotice">
+          <p>当前选择{paymentOptions.find((option) => option.value === paymentMethod)?.label}收款，无需展示收款码。</p>
+        </div>
+      ) : null}
 
       {giftRequirements.length > 0 ? (
         <div className="giftSelectionPanel" aria-label="赠品选择">
-          {giftRequirements.map((requirement) => (
-            <section className="giftSelectionGroup" key={requirement.key}>
-              <div>
-                <h3>{requirement.label}</h3>
-                <p>需选 {requirement.requiredQty} 个，已选 {sumSelection(giftSelections[requirement.key])} 个</p>
-              </div>
-              <div className="giftSelectionRows">
-                {buildSelectionRows(requirement, giftSelections).map((row, index) => {
-                  const selectedOption = requirement.options.find((option) => option.productId === row.productId);
-                  const quantity = row.quantity;
-                  const rowKey = row.productId || `empty-${index}`;
+          {giftRequirements.map((requirement, requirementIndex) => {
+            const displayLabel = giftGroupLabel(requirement, requirementIndex);
 
-                  return (
-                    <div className="giftSelectionRow" key={rowKey}>
-                      <select
-                        aria-label={`${requirement.label} 第 ${index + 1} 行 SKU`}
-                        value={row.productId}
-                        onChange={(event) => {
-                          const nextProductId = event.target.value;
-                          if (row.productId) {
-                            setGiftSelection?.(requirement.key, row.productId, 0);
-                          }
-                          if (nextProductId) {
-                            setGiftSelection?.(requirement.key, nextProductId, Math.max(1, quantity));
-                          }
-                        }}
-                      >
-                        <option value="">选择赠品 SKU</option>
-                        {requirement.options.map((option) => (
-                          <option key={option.productId} value={option.productId}>
-                            {formatGiftOptionLabel(option)}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="quantityStepper giftQuantityStepper">
-                        <button
-                          type="button"
-                          className="iconButton"
-                          aria-label={`减少 ${selectedOption?.productName ?? requirement.label} 赠品数量`}
-                          disabled={!row.productId || quantity <= 0}
-                          onClick={() => setGiftSelection?.(requirement.key, row.productId, Math.max(0, quantity - 1))}
+            return (
+              <section className="giftSelectionGroup" key={requirement.key}>
+                <div>
+                  <h3>{displayLabel}</h3>
+                  <p>需选 {requirement.requiredQty} 个，已选 {sumSelection(giftSelections[requirement.key])} 个</p>
+                </div>
+                <div className="giftSelectionRows">
+                  {buildSelectionRows(requirement, giftSelections).map((row, index) => {
+                    const selectedOption = requirement.options.find((option) => option.productId === row.productId);
+                    const quantity = row.quantity;
+                    const rowKey = row.productId || `empty-${index}`;
+
+                    return (
+                      <div className="giftSelectionRow" key={rowKey}>
+                        <select
+                          aria-label={`${displayLabel} 第 ${index + 1} 行 SKU`}
+                          value={row.productId}
+                          onChange={(event) => {
+                            const nextProductId = event.target.value;
+                            if (row.productId) {
+                              setGiftSelection?.(requirement.key, row.productId, 0);
+                            }
+                            if (nextProductId) {
+                              setGiftSelection?.(requirement.key, nextProductId, Math.max(1, quantity));
+                            }
+                          }}
                         >
-                          -
-                        </button>
-                        <span>{quantity}</span>
-                        <button
-                          type="button"
-                          className="iconButton"
-                          aria-label={`增加 ${selectedOption?.productName ?? requirement.label} 赠品数量`}
-                          disabled={!row.productId || quantity >= (selectedOption?.availableQty ?? 0)}
-                          onClick={() => setGiftSelection?.(requirement.key, row.productId, quantity + 1)}
-                        >
-                          +
-                        </button>
+                          <option value="">选择赠品 SKU</option>
+                          {requirement.options.map((option) => (
+                            <option key={option.productId} value={option.productId}>
+                              {formatGiftOptionLabel(option)}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="quantityStepper giftQuantityStepper">
+                          <button
+                            type="button"
+                            className="iconButton"
+                            aria-label={`减少 ${selectedOption?.productName ?? displayLabel} 赠品数量`}
+                            disabled={!row.productId || quantity <= 0}
+                            onClick={() => setGiftSelection?.(requirement.key, row.productId, Math.max(0, quantity - 1))}
+                          >
+                            -
+                          </button>
+                          <span>{quantity}</span>
+                          <button
+                            type="button"
+                            className="iconButton"
+                            aria-label={`增加 ${selectedOption?.productName ?? displayLabel} 赠品数量`}
+                            disabled={!row.productId || quantity >= (selectedOption?.availableQty ?? 0)}
+                            onClick={() => setGiftSelection?.(requirement.key, row.productId, quantity + 1)}
+                          >
+                            +
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-                <button
-                  type="button"
-                  className="secondaryButton compactAddButton"
-                  aria-label={`添加 ${requirement.label} 选择行`}
-                  disabled={
-                    requirement.options.length === 0 ||
-                    requirement.options.every((option) => (giftSelections[requirement.key]?.[option.productId] ?? 0) > 0)
-                  }
-                  onClick={() => {
-                    const selected = giftSelections[requirement.key] ?? {};
-                    const nextOption = requirement.options.find((option) => !selected[option.productId]);
-                    if (nextOption) {
-                      setGiftSelection?.(requirement.key, nextOption.productId, 1);
+                    );
+                  })}
+                  <button
+                    type="button"
+                    className="secondaryButton compactAddButton"
+                    aria-label={`添加 ${displayLabel} 选择行`}
+                    disabled={
+                      requirement.options.length === 0 ||
+                      requirement.options.every((option) => (giftSelections[requirement.key]?.[option.productId] ?? 0) > 0)
                     }
-                  }}
-                >
-                  添加一行
-                </button>
-              </div>
-            </section>
-          ))}
+                    onClick={() => {
+                      const selected = giftSelections[requirement.key] ?? {};
+                      const nextOption = requirement.options.find((option) => !selected[option.productId]);
+                      if (nextOption) {
+                        setGiftSelection?.(requirement.key, nextOption.productId, 1);
+                      }
+                    }}
+                  >
+                    添加一行
+                  </button>
+                </div>
+              </section>
+            );
+          })}
           {giftSelectionValidation.ok ? null : <p className="fieldHint isWarning">{giftSelectionValidation.message}</p>}
         </div>
       ) : null}
