@@ -49,7 +49,7 @@ textarea {
 }
 
 button {
-  min-height: 44px;
+  min-height: 40px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: var(--surface-strong);
@@ -74,11 +74,11 @@ a {
   top: 0;
   z-index: 10;
   display: flex;
-  gap: 20px;
+  gap: 14px;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  padding: max(12px, env(safe-area-inset-top)) 20px 12px;
+  padding: max(8px, env(safe-area-inset-top)) 16px 8px;
   border-bottom: 1px solid rgba(222, 214, 201, 0.86);
   background: rgba(247, 244, 238, 0.92);
   backdrop-filter: blur(14px);
@@ -93,8 +93,8 @@ a {
 
 .brandMark {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   place-items: center;
   border: 1px solid rgba(47, 111, 94, 0.28);
   border-radius: 8px;
@@ -103,15 +103,15 @@ a {
 }
 
 .brand {
-  font-size: 21px;
+  font-size: 18px;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0;
 }
 
 .subtitle {
-  margin-top: 4px;
-  font-size: 12px;
+  margin-top: 2px;
+  font-size: 11px;
   color: var(--muted);
 }
 
@@ -132,14 +132,14 @@ a {
 .nav a {
   display: inline-flex;
   gap: 7px;
-  min-height: 44px;
+  min-height: 38px;
   align-items: center;
   justify-content: center;
-  padding: 0 13px;
+  padding: 0 11px;
   border: 1px solid transparent;
   border-radius: 8px;
   color: var(--muted-strong);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 650;
   text-decoration: none;
   white-space: nowrap;
@@ -159,7 +159,7 @@ button:focus-visible {
 
 input,
 select {
-  min-height: 46px;
+  min-height: 40px;
   width: 100%;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
@@ -284,19 +284,20 @@ p {
 .productsPage {
   width: min(1180px, calc(100vw - 32px));
   margin: 0 auto;
-  padding: 24px 0 88px;
+  padding: 16px 0 76px;
 }
 
 .productsToolbar {
   display: flex;
-  gap: 18px;
+  gap: 12px;
   align-items: end;
   justify-content: space-between;
-  padding: 22px 0 18px;
+  padding: 12px 0;
 }
 
 .productsToolbar h1 {
-  font-size: clamp(36px, 7vw, 68px);
+  font-size: clamp(24px, 4vw, 34px);
+  line-height: 1.05;
 }
 
 .toolbarActions {
@@ -655,31 +656,32 @@ p {
 .settingsPage {
   width: min(1180px, calc(100vw - 32px));
   margin: 0 auto;
-  padding: 24px 0 88px;
+  padding: 16px 0 76px;
 }
 
 .dashboardPage {
   width: min(1180px, calc(100vw - 32px));
   margin: 0 auto;
-  padding: 24px 0 88px;
+  padding: 16px 0 76px;
 }
 
 .dashboardHeader {
   display: flex;
-  gap: 18px;
+  gap: 12px;
   align-items: end;
   justify-content: space-between;
-  padding: 22px 0 18px;
+  padding: 12px 0;
 }
 
 .dashboardHeader h1 {
-  font-size: clamp(36px, 7vw, 68px);
+  font-size: clamp(24px, 4vw, 34px);
+  line-height: 1.05;
 }
 
 .dashboardHeader p:not(.eyebrow) {
-  margin-top: 8px;
+  margin-top: 4px;
   max-width: 680px;
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .dashboardMetricStrip {
@@ -796,25 +798,26 @@ p {
 .salesPage {
   width: min(1280px, calc(100vw - 32px));
   margin: 0 auto;
-  padding: 24px 0 88px;
+  padding: 16px 0 76px;
 }
 
 .salesHeader {
   display: flex;
-  gap: 18px;
+  gap: 12px;
   align-items: end;
   justify-content: space-between;
-  padding: 22px 0 18px;
+  padding: 12px 0;
 }
 
 .salesHeader h1 {
-  font-size: clamp(36px, 7vw, 68px);
+  font-size: clamp(24px, 4vw, 34px);
+  line-height: 1.05;
 }
 
 .salesHeader p:not(.eyebrow) {
-  margin-top: 8px;
+  margin-top: 4px;
   max-width: 680px;
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .salesLayout {
@@ -1427,8 +1430,8 @@ p {
 
 .cartActions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 1fr;
+  gap: 8px;
 }
 
 .cartActions button,
@@ -1542,20 +1545,21 @@ p {
 
 .settingsHeader {
   display: flex;
-  gap: 18px;
+  gap: 12px;
   align-items: end;
   justify-content: space-between;
-  padding: 22px 0 18px;
+  padding: 12px 0;
 }
 
 .settingsHeader h1 {
-  font-size: clamp(36px, 7vw, 68px);
+  font-size: clamp(24px, 4vw, 34px);
+  line-height: 1.05;
 }
 
 .settingsHeader p:not(.eyebrow) {
-  margin-top: 8px;
+  margin-top: 4px;
   max-width: 620px;
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .successBanner {
@@ -1572,15 +1576,15 @@ p {
 .settingsGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 18px;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .settingsSection {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   align-content: start;
-  padding: 18px;
+  padding: 14px;
   border: 1px solid rgba(222, 214, 201, 0.94);
   border-radius: 8px;
   background: rgba(255, 253, 250, 0.92);
@@ -1606,13 +1610,13 @@ p {
 .sectionTitle h2 {
   margin: 0;
   color: var(--ink);
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.15;
 }
 
 .sectionTitle p {
   margin-top: 4px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .settingsFieldGrid,
@@ -1749,6 +1753,18 @@ p {
     flex-direction: column;
   }
 
+  .salesControls {
+    flex-direction: column;
+  }
+
+  .viewSwitch {
+    width: 100%;
+  }
+
+  .viewSwitch button {
+    flex: 1 1 0;
+  }
+
   .salesLayout {
     grid-template-columns: 1fr;
   }
@@ -1760,6 +1776,18 @@ p {
 
   .salesProductGrid {
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
+
+  .cartDrawerLayer {
+    align-items: end;
+    justify-content: stretch;
+    padding: 10px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  .cartDrawerLayer .cartPanel {
+    width: 100%;
+    max-height: min(88vh, 760px);
   }
 
   .salesProductCard {
