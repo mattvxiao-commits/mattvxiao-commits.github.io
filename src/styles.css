@@ -1627,6 +1627,57 @@ p {
   font-size: 12px;
 }
 
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(36, 31, 26, 0.32);
+}
+
+.confirmDialog {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(168, 95, 24, 0.28);
+  border-radius: 8px;
+  background: #fffdfa;
+  box-shadow: 0 22px 54px rgba(36, 31, 26, 0.18);
+}
+
+.confirmDialog h2 {
+  margin: 2px 0 0;
+  color: var(--ink);
+  font-size: 22px;
+}
+
+.confirmDialog p {
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+.warningText {
+  color: #8f2f22 !important;
+  font-weight: 900 !important;
+}
+
+.dialogActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.dialogActions button {
+  min-height: 38px;
+}
+
 .salesDock {
   position: fixed;
   right: 18px;

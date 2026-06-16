@@ -11,12 +11,17 @@ const repositories = vi.hoisted(() => ({
   saveSettings: vi.fn()
 }));
 
+const backupUtils = vi.hoisted(() => ({
+  exportJsonBackup: vi.fn(),
+  importJsonBackup: vi.fn()
+}));
+
 vi.mock("../db/repositories", () => repositories);
 
 vi.mock("../utils/backup", () => ({
   IMAGE_BACKUP_NOTE: "图片会随 JSON 备份导出",
-  exportJsonBackup: vi.fn(),
-  importJsonBackup: vi.fn()
+  exportJsonBackup: backupUtils.exportJsonBackup,
+  importJsonBackup: backupUtils.importJsonBackup
 }));
 
 const settings: AppSettings = {
@@ -35,6 +40,8 @@ beforeEach(() => {
     product({ id: "normal", name: "普通商品", spu: "普通SPU" })
   ]);
   repositories.saveSettings.mockResolvedValue(undefined);
+  backupUtils.exportJsonBackup.mockResolvedValue(undefined);
+  backupUtils.importJsonBackup.mockResolvedValue(undefined);
 });
 
 test("selects add-on discount SPU from product SPU options and saves it", async () => {
@@ -133,4 +140,45 @@ test("configures gift targets as SKU or SPU and saves generated tiers", async ()
       ]
     }
   ]);
+});
+
+test("requires confirmation before importing a backup that overwrites current data", async () => {
+  const { container } = render(<SettingsPage />);
+
+  await screen.findByText("备份与恢复");
+
+  const fileInput = container.querySelector('input[type="file"][accept="application/json,.json"]');
+  expect(fileInput).toBeInstanceOf(HTMLInputElement);
+
+  const backupFile = new File(["{}"], "old-backup.json", { type: "application/json" });
+  fireEvent.change(fileInput as HTMLInputElement, { target: { files: [backupFile] } });
+
+  expect(await screen.findByRole("dialog", { name: "确认导入备份" })).toBeVisible();
+  expect(screen.getByText("导入备份会覆盖当前本机数据。")).toBeVisible();
+  expect(backupUtils.importJsonBackup).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole("button", { name: "取消" }));
+
+  expect(screen.queryByRole("dialog", { name: "确认导入备份" })).not.toBeInTheDocument();
+  expect(backupUtils.importJsonBackup).not.toHaveBeenCalled();
+});
+
+test("can export current data before confirming backup import overwrite", async () => {
+  const { container } = render(<SettingsPage />);
+
+  await screen.findByText("备份与恢复");
+
+  const fileInput = container.querySelector('input[type="file"][accept="application/json,.json"]');
+  const backupFile = new File(["{}"], "old-backup.json", { type: "application/json" });
+  fireEvent.change(fileInput as HTMLInputElement, { target: { files: [backupFile] } });
+
+  fireEvent.click(await screen.findByRole("button", { name: "先导出当前数据" }));
+
+  await waitFor(() => expect(backupUtils.exportJsonBackup).toHaveBeenCalledTimes(1));
+  expect(backupUtils.importJsonBackup).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole("button", { name: "确认导入并覆盖" }));
+
+  await waitFor(() => expect(backupUtils.importJsonBackup).toHaveBeenCalledWith(backupFile));
+  expect(await screen.findByText("备份已导入，当前数据已替换。")).toBeVisible();
 });

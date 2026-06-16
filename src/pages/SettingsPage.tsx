@@ -121,6 +121,7 @@ export default function SettingsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [status, setStatus] = useState<StatusMessage>();
+  const [pendingImportFile, setPendingImportFile] = useState<File>();
   const importInputRef = useRef<HTMLInputElement>(null);
   const isBusy = isSaving || isExporting || isImporting;
 
@@ -261,7 +262,7 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleImport(event: ChangeEvent<HTMLInputElement>) {
+  function handleImportFileSelected(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
 
@@ -274,7 +275,36 @@ export default function SettingsPage() {
     }
 
     setStatus(undefined);
+    setPendingImportFile(file);
+  }
+
+  async function handleExportBeforeImport() {
+    if (isBusy) {
+      return;
+    }
+
+    setIsExporting(true);
+    setStatus(undefined);
+
+    try {
+      await exportJsonBackup();
+      setStatus({ kind: "success", text: `当前数据已先导出。确认无误后可继续导入备份。` });
+    } catch {
+      setStatus({ kind: "error", text: "当前数据导出失败，请先处理后再导入备份。" });
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  async function confirmImportOverwrite() {
+    if (!pendingImportFile || isBusy) {
+      return;
+    }
+
+    const file = pendingImportFile;
+
     setIsImporting(true);
+    setStatus(undefined);
 
     try {
       await importJsonBackup(file);
@@ -291,6 +321,7 @@ export default function SettingsPage() {
       });
     } finally {
       setIsImporting(false);
+      setPendingImportFile(undefined);
     }
   }
 
@@ -312,6 +343,48 @@ export default function SettingsPage() {
         <p className={status.kind === "error" ? "errorBanner" : "successBanner"} role="status">
           {status.text}
         </p>
+      ) : null}
+
+      {pendingImportFile ? (
+        <div className="modalBackdrop" role="presentation">
+          <section className="confirmDialog" role="dialog" aria-modal="true" aria-labelledby="import-confirm-title">
+            <div>
+              <p className="eyebrow">Import</p>
+              <h2 id="import-confirm-title">确认导入备份</h2>
+            </div>
+            <p className="warningText">导入备份会覆盖当前本机数据。</p>
+            <p>
+              覆盖范围包括商品、订单、库存记录、设置、促销规则、收款码配置，以及后续仪表盘配置。建议先导出当前数据，再确认导入。
+            </p>
+            <p className="fieldHint">待导入文件：{pendingImportFile.name}</p>
+            <div className="dialogActions">
+              <button
+                type="button"
+                className="secondaryButton"
+                disabled={isBusy}
+                onClick={() => setPendingImportFile(undefined)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="secondaryButton"
+                disabled={isBusy}
+                onClick={() => void handleExportBeforeImport()}
+              >
+                先导出当前数据
+              </button>
+              <button
+                type="button"
+                className="primaryButton"
+                disabled={isBusy}
+                onClick={() => void confirmImportOverwrite()}
+              >
+                {isImporting ? "导入中..." : "确认导入并覆盖"}
+              </button>
+            </div>
+          </section>
+        </div>
       ) : null}
 
       {isLoading && !settings ? <p className="emptyState">正在加载设置...</p> : null}
@@ -582,7 +655,7 @@ export default function SettingsPage() {
                 <Download size={18} aria-hidden="true" />
                 {isExporting ? "导出中..." : "导出备份"}
               </button>
-              <input ref={importInputRef} className="visuallyHidden" type="file" accept="application/json,.json" onChange={(event) => void handleImport(event)} />
+              <input ref={importInputRef} className="visuallyHidden" type="file" accept="application/json,.json" onChange={handleImportFileSelected} />
               <button type="button" className="secondaryButton" disabled={isBusy} onClick={() => importInputRef.current?.click()}>
                 <Upload size={18} aria-hidden="true" />
                 {isImporting ? "导入中..." : "导入备份"}
