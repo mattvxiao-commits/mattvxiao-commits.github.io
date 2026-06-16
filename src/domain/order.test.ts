@@ -49,6 +49,7 @@ function calculated(overrides: Partial<CalculatedCart> = {}): CalculatedCart {
         lineTotal: 0
       }
     ],
+    giftEntitlements: [],
     subtotalBeforeDiscount: 55,
     discountAmount: 6,
     payableAmount: 49,

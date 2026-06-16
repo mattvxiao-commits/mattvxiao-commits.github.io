@@ -43,11 +43,20 @@ export type PromotionConfig = {
 
 export type GiftTierConfig = {
   threshold: number;
-  gifts: Array<{
-    productId: string;
-    quantity: number;
-  }>;
+  gifts: GiftConfig[];
 };
+
+export type GiftConfig =
+  | {
+      targetType?: "sku";
+      productId: string;
+      quantity: number;
+    }
+  | {
+      targetType: "spu";
+      spu: string;
+      quantity: number;
+    };
 
 export type CalculatedCartLine = {
   productId: string;
@@ -62,15 +71,26 @@ export type CalculatedCartLine = {
 };
 
 export type GiftStockWarning = {
-  productId: string;
+  targetType?: "sku" | "spu";
+  productId?: string;
+  spu?: string;
   productName: string;
   requiredQty: number;
   availableQty: number;
 };
 
+export type GiftEntitlement = {
+  targetType: "sku" | "spu";
+  productId?: string;
+  spu?: string;
+  label: string;
+  quantity: number;
+};
+
 export type CalculatedCart = {
   lines: CalculatedCartLine[];
   giftLines: CalculatedCartLine[];
+  giftEntitlements: GiftEntitlement[];
   subtotalBeforeDiscount: number;
   discountAmount: number;
   payableAmount: number;

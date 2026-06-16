@@ -171,6 +171,100 @@ describe("calculateCart", () => {
     ]);
   });
 
+  it("supports legacy and explicit SKU gift targets as actual gift lines", () => {
+    const expensive = product({ id: "expensive", name: "高价商品", salePrice: 68 });
+
+    const result = calculateCart({
+      items: cart("expensive", 1),
+      products: [expensive, giftA, giftB],
+      promotion: {
+        ...defaultPromotion(),
+        giftTiers: [
+          {
+            threshold: 68,
+            gifts: [
+              { productId: "gift-a", quantity: 1 },
+              { targetType: "sku", productId: "gift-b", quantity: 1 }
+            ]
+          }
+        ]
+      }
+    });
+
+    expect(result.giftLines).toEqual([
+      expect.objectContaining({ productId: "gift-a", quantity: 1, lineType: "gift" }),
+      expect.objectContaining({ productId: "gift-b", quantity: 1, lineType: "gift" })
+    ]);
+    expect(result.giftEntitlements).toEqual([
+      expect.objectContaining({ targetType: "sku", productId: "gift-a", quantity: 1, label: "商品A赠品" }),
+      expect.objectContaining({ targetType: "sku", productId: "gift-b", quantity: 1, label: "商品B赠品" })
+    ]);
+  });
+
+  it("supports SPU gift targets as entitlements without creating actual gift lines", () => {
+    const expensive = product({ id: "expensive", name: "高价商品", salePrice: 68 });
+
+    const result = calculateCart({
+      items: cart("expensive", 1),
+      products: [expensive, giftA, giftB],
+      promotion: {
+        ...defaultPromotion(),
+        giftTiers: [
+          {
+            threshold: 68,
+            gifts: [{ targetType: "spu", spu: "赠品SPU-A", quantity: 2 }]
+          }
+        ]
+      }
+    });
+
+    expect(result.giftLines).toEqual([]);
+    expect(result.giftEntitlements).toEqual([
+      expect.objectContaining({
+        targetType: "spu",
+        spu: "赠品SPU-A",
+        quantity: 2,
+        label: "赠品SPU-A"
+      })
+    ]);
+  });
+
+  it("reports SPU gift stock warnings from total eligible active stock", () => {
+    const expensive = product({ id: "expensive", name: "高价商品", salePrice: 68 });
+    const giftA1 = product({
+      id: "gift-a-1",
+      name: "赠品A-1",
+      spu: "赠品SPU-A",
+      stockQty: 1,
+      isGiftEligible: true
+    });
+    const giftA2 = product({
+      id: "gift-a-2",
+      name: "赠品A-2",
+      spu: "赠品SPU-A",
+      stockQty: 1,
+      isGiftEligible: true
+    });
+
+    const result = calculateCart({
+      items: cart("expensive", 1),
+      products: [expensive, giftA1, giftA2],
+      promotion: {
+        ...defaultPromotion(),
+        giftTiers: [
+          {
+            threshold: 68,
+            gifts: [{ targetType: "spu", spu: "赠品SPU-A", quantity: 3 }]
+          }
+        ]
+      }
+    });
+
+    expect(result.giftStockWarnings).toEqual([
+      { targetType: "spu", spu: "赠品SPU-A", productName: "赠品SPU-A", requiredQty: 3, availableQty: 2 }
+    ]);
+  });
+
   it("allocates addon discounts across multiple SKUs by added order", () => {
     const addon1 = product({
       id: "addon-1",

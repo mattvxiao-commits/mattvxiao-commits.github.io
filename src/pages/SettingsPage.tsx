@@ -1,7 +1,8 @@
 import { Download, Gift, QrCode, Save, Settings2, TicketPercent, Upload } from "lucide-react";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { getSettings, listProducts, saveImage, saveSettings } from "../db/repositories";
-import type { AppSettings, Product } from "../domain/types";
+import { displayProductCode } from "../domain/productCode";
+import type { AppSettings, GiftConfig, Product } from "../domain/types";
 import { exportJsonBackup, IMAGE_BACKUP_NOTE, importJsonBackup } from "../utils/backup";
 
 type StatusKind = "success" | "error";
@@ -11,41 +12,93 @@ type StatusMessage = {
   text: string;
 };
 
+type GiftTargetType = "sku" | "spu";
+
+type GiftTargetDraft = {
+  targetType: GiftTargetType;
+  value: string;
+};
+
 function toNumber(value: string, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function selectedGiftIds(settings?: AppSettings): { giftA: string; giftB: string } {
+function isSkuGift(gift?: GiftConfig): gift is Extract<GiftConfig, { productId: string }> {
+  return Boolean(gift && gift.targetType !== "spu" && "productId" in gift);
+}
+
+function isSpuGift(gift?: GiftConfig): gift is Extract<GiftConfig, { targetType: "spu" }> {
+  return Boolean(gift && gift.targetType === "spu");
+}
+
+function giftToDraft(gift?: GiftConfig): GiftTargetDraft {
+  if (isSpuGift(gift)) {
+    return { targetType: "spu", value: gift.spu };
+  }
+
+  if (isSkuGift(gift)) {
+    return { targetType: "sku", value: gift.productId };
+  }
+
+  return { targetType: "sku", value: "" };
+}
+
+function selectedGiftTargets(settings?: AppSettings): { giftA: GiftTargetDraft; giftB: GiftTargetDraft } {
   const tier35 = settings?.promotion.giftTiers.find((tier) => tier.threshold === 35);
   const tier68 = settings?.promotion.giftTiers.find((tier) => tier.threshold === 68);
-  const giftA = tier35?.gifts[0]?.productId ?? "";
+  const giftAConfig = tier35?.gifts[0];
+  const giftBConfig = tier68?.gifts.find((gift) => {
+    if (!giftAConfig) {
+      return true;
+    }
+
+    if (isSpuGift(giftAConfig) && isSpuGift(gift)) {
+      return gift.spu !== giftAConfig.spu || gift.quantity === 1;
+    }
+
+    if (isSkuGift(giftAConfig) && isSkuGift(gift)) {
+      return gift.productId !== giftAConfig.productId || gift.quantity === 1;
+    }
+
+    return true;
+  });
 
   return {
-    giftA,
-    giftB: tier68?.gifts.find((gift) => gift.productId !== giftA && gift.quantity === 1)?.productId ?? ""
+    giftA: giftToDraft(giftAConfig),
+    giftB: giftToDraft(giftBConfig)
   };
 }
 
-function applyGiftTiers(settings: AppSettings, giftA: string, giftB: string): AppSettings {
+function giftFromDraft(draft: GiftTargetDraft, quantity: number): GiftConfig | undefined {
+  if (!draft.value) {
+    return undefined;
+  }
+
+  return draft.targetType === "spu"
+    ? { targetType: "spu", spu: draft.value, quantity }
+    : { targetType: "sku", productId: draft.value, quantity };
+}
+
+function applyGiftTiers(settings: AppSettings, giftA: GiftTargetDraft, giftB: GiftTargetDraft): AppSettings {
   const tiers = [
     {
       threshold: 35,
-      gifts: giftA ? [{ productId: giftA, quantity: 1 }] : []
+      gifts: [giftFromDraft(giftA, 1)].filter((gift): gift is GiftConfig => gift !== undefined)
     },
     {
       threshold: 68,
       gifts: [
-        ...(giftA ? [{ productId: giftA, quantity: 2 }] : []),
-        ...(giftB ? [{ productId: giftB, quantity: 1 }] : [])
-      ]
+        giftFromDraft(giftA, 2),
+        giftFromDraft(giftB, 1)
+      ].filter((gift): gift is GiftConfig => gift !== undefined)
     },
     {
       threshold: 148,
       gifts: [
-        ...(giftA ? [{ productId: giftA, quantity: 5 }] : []),
-        ...(giftB ? [{ productId: giftB, quantity: 1 }] : [])
-      ]
+        giftFromDraft(giftA, 5),
+        giftFromDraft(giftB, 1)
+      ].filter((gift): gift is GiftConfig => gift !== undefined)
     }
   ];
 
@@ -61,8 +114,8 @@ function applyGiftTiers(settings: AppSettings, giftA: string, giftB: string): Ap
 export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings>();
   const [products, setProducts] = useState<Product[]>([]);
-  const [giftA, setGiftA] = useState("");
-  const [giftB, setGiftB] = useState("");
+  const [giftA, setGiftA] = useState<GiftTargetDraft>({ targetType: "sku", value: "" });
+  const [giftB, setGiftB] = useState<GiftTargetDraft>({ targetType: "sku", value: "" });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -87,8 +140,8 @@ export default function SettingsPage() {
 
         setSettings(loadedSettings);
         setProducts(loadedProducts);
-        setGiftA(selectedGiftIds(loadedSettings).giftA);
-        setGiftB(selectedGiftIds(loadedSettings).giftB);
+        setGiftA(selectedGiftTargets(loadedSettings).giftA);
+        setGiftB(selectedGiftTargets(loadedSettings).giftB);
       } catch {
         if (isCurrent) {
           setStatus({ kind: "error", text: "设置加载失败，请刷新后重试。" });
@@ -111,6 +164,19 @@ export default function SettingsPage() {
     () => products.filter((product) => product.isGiftEligible && product.status === "active"),
     [products]
   );
+  const giftSpuOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const product of giftProducts) {
+      const spu = product.spu.trim();
+
+      if (spu.length > 0) {
+        counts.set(spu, (counts.get(spu) ?? 0) + 1);
+      }
+    }
+
+    return Array.from(counts.entries()).sort(([left], [right]) => left.localeCompare(right, "zh-Hans-CN"));
+  }, [giftProducts]);
   const discountSpuOptions = useMemo(() => {
     const counts = new Map<string, number>();
 
@@ -215,8 +281,8 @@ export default function SettingsPage() {
       const [nextSettings, nextProducts] = await Promise.all([getSettings(), listProducts()]);
       setSettings(nextSettings);
       setProducts(nextProducts);
-      setGiftA(selectedGiftIds(nextSettings).giftA);
-      setGiftB(selectedGiftIds(nextSettings).giftB);
+      setGiftA(selectedGiftTargets(nextSettings).giftA);
+      setGiftB(selectedGiftTargets(nextSettings).giftB);
       setStatus({ kind: "success", text: "备份已导入，当前数据已替换。" });
     } catch (error) {
       setStatus({
@@ -428,25 +494,71 @@ export default function SettingsPage() {
             </div>
             <div className="settingsFieldGrid">
               <label>
-                <span>A 赠品</span>
-                <select value={giftA} onChange={(event) => setGiftA(event.target.value)}>
-                  <option value="">不选择</option>
-                  {giftProducts.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name} / {product.spu}
-                    </option>
-                  ))}
+                <span>A 赠品目标类型</span>
+                <select
+                  aria-label="A 赠品目标类型"
+                  value={giftA.targetType}
+                  onChange={(event) =>
+                    setGiftA({ targetType: event.target.value as GiftTargetType, value: "" })
+                  }
+                >
+                  <option value="sku">指定 SKU</option>
+                  <option value="spu">指定 SPU</option>
                 </select>
               </label>
               <label>
-                <span>B 赠品</span>
-                <select value={giftB} onChange={(event) => setGiftB(event.target.value)}>
+                <span>{giftA.targetType === "spu" ? "A 赠品 SPU" : "A 赠品 SKU"}</span>
+                <select
+                  aria-label={giftA.targetType === "spu" ? "A 赠品 SPU" : "A 赠品 SKU"}
+                  value={giftA.value}
+                  onChange={(event) => setGiftA((current) => ({ ...current, value: event.target.value }))}
+                >
                   <option value="">不选择</option>
-                  {giftProducts.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name} / {product.spu}
-                    </option>
-                  ))}
+                  {giftA.targetType === "spu"
+                    ? giftSpuOptions.map(([spu, count]) => (
+                        <option key={spu} value={spu}>
+                          {spu}（{count} 个 SKU）
+                        </option>
+                      ))
+                    : giftProducts.map((product) => (
+                        <option key={product.id} value={product.id}>
+                          {displayProductCode(product.productCode)} / {product.name} / {product.spu}
+                        </option>
+                      ))}
+                </select>
+              </label>
+              <label>
+                <span>B 赠品目标类型</span>
+                <select
+                  aria-label="B 赠品目标类型"
+                  value={giftB.targetType}
+                  onChange={(event) =>
+                    setGiftB({ targetType: event.target.value as GiftTargetType, value: "" })
+                  }
+                >
+                  <option value="sku">指定 SKU</option>
+                  <option value="spu">指定 SPU</option>
+                </select>
+              </label>
+              <label>
+                <span>{giftB.targetType === "spu" ? "B 赠品 SPU" : "B 赠品 SKU"}</span>
+                <select
+                  aria-label={giftB.targetType === "spu" ? "B 赠品 SPU" : "B 赠品 SKU"}
+                  value={giftB.value}
+                  onChange={(event) => setGiftB((current) => ({ ...current, value: event.target.value }))}
+                >
+                  <option value="">不选择</option>
+                  {giftB.targetType === "spu"
+                    ? giftSpuOptions.map(([spu, count]) => (
+                        <option key={spu} value={spu}>
+                          {spu}（{count} 个 SKU）
+                        </option>
+                      ))
+                    : giftProducts.map((product) => (
+                        <option key={product.id} value={product.id}>
+                          {displayProductCode(product.productCode)} / {product.name} / {product.spu}
+                        </option>
+                      ))}
                 </select>
               </label>
             </div>

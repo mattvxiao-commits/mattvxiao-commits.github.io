@@ -18,6 +18,7 @@ const calculated: CalculatedCart = {
     }
   ],
   giftLines: [],
+  giftEntitlements: [],
   subtotalBeforeDiscount: 20,
   discountAmount: 0,
   payableAmount: 20,

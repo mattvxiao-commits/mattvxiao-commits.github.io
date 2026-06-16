@@ -3,6 +3,9 @@ import type {
   CalculatedCart,
   CalculatedCartLine,
   CartItem,
+  GiftConfig,
+  GiftEntitlement,
+  GiftStockWarning,
   GiftTierConfig,
   Product,
   PromotionConfig
@@ -71,18 +74,15 @@ export function calculateCart(input: CalculateCartInput): CalculatedCart {
   const discountAmount = normalizeMoney(subtotalBeforeDiscount - payableAmount);
   const triggeredGiftTier = findGiftTier(promotion.enabled ? promotion.giftTiers : [], payableAmount);
   const giftLines = triggeredGiftTier ? buildGiftLines(triggeredGiftTier, productMap) : [];
-  const giftStockWarnings = giftLines
-    .filter((line) => line.quantity > productMap.get(line.productId)!.stockQty)
-    .map((line) => ({
-      productId: line.productId,
-      productName: line.productName,
-      requiredQty: line.quantity,
-      availableQty: productMap.get(line.productId)!.stockQty
-    }));
+  const giftEntitlements = triggeredGiftTier ? buildGiftEntitlements(triggeredGiftTier, productMap) : [];
+  const giftStockWarnings = triggeredGiftTier
+    ? buildGiftStockWarnings(triggeredGiftTier, productMap)
+    : [];
 
   return {
     lines,
     giftLines,
+    giftEntitlements,
     subtotalBeforeDiscount,
     discountAmount,
     payableAmount,
@@ -151,6 +151,10 @@ function buildGiftLines(
 ): CalculatedCartLine[] {
   return tier.gifts
     .map((gift) => {
+      if (gift.targetType === "spu") {
+        return undefined;
+      }
+
       const product = productMap.get(gift.productId);
       if (!product || gift.quantity <= 0) {
         return undefined;
@@ -159,6 +163,88 @@ function buildGiftLines(
       return toLine(product, gift.quantity, product.salePrice, 0, "gift");
     })
     .filter((line): line is CalculatedCartLine => line !== undefined);
+}
+
+function buildGiftEntitlements(
+  tier: GiftTierConfig,
+  productMap: Map<string, Product>
+): GiftEntitlement[] {
+  return tier.gifts
+    .map<GiftEntitlement | undefined>((gift) => {
+      if (gift.quantity <= 0) {
+        return undefined;
+      }
+
+      if (gift.targetType === "spu") {
+        return {
+          targetType: "spu" as const,
+          spu: gift.spu,
+          label: gift.spu,
+          quantity: gift.quantity
+        };
+      }
+
+      const product = productMap.get(gift.productId);
+      if (!product) {
+        return undefined;
+      }
+
+      return {
+        targetType: "sku" as const,
+        productId: product.id,
+        label: product.name,
+        quantity: gift.quantity
+      };
+    })
+    .filter((entitlement): entitlement is GiftEntitlement => entitlement !== undefined);
+}
+
+function buildGiftStockWarnings(
+  tier: GiftTierConfig,
+  productMap: Map<string, Product>
+): GiftStockWarning[] {
+  return tier.gifts
+    .map((gift) => buildGiftStockWarning(gift, productMap))
+    .filter((warning): warning is GiftStockWarning => warning !== undefined);
+}
+
+function buildGiftStockWarning(
+  gift: GiftConfig,
+  productMap: Map<string, Product>
+): GiftStockWarning | undefined {
+  if (gift.quantity <= 0) {
+    return undefined;
+  }
+
+  if (gift.targetType === "spu") {
+    const availableQty = [...productMap.values()]
+      .filter((product) => product.spu === gift.spu && product.isGiftEligible && product.status === "active")
+      .reduce((sum, product) => sum + product.stockQty, 0);
+
+    if (gift.quantity <= availableQty) {
+      return undefined;
+    }
+
+    return {
+      targetType: "spu",
+      spu: gift.spu,
+      productName: gift.spu,
+      requiredQty: gift.quantity,
+      availableQty
+    };
+  }
+
+  const product = productMap.get(gift.productId);
+  if (!product || gift.quantity <= product.stockQty) {
+    return undefined;
+  }
+
+  return {
+    productId: product.id,
+    productName: product.name,
+    requiredQty: gift.quantity,
+    availableQty: product.stockQty
+  };
 }
 
 function toLine(

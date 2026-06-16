@@ -71,3 +71,66 @@ test("keeps and warns about a configured discount SPU that is missing from produ
   expect(within(select).getByRole("option", { name: "旧SPU（当前商品库未找到）" })).toBeVisible();
   expect(await screen.findByText("当前商品库未找到该 SPU，请确认是否已停用或删除相关商品。")).toBeVisible();
 });
+
+test("configures gift targets as SKU or SPU and saves generated tiers", async () => {
+  repositories.listProducts.mockResolvedValue([
+    product({
+      id: "gift-a-1",
+      name: "赠品A黑色",
+      spu: "赠品A",
+      productCode: "GFTA-BLK",
+      isGiftEligible: true
+    }),
+    product({
+      id: "gift-a-2",
+      name: "赠品A白色",
+      spu: "赠品A",
+      productCode: "GFTA-WHT",
+      isGiftEligible: true
+    }),
+    product({
+      id: "gift-b-1",
+      name: "赠品B",
+      spu: "赠品B",
+      productCode: "GFTB-BASE",
+      isGiftEligible: true
+    })
+  ]);
+
+  render(<SettingsPage />);
+
+  const giftATargetType = await screen.findByLabelText("A 赠品目标类型");
+  fireEvent.change(giftATargetType, { target: { value: "spu" } });
+
+  const giftASpu = screen.getByLabelText("A 赠品 SPU");
+  expect(within(giftASpu).getByRole("option", { name: "赠品A（2 个 SKU）" })).toBeVisible();
+  fireEvent.change(giftASpu, { target: { value: "赠品A" } });
+
+  const giftBTargetType = screen.getByLabelText("B 赠品目标类型");
+  fireEvent.change(giftBTargetType, { target: { value: "sku" } });
+
+  const giftBSku = screen.getByLabelText("B 赠品 SKU");
+  expect(within(giftBSku).getByRole("option", { name: "GFTB-BASE / 赠品B / 赠品B" })).toBeVisible();
+  fireEvent.change(giftBSku, { target: { value: "gift-b-1" } });
+
+  fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
+
+  await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalledTimes(1));
+  expect(repositories.saveSettings.mock.calls[0][0].promotion.giftTiers).toEqual([
+    { threshold: 35, gifts: [{ targetType: "spu", spu: "赠品A", quantity: 1 }] },
+    {
+      threshold: 68,
+      gifts: [
+        { targetType: "spu", spu: "赠品A", quantity: 2 },
+        { targetType: "sku", productId: "gift-b-1", quantity: 1 }
+      ]
+    },
+    {
+      threshold: 148,
+      gifts: [
+        { targetType: "spu", spu: "赠品A", quantity: 5 },
+        { targetType: "sku", productId: "gift-b-1", quantity: 1 }
+      ]
+    }
+  ]);
+});
