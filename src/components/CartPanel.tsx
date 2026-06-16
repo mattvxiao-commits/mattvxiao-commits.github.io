@@ -1,5 +1,7 @@
 import { Minus, PauseCircle, Plus, ShoppingCart, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import type { CalculatedCart, CartItem, Product } from "../domain/types";
+import { getImageUrl } from "../utils/image";
 
 type CartPanelProps = {
   products: Product[];
@@ -34,11 +36,44 @@ export default function CartPanel({
   hold,
   close
 }: CartPanelProps) {
-  const productById = new Map(products.map((product) => [product.id, product]));
+  const productById = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
+  const imageProductIds = useMemo(
+    () => Array.from(new Set(calculated.lines.map((line) => line.productId))).filter((productId) => productById.get(productId)?.imageId),
+    [calculated.lines, productById]
+  );
+  const [imageUrlsByProductId, setImageUrlsByProductId] = useState<Record<string, string | undefined>>({});
   const cartQuantityByProduct = new Map(cartItems.map((item) => [item.productId, item.quantity]));
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const hasCartItems = itemCount > 0;
   const hasGiftStockWarnings = calculated.giftStockWarnings.length > 0;
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function loadLineImages() {
+      const entries = await Promise.all(
+        imageProductIds.map(async (productId) => {
+          const imageId = productById.get(productId)?.imageId;
+          const imageUrl = await getImageUrl(imageId);
+          return [productId, imageUrl] as const;
+        })
+      );
+
+      if (isCurrent) {
+        setImageUrlsByProductId(Object.fromEntries(entries));
+      }
+    }
+
+    void loadLineImages().catch(() => {
+      if (isCurrent) {
+        setImageUrlsByProductId({});
+      }
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [imageProductIds, productById]);
 
   return (
     <aside className="cartPanel" aria-labelledby="cart-title">
@@ -64,12 +99,21 @@ export default function CartPanel({
               className={`cartLine cartLine-${line.lineType}`}
               key={`${line.productId}-${line.lineType}-${line.finalUnitPrice}-${index}`}
             >
-              <div className="lineMain">
-                <div>
-                  <h3>{line.productName}</h3>
-                  <p>{line.spu}</p>
+              <div className="cartLineContent">
+                <div className="cartLineThumb">
+                  {imageUrlsByProductId[line.productId] ? (
+                    <img src={imageUrlsByProductId[line.productId]} alt={line.productName} />
+                  ) : (
+                    <span aria-hidden="true">{line.productName.slice(0, 1) || "商"}</span>
+                  )}
                 </div>
-                <span>{lineTypeLabels[line.lineType]}</span>
+                <div className="lineMain">
+                  <div>
+                    <h3>{line.productName}</h3>
+                    <p>{line.spu}</p>
+                  </div>
+                  <span>{lineTypeLabels[line.lineType]}</span>
+                </div>
               </div>
               <div className="lineMeta">
                 <span>

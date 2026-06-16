@@ -1246,6 +1246,35 @@ p {
   background: #ffffff;
 }
 
+.cartLineContent {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.cartLineThumb {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(47, 111, 94, 0.1), rgba(184, 80, 54, 0.08)),
+    #ffffff;
+  color: var(--accent-strong);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.cartLineThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .cartLine-discount_addon {
   border-color: rgba(47, 111, 94, 0.34);
   background: #f6fbf8;

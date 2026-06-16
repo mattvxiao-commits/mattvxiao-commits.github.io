@@ -5,6 +5,12 @@ import { calculateCart } from "../domain/promotions";
 import type { CartItem } from "../domain/types";
 import CartPanel from "./CartPanel";
 
+const imageUtils = vi.hoisted(() => ({
+  getImageUrl: vi.fn()
+}));
+
+vi.mock("../utils/image", () => imageUtils);
+
 const normal = product({
   id: "normal",
   name: "普通商品",
@@ -33,6 +39,40 @@ const stockedGiftA = {
   ...giftA,
   stockQty: 3
 };
+
+test("shows product thumbnails and calls close when close button is clicked", async () => {
+  imageUtils.getImageUrl.mockImplementation((imageId?: string) =>
+    Promise.resolve(imageId === "image-normal" ? "blob:normal" : undefined)
+  );
+  const normalWithImage = { ...normal, imageId: "image-normal" };
+  const items: CartItem[] = [{ productId: "normal", quantity: 1, addedAt: "2026-06-15T00:00:00.000Z" }];
+  const calculated = calculateCart({
+    items,
+    products: [normalWithImage],
+    promotion: { ...defaultPromotion(), giftTiers: [] }
+  });
+  const onClose = vi.fn();
+
+  render(
+    <CartPanel
+      products={[normalWithImage]}
+      calculated={calculated}
+      cartItems={items}
+      increment={() => undefined}
+      decrement={() => undefined}
+      clear={() => undefined}
+      checkout={() => undefined}
+      hold={() => undefined}
+      close={onClose}
+    />
+  );
+
+  expect(await screen.findByRole("img", { name: "普通商品" })).toHaveAttribute("src", "blob:normal");
+
+  fireEvent.click(screen.getByRole("button", { name: "关闭购物车" }));
+
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
 
 test("shows normal, discount, gift tier, gift stock warning, and payable total", () => {
   const items: CartItem[] = [
