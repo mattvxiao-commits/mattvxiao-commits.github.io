@@ -111,6 +111,22 @@ export default function SettingsPage() {
     () => products.filter((product) => product.isGiftEligible && product.status === "active"),
     [products]
   );
+  const discountSpuOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const product of products) {
+      const spu = product.spu.trim();
+
+      if (spu.length > 0) {
+        counts.set(spu, (counts.get(spu) ?? 0) + 1);
+      }
+    }
+
+    return Array.from(counts.entries()).sort(([left], [right]) => left.localeCompare(right, "zh-Hans-CN"));
+  }, [products]);
+  const configuredDiscountSpu = settings?.promotion.addonDiscount.discountSpu ?? "";
+  const hasMissingDiscountSpu =
+    configuredDiscountSpu.trim().length > 0 && !discountSpuOptions.some(([spu]) => spu === configuredDiscountSpu);
 
   function updateSettings(updater: (current: AppSettings) => AppSettings) {
     setSettings((current) => (current ? updater(current) : current));
@@ -332,7 +348,8 @@ export default function SettingsPage() {
             <div className="settingsFieldGrid threeColumns">
               <label>
                 <span>优惠 SPU</span>
-                <input
+                <select
+                  aria-label="优惠 SPU"
                   value={settings.promotion.addonDiscount.discountSpu}
                   onChange={(event) =>
                     updateSettings((current) => ({
@@ -343,7 +360,18 @@ export default function SettingsPage() {
                       }
                     }))
                   }
-                />
+                >
+                  <option value="">不选择</option>
+                  {hasMissingDiscountSpu ? <option value={configuredDiscountSpu}>{configuredDiscountSpu}（当前商品库未找到）</option> : null}
+                  {discountSpuOptions.map(([spu, count]) => (
+                    <option key={spu} value={spu}>
+                      {spu}（{count} 个商品）
+                    </option>
+                  ))}
+                </select>
+                {hasMissingDiscountSpu ? (
+                  <p className="fieldHint isWarning">当前商品库未找到该 SPU，请确认是否已停用或删除相关商品。</p>
+                ) : null}
               </label>
               <label>
                 <span>优惠单价</span>
