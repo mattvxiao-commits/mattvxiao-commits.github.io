@@ -164,6 +164,11 @@ test("requires confirmation before importing a backup that overwrites current da
 });
 
 test("can export current data before confirming backup import overwrite", async () => {
+  backupUtils.importJsonBackup.mockResolvedValue({
+    version: 2,
+    includedImages: true,
+    imageCount: 1
+  });
   const { container } = render(<SettingsPage />);
 
   await screen.findByText("备份与恢复");
@@ -180,5 +185,23 @@ test("can export current data before confirming backup import overwrite", async 
   fireEvent.click(screen.getByRole("button", { name: "确认导入并覆盖" }));
 
   await waitFor(() => expect(backupUtils.importJsonBackup).toHaveBeenCalledWith(backupFile));
-  expect(await screen.findByText("备份已导入，当前数据已替换。")).toBeVisible();
+  expect(await screen.findByText("备份已导入，当前数据已替换。已恢复 1 张图片。")).toBeVisible();
+});
+
+test("warns when importing a legacy backup without images", async () => {
+  backupUtils.importJsonBackup.mockResolvedValue({
+    version: 1,
+    includedImages: false,
+    imageCount: 0
+  });
+  const { container } = render(<SettingsPage />);
+
+  await screen.findByText("备份与恢复");
+
+  const fileInput = container.querySelector('input[type="file"][accept="application/json,.json"]');
+  const backupFile = new File(["{}"], "legacy-backup.json", { type: "application/json" });
+  fireEvent.change(fileInput as HTMLInputElement, { target: { files: [backupFile] } });
+  fireEvent.click(await screen.findByRole("button", { name: "确认导入并覆盖" }));
+
+  expect(await screen.findByText("备份已导入，当前数据已替换。旧版备份不包含图片，商品图需要重新上传。")).toBeVisible();
 });

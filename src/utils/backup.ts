@@ -1,25 +1,50 @@
 import { saveAs } from "file-saver";
-import { db } from "../db/db";
+import { db, type StoredImage } from "../db/db";
 import type { AppSettings, InventoryLog, Order, OrderItem, Product } from "../domain/types";
 
-const BACKUP_VERSION = 1;
-const IMAGE_BACKUP_NOTE = "图片暂不包含在 JSON 备份中";
+const BACKUP_VERSION = 2;
+const IMAGE_BACKUP_NOTE = "图片已包含在 JSON 备份中";
+const LEGACY_IMAGE_BACKUP_NOTE = "图片暂不包含在 JSON 备份中";
 
-type BackupPayload = {
-  version: 1;
+type BackupImage = {
+  id: string;
+  mimeType: string;
+  originalName: string;
+  createdAt: string;
+  dataBase64: string;
+};
+
+type BackupData = {
+  products: Product[];
+  settings: AppSettings[];
+  orders: Order[];
+  orderItems: OrderItem[];
+  inventoryLogs: InventoryLog[];
+  images: BackupImage[];
+};
+
+type BackupPayloadV2 = {
+  version: 2;
   exportedAt: string;
   note: typeof IMAGE_BACKUP_NOTE;
-  data: {
-    products: Product[];
-    settings: AppSettings[];
-    orders: Order[];
-    orderItems: OrderItem[];
-    inventoryLogs: InventoryLog[];
-  };
+  data: BackupData;
+};
+
+type ParsedBackupPayload = {
+  version: 1 | 2;
+  exportedAt: string;
+  note: typeof IMAGE_BACKUP_NOTE | typeof LEGACY_IMAGE_BACKUP_NOTE;
+  data: BackupData;
+};
+
+export type BackupImportResult = {
+  version: 1 | 2;
+  includedImages: boolean;
+  imageCount: number;
 };
 
 type ImportDeps = {
-  importData?: (data: BackupPayload["data"]) => Promise<void> | void;
+  importData?: (data: BackupData) => Promise<void> | void;
 };
 
 const ORDER_STATUSES = new Set(["pending_payment", "paid", "cancelled"]);
@@ -280,21 +305,34 @@ function validateInventoryLogs(inventoryLogs: unknown[]): asserts inventoryLogs 
   }
 }
 
+function validateImages(images: unknown[]): asserts images is BackupImage[] {
+  for (const image of images) {
+    assertRecord(image, "备份文件格式不正确。");
+    assertNonEmptyString(image, "id");
+    assertNonEmptyString(image, "mimeType");
+    assertString(image, "originalName");
+    assertString(image, "createdAt");
+    assertNonEmptyString(image, "dataBase64");
+  }
+}
+
 function validateBackupData(data: {
   products: unknown[];
   settings: unknown[];
   orders: unknown[];
   orderItems: unknown[];
   inventoryLogs: unknown[];
-}): asserts data is BackupPayload["data"] {
+  images: unknown[];
+}): asserts data is BackupData {
   validateSettings(data.settings);
   validateProducts(data.products);
   validateOrders(data.orders);
   validateOrderItems(data.orderItems);
   validateInventoryLogs(data.inventoryLogs);
+  validateImages(data.images);
 }
 
-function parseBackupPayload(text: string): BackupPayload {
+function parseBackupPayload(text: string): ParsedBackupPayload {
   let parsed: unknown;
 
   try {
@@ -305,7 +343,7 @@ function parseBackupPayload(text: string): BackupPayload {
 
   assertRecord(parsed, "备份文件格式不正确。");
 
-  if (parsed.version !== BACKUP_VERSION) {
+  if (parsed.version !== 1 && parsed.version !== BACKUP_VERSION) {
     throw new Error("不支持的备份版本。");
   }
 
@@ -316,15 +354,16 @@ function parseBackupPayload(text: string): BackupPayload {
     settings: readArray(parsed.data, "settings"),
     orders: readArray(parsed.data, "orders"),
     orderItems: readArray(parsed.data, "orderItems"),
-    inventoryLogs: readArray(parsed.data, "inventoryLogs")
+    inventoryLogs: readArray(parsed.data, "inventoryLogs"),
+    images: parsed.version === 1 ? [] : readArray(parsed.data, "images")
   };
 
   validateBackupData(data);
 
   return {
-    version: BACKUP_VERSION,
+    version: parsed.version,
     exportedAt: typeof parsed.exportedAt === "string" ? parsed.exportedAt : new Date().toISOString(),
-    note: IMAGE_BACKUP_NOTE,
+    note: parsed.version === 1 ? LEGACY_IMAGE_BACKUP_NOTE : IMAGE_BACKUP_NOTE,
     data
   };
 }
@@ -333,7 +372,73 @@ async function readFileText(file: File): Promise<string> {
   return file.text();
 }
 
-export async function replaceAllDataInTransaction(data: BackupPayload["data"]): Promise<void> {
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+
+  return btoa(binary);
+}
+
+function base64ToBytes(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes;
+}
+
+async function imageToBackupImage(image: StoredImage): Promise<BackupImage> {
+  return {
+    id: image.id,
+    mimeType: image.mimeType,
+    originalName: image.originalName,
+    createdAt: image.createdAt,
+    dataBase64: bytesToBase64(new Uint8Array(await readBlobAsArrayBuffer(image.blob)))
+  };
+}
+
+function readBlobAsArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
+  if (typeof blob.arrayBuffer === "function") {
+    return blob.arrayBuffer();
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("图片读取失败。"));
+    reader.onload = () => {
+      if (reader.result instanceof ArrayBuffer) {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error("图片读取失败。"));
+    };
+    reader.readAsArrayBuffer(blob);
+  });
+}
+
+function backupImageToStoredImage(image: BackupImage): StoredImage {
+  const bytes = base64ToBytes(image.dataBase64);
+  const blobBytes = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(blobBytes).set(bytes);
+
+  return {
+    id: image.id,
+    blob: new Blob([blobBytes], { type: image.mimeType }),
+    mimeType: image.mimeType,
+    originalName: image.originalName,
+    createdAt: image.createdAt
+  };
+}
+
+export async function replaceAllDataInTransaction(data: BackupData): Promise<void> {
   await db.transaction(
     "rw",
     [db.products, db.images, db.settings, db.orders, db.orderItems, db.inventoryLogs],
@@ -366,12 +471,17 @@ export async function replaceAllDataInTransaction(data: BackupPayload["data"]): 
       if (data.inventoryLogs.length > 0) {
         await db.inventoryLogs.bulkPut(data.inventoryLogs);
       }
+
+      if (data.images.length > 0) {
+        await db.images.bulkPut(data.images.map(backupImageToStoredImage));
+      }
     }
   );
 }
 
 export async function exportJsonBackup(): Promise<void> {
-  const payload: BackupPayload = {
+  const images = await db.images.toArray();
+  const payload: BackupPayloadV2 = {
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     note: IMAGE_BACKUP_NOTE,
@@ -380,7 +490,8 @@ export async function exportJsonBackup(): Promise<void> {
       settings: await db.settings.toArray(),
       orders: await db.orders.toArray(),
       orderItems: await db.orderItems.toArray(),
-      inventoryLogs: await db.inventoryLogs.toArray()
+      inventoryLogs: await db.inventoryLogs.toArray(),
+      images: await Promise.all(images.map(imageToBackupImage))
     }
   };
 
@@ -391,15 +502,21 @@ export async function exportJsonBackup(): Promise<void> {
   saveAs(blob, `ecrm-backup-${new Date().toISOString().slice(0, 10)}.json`);
 }
 
-export async function importJsonBackup(file: File): Promise<void> {
-  await importJsonBackupFromText(await readFileText(file));
+export async function importJsonBackup(file: File): Promise<BackupImportResult> {
+  return importJsonBackupFromText(await readFileText(file));
 }
 
-export async function importJsonBackupFromText(text: string, deps: ImportDeps = {}): Promise<void> {
+export async function importJsonBackupFromText(text: string, deps: ImportDeps = {}): Promise<BackupImportResult> {
   const payload = parseBackupPayload(text);
   const importer = deps.importData ?? replaceAllDataInTransaction;
 
   await importer(payload.data);
+
+  return {
+    version: payload.version,
+    includedImages: payload.version === BACKUP_VERSION,
+    imageCount: payload.data.images.length
+  };
 }
 
 export { IMAGE_BACKUP_NOTE };

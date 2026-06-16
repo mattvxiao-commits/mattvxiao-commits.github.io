@@ -1,6 +1,11 @@
+import "fake-indexeddb/auto";
 import { describe, expect, test, vi } from "vitest";
 import { db } from "../db/db";
-import { importJsonBackupFromText, replaceAllDataInTransaction } from "./backup";
+import { exportJsonBackup, importJsonBackupFromText, replaceAllDataInTransaction } from "./backup";
+
+vi.mock("file-saver", () => ({
+  saveAs: vi.fn()
+}));
 
 function validProduct(overrides: Record<string, unknown> = {}) {
   return {
@@ -52,13 +57,105 @@ function validPayload(overrides: Record<string, unknown> = {}) {
 }
 
 describe("backup utilities", () => {
+  test("exports images in version 2 JSON backup", async () => {
+    const saveAsModule = await import("file-saver");
+    const saveAsMock = vi.mocked(saveAsModule.saveAs);
+    const tableSpies = [
+      vi.spyOn(db.products, "toArray").mockResolvedValue([]),
+      vi.spyOn(db.settings, "toArray").mockResolvedValue([]),
+      vi.spyOn(db.orders, "toArray").mockResolvedValue([]),
+      vi.spyOn(db.orderItems, "toArray").mockResolvedValue([]),
+      vi.spyOn(db.inventoryLogs, "toArray").mockResolvedValue([]),
+      vi.spyOn(db.images, "toArray").mockResolvedValue([
+        {
+          id: "image-1",
+          blob: new Blob(["image-bytes"], { type: "image/png" }),
+          mimeType: "image/png",
+          originalName: "product.png",
+          createdAt: "2026-06-15T00:00:00.000Z"
+        }
+      ])
+    ];
+
+    await exportJsonBackup();
+
+    expect(saveAsMock).toHaveBeenCalledOnce();
+    const blob = saveAsMock.mock.calls[0][0] as Blob;
+    const payload = JSON.parse(await blob.text());
+
+    expect(payload.version).toBe(2);
+    expect(payload.note).toBe("图片已包含在 JSON 备份中");
+    expect(payload.data.images).toEqual([
+      expect.objectContaining({
+        id: "image-1",
+        mimeType: "image/png",
+        originalName: "product.png",
+        dataBase64: "aW1hZ2UtYnl0ZXM="
+      })
+    ]);
+
+    for (const spy of tableSpies) {
+      spy.mockRestore();
+    }
+  });
+
+  test("imports version 2 images into the image table", async () => {
+    const imageBulkPut = vi.spyOn(db.images, "bulkPut").mockResolvedValue(["image-1"] as never);
+
+    await replaceAllDataInTransaction({
+      products: [],
+      settings: [
+        {
+          id: "settings",
+          shopName: "ECRM 摊位",
+          orderPrefix: "ECRM",
+          promotion: {
+            enabled: false,
+            addonDiscount: {
+              enabled: false,
+              discountSpu: "",
+              discountPrice: 3,
+              maxDiscountQty: 3
+            },
+            giftTiers: []
+          }
+        }
+      ],
+      orders: [],
+      orderItems: [],
+      inventoryLogs: [],
+      images: [
+        {
+          id: "image-1",
+          mimeType: "image/png",
+          originalName: "product.png",
+          createdAt: "2026-06-15T00:00:00.000Z",
+          dataBase64: "aW1hZ2UtYnl0ZXM="
+        }
+      ]
+    });
+
+    const storedImage = imageBulkPut.mock.calls[0][0][0];
+
+    expect(storedImage).toEqual(
+      expect.objectContaining({
+        id: "image-1",
+        mimeType: "image/png",
+        originalName: "product.png"
+      })
+    );
+    await expect(storedImage.blob.text()).resolves.toBe("image-bytes");
+
+    imageBulkPut.mockRestore();
+  });
+
   test("rejects unsupported backup versions before clearing existing data", async () => {
     const importData = vi.fn();
 
     await expect(
       importJsonBackupFromText(
         JSON.stringify({
-          version: 2,
+          version: 3,
           exportedAt: "2026-06-15T00:00:00.000Z",
           note: "图片暂不包含在 JSON 备份中",
           data: {
@@ -334,7 +431,8 @@ describe("backup utilities", () => {
         ],
         orders: [],
         orderItems: [],
-        inventoryLogs: []
+        inventoryLogs: [],
+        images: []
       })
     ).rejects.toThrow("transaction failed");
 

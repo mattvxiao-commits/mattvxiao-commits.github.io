@@ -307,13 +307,18 @@ export default function SettingsPage() {
     setStatus(undefined);
 
     try {
-      await importJsonBackup(file);
+      const importResult = await importJsonBackup(file);
       const [nextSettings, nextProducts] = await Promise.all([getSettings(), listProducts()]);
       setSettings(nextSettings);
       setProducts(nextProducts);
       setGiftA(selectedGiftTargets(nextSettings).giftA);
       setGiftB(selectedGiftTargets(nextSettings).giftB);
-      setStatus({ kind: "success", text: "备份已导入，当前数据已替换。" });
+      setStatus({
+        kind: "success",
+        text: importResult.includedImages
+          ? `备份已导入，当前数据已替换。已恢复 ${importResult.imageCount} 张图片。`
+          : "备份已导入，当前数据已替换。旧版备份不包含图片，商品图需要重新上传。"
+      });
     } catch (error) {
       setStatus({
         kind: "error",
