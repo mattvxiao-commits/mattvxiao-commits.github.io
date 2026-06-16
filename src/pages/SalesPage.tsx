@@ -1,4 +1,14 @@
-import { ChevronDown, ChevronUp, Plus, ReceiptText, RefreshCw, Search, ShoppingBasket } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  LayoutGrid,
+  List,
+  Plus,
+  ReceiptText,
+  RefreshCw,
+  Search,
+  ShoppingBasket
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import CartPanel from "../components/CartPanel";
 import CheckoutPanel from "../components/CheckoutPanel";
@@ -11,6 +21,7 @@ import { useCartStore } from "../state/cartStore";
 import { getImageUrl } from "../utils/image";
 
 type SalesMode = "cart" | "checkout";
+type SalesViewMode = "list" | "grid";
 type StatusMessage = {
   kind: "success" | "error";
   text: string;
@@ -77,6 +88,8 @@ export default function SalesPage() {
   const [selectedSpu, setSelectedSpu] = useState("全部");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("wechat");
   const [mode, setMode] = useState<SalesMode>("cart");
+  const [salesViewMode, setSalesViewMode] = useState<SalesViewMode>("list");
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isOrderHistoryOpen, setIsOrderHistoryOpen] = useState(false);
   const [qrImageUrls, setQrImageUrls] = useState<{ wechat?: string; alipay?: string }>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -213,6 +226,7 @@ export default function SalesPage() {
       await savePaidOrder(paidOrder);
       clearCart();
       setMode("cart");
+      setIsCartOpen(true);
       setStatus({ kind: "success", text: `订单 ${paidOrder.order.orderNo} 已保存，库存已扣减。` });
       await refreshSalesData({ preserveStatus: true });
     } catch (error) {
@@ -244,20 +258,42 @@ export default function SalesPage() {
         </p>
       ) : null}
 
-      <div className="salesLayout">
+      <div className={mode === "checkout" ? "salesLayout hasCheckout" : "salesLayout"}>
         <div className="salesProductsArea">
-          <div className="spuFilter" aria-label="按 SPU 筛选商品">
-            {spuList.map((spu) => (
+          <div className="salesControls">
+            <div className="spuFilter" aria-label="按 SPU 筛选商品">
+              {spuList.map((spu) => (
+                <button
+                  type="button"
+                  aria-pressed={selectedSpu === spu}
+                  className={selectedSpu === spu ? "isSelected" : ""}
+                  key={spu}
+                  onClick={() => setSelectedSpu(spu)}
+                >
+                  {spu}
+                </button>
+              ))}
+            </div>
+            <div className="viewSwitch" aria-label="切换商品展示方式">
               <button
                 type="button"
-                aria-pressed={selectedSpu === spu}
-                className={selectedSpu === spu ? "isSelected" : ""}
-                key={spu}
-                onClick={() => setSelectedSpu(spu)}
+                aria-pressed={salesViewMode === "list"}
+                className={salesViewMode === "list" ? "isSelected" : ""}
+                onClick={() => setSalesViewMode("list")}
               >
-                {spu}
+                <List size={16} aria-hidden="true" />
+                紧凑列表
               </button>
-            ))}
+              <button
+                type="button"
+                aria-pressed={salesViewMode === "grid"}
+                className={salesViewMode === "grid" ? "isSelected" : ""}
+                onClick={() => setSalesViewMode("grid")}
+              >
+                <LayoutGrid size={16} aria-hidden="true" />
+                图片网格
+              </button>
+            </div>
           </div>
 
           {isLoading ? <p className="emptyState">正在加载售卖商品...</p> : null}
@@ -268,39 +304,77 @@ export default function SalesPage() {
             </div>
           ) : null}
 
-          <div className="salesProductGrid" aria-live="polite">
-            {visibleProducts.map((product) => {
-              const quantityInCart = cartQuantityByProduct.get(product.id) ?? 0;
-              const remainingStock = product.stockQty - quantityInCart;
-              const hasReachedStock = remainingStock <= 0;
+          {salesViewMode === "list" ? (
+            <div className="salesProductList" role="list" aria-label="售卖商品紧凑列表" aria-live="polite">
+              {visibleProducts.map((product) => {
+                const quantityInCart = cartQuantityByProduct.get(product.id) ?? 0;
+                const remainingStock = product.stockQty - quantityInCart;
+                const hasReachedStock = remainingStock <= 0;
 
-              return (
-                <article className="salesProductCard" key={product.id}>
-                  <SalesProductImage product={product} />
-                  <div className="salesProductBody">
-                    <div>
-                      <h2>{product.name}</h2>
-                      <p>{product.spu}</p>
+                return (
+                  <article className="salesProductRow" role="listitem" key={product.id}>
+                    <SalesProductImage product={product} />
+                    <div className="salesProductRowMain">
+                      <div>
+                        <h2>{product.name}</h2>
+                        <p>{product.spu}</p>
+                      </div>
+                      <div className="salesProductRowMeta">
+                        <span>{formatMoney(product.salePrice)}</span>
+                        <span>库存 {product.stockQty}</span>
+                        {quantityInCart > 0 ? <span>已加 {quantityInCart}</span> : null}
+                        {hasReachedStock ? <span>已达库存</span> : null}
+                      </div>
                     </div>
-                    <div className="salesProductFacts">
-                      <span>{formatMoney(product.salePrice)}</span>
-                      <span>库存 {product.stockQty}</span>
-                      {hasReachedStock ? <span>已达库存</span> : null}
+                    <button
+                      type="button"
+                      className="addSaleButton"
+                      aria-label={`加入 ${product.name}`}
+                      disabled={hasReachedStock}
+                      onClick={() => addProduct(product.id)}
+                    >
+                      <Plus size={21} aria-hidden="true" />
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="salesProductGrid" role="list" aria-label="售卖商品图片网格" aria-live="polite">
+              {visibleProducts.map((product) => {
+                const quantityInCart = cartQuantityByProduct.get(product.id) ?? 0;
+                const remainingStock = product.stockQty - quantityInCart;
+                const hasReachedStock = remainingStock <= 0;
+
+                return (
+                  <article className="salesProductCard" role="listitem" key={product.id}>
+                    <SalesProductImage product={product} />
+                    <div className="salesProductBody">
+                      <div>
+                        <h2>{product.name}</h2>
+                        <p>{product.spu}</p>
+                      </div>
+                      <div className="salesProductFacts">
+                        <span>{formatMoney(product.salePrice)}</span>
+                        <span>库存 {product.stockQty}</span>
+                        {quantityInCart > 0 ? <span>已加 {quantityInCart}</span> : null}
+                        {hasReachedStock ? <span>已达库存</span> : null}
+                      </div>
                     </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="addSaleButton"
-                    aria-label={`加入 ${product.name}`}
-                    disabled={hasReachedStock}
-                    onClick={() => addProduct(product.id)}
-                  >
-                    <Plus size={21} aria-hidden="true" />
-                  </button>
-                </article>
-              );
-            })}
-          </div>
+                    <button
+                      type="button"
+                      className="addSaleButton"
+                      aria-label={`加入 ${product.name}`}
+                      disabled={hasReachedStock}
+                      onClick={() => addProduct(product.id)}
+                    >
+                      <Plus size={21} aria-hidden="true" />
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {mode === "checkout" && settings ? (
@@ -311,9 +385,17 @@ export default function SalesPage() {
             paymentMethod={paymentMethod}
             setPaymentMethod={setPaymentMethod}
             confirmPaid={handleConfirmPaid}
-            back={() => setMode("cart")}
+            back={() => {
+              setMode("cart");
+              setIsCartOpen(true);
+            }}
           />
-        ) : (
+        ) : null}
+      </div>
+
+      {mode !== "checkout" && isCartOpen ? (
+        <div className="cartDrawerLayer">
+          <button type="button" className="cartBackdrop" aria-label="关闭购物车遮罩" onClick={() => setIsCartOpen(false)} />
           <CartPanel
             products={products}
             calculated={calculated}
@@ -321,17 +403,27 @@ export default function SalesPage() {
             increment={increment}
             decrement={decrement}
             clear={clearCart}
-            checkout={() => setMode("checkout")}
-            hold={() => setStatus({ kind: "success", text: "购物车已暂存，可继续选择商品。" })}
+            checkout={() => {
+              setMode("checkout");
+              setIsCartOpen(false);
+            }}
+            hold={() => {
+              setStatus({ kind: "success", text: "购物车已暂存，可继续选择商品。" });
+              setIsCartOpen(false);
+            }}
+            close={() => setIsCartOpen(false)}
           />
-        )}
-      </div>
+        </div>
+      ) : null}
 
       <button
         type="button"
         className="salesDock"
         aria-label={`打开购物车，当前 ${cartItems.reduce((sum, item) => sum + item.quantity, 0)} 件，应收 ${formatMoney(calculated.payableAmount)}`}
-        onClick={() => setMode("cart")}
+        onClick={() => {
+          setMode("cart");
+          setIsCartOpen(true);
+        }}
       >
         <ShoppingBasket size={18} aria-hidden="true" />
         {cartItems.reduce((sum, item) => sum + item.quantity, 0)} 件 / {formatMoney(calculated.payableAmount)}

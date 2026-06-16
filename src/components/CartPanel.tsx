@@ -1,4 +1,4 @@
-import { Minus, PauseCircle, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Minus, PauseCircle, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import type { CalculatedCart, CartItem, Product } from "../domain/types";
 
 type CartPanelProps = {
@@ -10,6 +10,7 @@ type CartPanelProps = {
   clear: () => void;
   checkout: () => void;
   hold: () => void;
+  close?: () => void;
 };
 
 const lineTypeLabels = {
@@ -30,7 +31,8 @@ export default function CartPanel({
   decrement,
   clear,
   checkout,
-  hold
+  hold,
+  close
 }: CartPanelProps) {
   const productById = new Map(products.map((product) => [product.id, product]));
   const cartQuantityByProduct = new Map(cartItems.map((item) => [item.productId, item.quantity]));
@@ -45,7 +47,14 @@ export default function CartPanel({
           <p className="eyebrow">Cart</p>
           <h2 id="cart-title">购物车</h2>
         </div>
-        <span className="cartCount">{itemCount} 件</span>
+        <div className="panelHeadingActions">
+          <span className="cartCount">{itemCount} 件</span>
+          {close ? (
+            <button type="button" className="iconButton" aria-label="关闭购物车" onClick={close}>
+              <X size={18} aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {calculated.lines.length > 0 ? (

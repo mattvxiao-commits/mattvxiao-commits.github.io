@@ -63,6 +63,7 @@ test("floating cart button returns from checkout to the cart panel without clear
   render(<SalesPage />);
 
   fireEvent.click(await screen.findByRole("button", { name: "加入 普通商品" }));
+  fireEvent.click(screen.getByRole("button", { name: "打开购物车，当前 1 件，应收 ¥20.00" }));
   fireEvent.click(screen.getByRole("button", { name: "去收款" }));
 
   expect(await screen.findByRole("heading", { level: 2, name: "收款确认" })).toBeVisible();
@@ -73,6 +74,54 @@ test("floating cart button returns from checkout to the cart panel without clear
 
   expect(within(cartPanel).getByRole("heading", { level: 2, name: "购物车" })).toBeVisible();
   expect(within(cartPanel).getByRole("heading", { level: 3, name: "普通商品" })).toBeVisible();
+});
+
+test("shows compact sales list by default and can switch to image grid", async () => {
+  render(<SalesPage />);
+
+  const list = await screen.findByRole("list", { name: "售卖商品紧凑列表" });
+  expect(within(list).getByRole("heading", { level: 2, name: "普通商品" })).toBeVisible();
+  expect(screen.queryByRole("list", { name: "售卖商品图片网格" })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "图片网格" }));
+
+  const grid = await screen.findByRole("list", { name: "售卖商品图片网格" });
+  expect(within(grid).getByRole("heading", { level: 2, name: "普通商品" })).toBeVisible();
+  expect(screen.queryByRole("list", { name: "售卖商品紧凑列表" })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "紧凑列表" }));
+
+  expect(await screen.findByRole("list", { name: "售卖商品紧凑列表" })).toBeVisible();
+});
+
+test("opens and closes the cart drawer from the floating cart button", async () => {
+  render(<SalesPage />);
+
+  expect(screen.queryByRole("complementary", { name: "购物车" })).not.toBeInTheDocument();
+
+  fireEvent.click(await screen.findByRole("button", { name: "加入 普通商品" }));
+  fireEvent.click(screen.getByRole("button", { name: "打开购物车，当前 1 件，应收 ¥20.00" }));
+
+  const cartPanel = await screen.findByRole("complementary", { name: "购物车" });
+  expect(within(cartPanel).getByRole("heading", { level: 2, name: "购物车" })).toBeVisible();
+
+  fireEvent.click(within(cartPanel).getByRole("button", { name: "关闭购物车" }));
+
+  expect(screen.queryByRole("complementary", { name: "购物车" })).not.toBeInTheDocument();
+});
+
+test("holding the cart closes the cart drawer and keeps cart items", async () => {
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "加入 普通商品" }));
+  fireEvent.click(screen.getByRole("button", { name: "打开购物车，当前 1 件，应收 ¥20.00" }));
+
+  const cartPanel = await screen.findByRole("complementary", { name: "购物车" });
+  fireEvent.click(within(cartPanel).getByRole("button", { name: "暂存购物车" }));
+
+  expect(screen.queryByRole("complementary", { name: "购物车" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "打开购物车，当前 1 件，应收 ¥20.00" })).toBeVisible();
+  expect(await screen.findByText("购物车已暂存，可继续选择商品。")).toBeVisible();
 });
 
 test("does not let product quantity exceed available stock before checkout", async () => {
@@ -115,6 +164,7 @@ test("saves paid order, clears cart, refreshes products, and includes gift inven
   render(<SalesPage />);
 
   fireEvent.click(await screen.findByRole("button", { name: "加入 普通商品" }));
+  fireEvent.click(screen.getByRole("button", { name: "打开购物车，当前 1 件，应收 ¥20.00" }));
   fireEvent.click(screen.getByRole("button", { name: "去收款" }));
   fireEvent.click(await screen.findByRole("button", { name: "确认已收款并保存订单" }));
 
@@ -128,6 +178,7 @@ test("saves paid order, clears cart, refreshes products, and includes gift inven
     ])
   );
   expect(await screen.findByText(/订单 .* 已保存，库存已扣减。/)).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "打开购物车，当前 0 件，应收 ¥0.00" }));
   expect(await screen.findByText("还没有选择商品。")).toBeVisible();
   expect(repositories.listProducts.mock.calls.length).toBeGreaterThanOrEqual(2);
   expect(repositories.listOrders.mock.calls.length).toBeGreaterThanOrEqual(2);
@@ -143,6 +194,7 @@ test("keeps cart items when paid order save fails", async () => {
   render(<SalesPage />);
 
   fireEvent.click(await screen.findByRole("button", { name: "加入 普通商品" }));
+  fireEvent.click(screen.getByRole("button", { name: "打开购物车，当前 1 件，应收 ¥20.00" }));
   fireEvent.click(screen.getByRole("button", { name: "去收款" }));
   fireEvent.click(await screen.findByRole("button", { name: "确认已收款并保存订单" }));
 

@@ -807,19 +807,32 @@ p {
 
 .salesLayout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
   margin-top: 18px;
+}
+
+.salesLayout.hasCheckout {
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
 }
 
 .salesProductsArea {
   min-width: 0;
 }
 
+.salesControls {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
 .spuFilter {
   display: flex;
   gap: 8px;
+  flex: 1 1 auto;
   overflow-x: auto;
   padding-bottom: 8px;
   scrollbar-width: none;
@@ -830,6 +843,7 @@ p {
 }
 
 .spuFilter button,
+.viewSwitch button,
 .paymentMethods button {
   display: inline-flex;
   gap: 7px;
@@ -844,11 +858,96 @@ p {
   padding: 0 14px;
 }
 
+.viewSwitch {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.viewSwitch button {
+  min-height: 36px;
+  padding: 0 10px;
+  border-color: transparent;
+}
+
 .spuFilter button.isSelected,
+.viewSwitch button.isSelected,
 .paymentMethods button.isSelected {
   border-color: rgba(47, 111, 94, 0.55);
   background: var(--accent-soft);
   color: var(--accent-strong);
+}
+
+.salesProductList {
+  display: grid;
+  gap: 8px;
+}
+
+.salesProductRow {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 48px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid rgba(222, 214, 201, 0.94);
+  border-radius: 8px;
+  background: rgba(255, 253, 250, 0.92);
+}
+
+.salesProductRow .salesProductImage {
+  width: 64px;
+  height: 64px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.salesProductRow .salesProductImage span {
+  font-size: 24px;
+}
+
+.salesProductRowMain {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.salesProductRowMain h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.salesProductRowMain p {
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.salesProductRowMeta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.salesProductRowMeta span {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 850;
 }
 
 .salesProductGrid {
@@ -945,6 +1044,13 @@ p {
   border-color: #153f36;
   background: #173f36;
   color: #fffdfa;
+}
+
+.salesProductRow .addSaleButton {
+  position: static;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
 }
 
 .orderHistorySection {
@@ -1060,11 +1166,47 @@ p {
   box-shadow: 0 18px 38px rgba(36, 31, 26, 0.08);
 }
 
+.cartDrawerLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  justify-content: end;
+  padding: 14px;
+  pointer-events: none;
+}
+
+.cartDrawerLayer .cartPanel {
+  position: relative;
+  top: auto;
+  z-index: 1;
+  width: min(420px, calc(100vw - 28px));
+  max-height: calc(100vh - 28px);
+  overflow: auto;
+  pointer-events: auto;
+}
+
+.cartBackdrop {
+  position: fixed;
+  inset: 0;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(36, 31, 26, 0.24);
+  pointer-events: auto;
+}
+
 .panelHeading {
   display: flex;
   gap: 12px;
   align-items: center;
   justify-content: space-between;
+}
+
+.panelHeadingActions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .panelHeading h2 {
@@ -1342,7 +1484,7 @@ p {
   right: 18px;
   bottom: max(18px, env(safe-area-inset-bottom));
   z-index: 8;
-  display: none;
+  display: inline-flex;
   width: auto;
   gap: 8px;
   align-items: center;
