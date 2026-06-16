@@ -104,6 +104,12 @@ function assertEnum(record: Record<string, unknown>, key: string, allowed: Set<s
   }
 }
 
+function assertOptionalString(record: Record<string, unknown>, key: string): void {
+  if (record[key] !== undefined && !isString(record[key])) {
+    throw new Error("备份文件格式不正确。");
+  }
+}
+
 function validatePromotion(value: unknown): void {
   assertRecord(value, "备份文件格式不正确。");
   assertBoolean(value, "enabled");
@@ -127,7 +133,15 @@ function validatePromotion(value: unknown): void {
 
     for (const gift of tier.gifts) {
       assertRecord(gift, "备份文件格式不正确。");
-      assertNonEmptyString(gift, "productId");
+      const targetType = gift.targetType;
+
+      if (targetType === undefined || targetType === "sku") {
+        assertNonEmptyString(gift, "productId");
+      } else if (targetType === "spu") {
+        assertNonEmptyString(gift, "spu");
+      } else {
+        throw new Error("备份文件格式不正确。");
+      }
 
       if (!isPositiveInteger(gift.quantity)) {
         throw new Error("备份文件格式不正确。");
@@ -152,11 +166,16 @@ function validateSettings(settings: unknown[]): asserts settings is AppSettings[
 }
 
 function validateProducts(products: unknown[]): asserts products is Product[] {
+  const productCodes = new Set<string>();
+
   for (const product of products) {
     assertRecord(product, "备份文件格式不正确。");
     assertString(product, "id");
     assertString(product, "name");
     assertString(product, "spu");
+    assertOptionalString(product, "spuCode");
+    assertOptionalString(product, "skuCode");
+    assertOptionalString(product, "productCode");
     assertString(product, "createdAt");
     assertString(product, "updatedAt");
     assertNonNegativeNumber(product, "costPrice");
@@ -170,6 +189,15 @@ function validateProducts(products: unknown[]): asserts products is Product[] {
     assertBoolean(product, "isSellable");
     assertBoolean(product, "isGiftEligible");
     assertEnum(product, "status", PRODUCT_STATUSES);
+
+    if (isNonEmptyString(product.productCode)) {
+      const normalizedProductCode = product.productCode.trim();
+      if (productCodes.has(normalizedProductCode)) {
+        throw new Error("完整商品编码重复。");
+      }
+
+      productCodes.add(normalizedProductCode);
+    }
   }
 }
 

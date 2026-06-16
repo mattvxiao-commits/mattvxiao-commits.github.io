@@ -2,6 +2,23 @@ import { describe, expect, test, vi } from "vitest";
 import { db } from "../db/db";
 import { importJsonBackupFromText, replaceAllDataInTransaction } from "./backup";
 
+function validProduct(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "product-1",
+    name: "口红",
+    spu: "SPU-1",
+    costPrice: 1,
+    salePrice: 2,
+    stockQty: 1,
+    isSellable: true,
+    isGiftEligible: true,
+    status: "active",
+    createdAt: "2026-06-15T00:00:00.000Z",
+    updatedAt: "2026-06-15T00:00:00.000Z",
+    ...overrides
+  };
+}
+
 function validPayload(overrides: Record<string, unknown> = {}) {
   return {
     version: 1,
@@ -98,6 +115,98 @@ describe("backup utilities", () => {
     ).rejects.toThrow("备份文件格式不正确");
 
     expect(importData).not.toHaveBeenCalled();
+  });
+
+  test("imports old products without code fields", async () => {
+    const importData = vi.fn();
+
+    await importJsonBackupFromText(
+      JSON.stringify(validPayload({ products: [validProduct()] })),
+      { importData }
+    );
+
+    expect(importData).toHaveBeenCalledOnce();
+  });
+
+  test("imports products with code fields", async () => {
+    const importData = vi.fn();
+
+    await importJsonBackupFromText(
+      JSON.stringify(
+        validPayload({
+          products: [
+            validProduct({
+              spuCode: "CLTH-24001",
+              skuCode: "BLK-M",
+              productCode: "CLTH-24001-BLK-M"
+            })
+          ]
+        })
+      ),
+      { importData }
+    );
+
+    expect(importData).toHaveBeenCalledOnce();
+  });
+
+  test("rejects duplicate non-empty product codes before replacing data", async () => {
+    const importData = vi.fn();
+
+    await expect(
+      importJsonBackupFromText(
+        JSON.stringify(
+          validPayload({
+            products: [
+              validProduct({ id: "product-1", productCode: "DUP-CODE" }),
+              validProduct({ id: "product-2", productCode: "DUP-CODE" })
+            ]
+          })
+        ),
+        { importData }
+      )
+    ).rejects.toThrow("完整商品编码重复");
+
+    expect(importData).not.toHaveBeenCalled();
+  });
+
+  test("imports old and new gift config shapes", async () => {
+    const importData = vi.fn();
+
+    await importJsonBackupFromText(
+      JSON.stringify(
+        validPayload({
+          settings: [
+            {
+              id: "settings",
+              shopName: "ECRM 摊位",
+              orderPrefix: "ECRM",
+              promotion: {
+                enabled: true,
+                addonDiscount: {
+                  enabled: false,
+                  discountSpu: "",
+                  discountPrice: 3,
+                  maxDiscountQty: 3
+                },
+                giftTiers: [
+                  {
+                    threshold: 35,
+                    gifts: [
+                      { productId: "gift-old", quantity: 1 },
+                      { targetType: "sku", productId: "gift-sku", quantity: 1 },
+                      { targetType: "spu", spu: "赠品SPU", quantity: 2 }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        })
+      ),
+      { importData }
+    );
+
+    expect(importData).toHaveBeenCalledOnce();
   });
 
   test.each([0, 1.5])(
