@@ -10,8 +10,8 @@ export function buildProductCode(spuCode: string, skuCode: string): string {
   const normalizedSpu = normalizeCodePart(spuCode);
   const normalizedSku = normalizeCodePart(skuCode);
 
-  if (!normalizedSku) {
-    return normalizedSpu;
+  if (!normalizedSpu || !normalizedSku) {
+    return "";
   }
 
   return `${normalizedSpu}-${normalizedSku}`;

@@ -6,8 +6,9 @@ describe("product code helpers", () => {
     expect(buildProductCode(" CLTH-24001 ", " BLK-M ")).toBe("CLTH-24001-BLK-M");
   });
 
-  test("uses SPU code as preview when SKU code is empty", () => {
-    expect(buildProductCode("CLTH-24001", "")).toBe("CLTH-24001");
+  test("returns empty preview until both SPU code and SKU code are present", () => {
+    expect(buildProductCode("CLTH-24001", "")).toBe("");
+    expect(buildProductCode("", "BLK-M")).toBe("");
   });
 
   test("rejects SKU code that repeats SPU code prefix", () => {

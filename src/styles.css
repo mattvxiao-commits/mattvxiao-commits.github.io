@@ -405,6 +405,49 @@ p {
   margin-bottom: 16px;
 }
 
+.productDialog {
+  width: min(920px, 100%);
+  max-height: min(88vh, 760px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgba(47, 111, 94, 0.24);
+  border-radius: 8px;
+  background: #fffdfa;
+  box-shadow: 0 24px 64px rgba(36, 31, 26, 0.2);
+}
+
+.dialogHeader {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 253, 250, 0.96);
+}
+
+.dialogHeader h2 {
+  margin: 2px 0 0;
+  color: var(--ink);
+  font-size: 24px;
+  line-height: 1.12;
+}
+
+.dialogHeader p:last-child {
+  margin-top: 4px;
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.productDialogBody {
+  min-height: 0;
+  overflow: auto;
+  padding: 18px;
+}
+
 .productForm {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 184px;

@@ -1,4 +1,4 @@
-import { Edit3, PackagePlus, Power, X } from "lucide-react";
+import { Copy, Edit3, PackagePlus, Power, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import ProductForm, { type ProductFormValues } from "../components/ProductForm";
 import { listProducts, makeId, upsertProduct } from "../db/repositories";
@@ -7,6 +7,7 @@ import type { Product } from "../domain/types";
 import { getImageUrl } from "../utils/image";
 
 type SortKey = "createdAt" | "name" | "spu" | "salePrice";
+type ProductFormMode = "create" | "edit" | "copy";
 
 const sortLabels: Record<SortKey, string> = {
   createdAt: "创建时间",
@@ -50,7 +51,7 @@ function ProductImage({ imageId, name }: { imageId?: string; name: string }) {
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<ProductFormMode>();
   const [editingProduct, setEditingProduct] = useState<Product>();
   const [isLoading, setIsLoading] = useState(true);
   const [deactivatingProductId, setDeactivatingProductId] = useState<string>();
@@ -94,15 +95,32 @@ export default function ProductsPage() {
   const activeCount = products.filter((product) => product.status === "active").length;
   const sellableCount = products.filter((product) => product.isSellable && product.status === "active").length;
   const totalStock = products.reduce((sum, product) => sum + product.stockQty, 0);
+  const isFormOpen = formMode !== undefined;
+  const formTitle = formMode === "edit" ? "编辑商品" : formMode === "copy" ? "复制创建商品" : "新增商品";
 
   function openCreateForm() {
     setEditingProduct(undefined);
-    setIsFormOpen(true);
+    setFormMode("create");
   }
 
   function openEditForm(product: Product) {
     setEditingProduct(product);
-    setIsFormOpen(true);
+    setFormMode("edit");
+  }
+
+  function openCopyForm(product: Product) {
+    setEditingProduct({
+      ...product,
+      skuCode: "",
+      productCode: "",
+      stockQty: 0
+    });
+    setFormMode("copy");
+  }
+
+  function closeForm() {
+    setFormMode(undefined);
+    setEditingProduct(undefined);
   }
 
   async function handleSave(values: ProductFormValues) {
@@ -110,7 +128,7 @@ export default function ProductsPage() {
 
     const normalizedProductCode = values.productCode.trim();
     const hasDuplicateProductCode = normalizedProductCode.length > 0 && products.some((product) => {
-      if (editingProduct && product.id === editingProduct.id) {
+      if (formMode === "edit" && editingProduct && product.id === editingProduct.id) {
         return false;
       }
 
@@ -123,7 +141,7 @@ export default function ProductsPage() {
     }
 
     const now = new Date().toISOString();
-    const product: Product = editingProduct
+    const product: Product = formMode === "edit" && editingProduct
       ? {
           ...editingProduct,
           ...values,
@@ -137,8 +155,7 @@ export default function ProductsPage() {
         };
 
     await upsertProduct(product);
-    setIsFormOpen(false);
-    setEditingProduct(undefined);
+    closeForm();
     await refreshProducts();
   }
 
@@ -213,33 +230,37 @@ export default function ProductsPage() {
       </div>
 
       {isFormOpen ? (
-        <div className="formPanel">
-          <div className="formPanelHeader">
-            <div>
-              <p className="panelLabel">{editingProduct ? "编辑商品" : "新增商品"}</p>
-              <p className="panelText">维护现场售卖和赠品发放需要的基础信息。</p>
+        <div className="modalBackdrop" role="presentation">
+          <section
+            className="productDialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="product-dialog-title"
+          >
+            <div className="dialogHeader">
+              <div>
+                <p className="eyebrow">Product</p>
+                <h2 id="product-dialog-title">{formTitle}</h2>
+                <p>维护现场售卖和赠品发放需要的基础信息。</p>
+              </div>
+              <button
+                type="button"
+                className="iconButton"
+                aria-label="关闭商品弹窗"
+                onClick={closeForm}
+              >
+                <X size={20} aria-hidden="true" />
+              </button>
             </div>
-            <button
-              type="button"
-              className="iconButton"
-              aria-label="关闭表单"
-              onClick={() => {
-                setIsFormOpen(false);
-                setEditingProduct(undefined);
-              }}
-            >
-              <X size={20} aria-hidden="true" />
-            </button>
-          </div>
-          <ProductForm
-            mode={editingProduct ? "edit" : "create"}
-            initialProduct={editingProduct}
-            onCancel={() => {
-              setIsFormOpen(false);
-              setEditingProduct(undefined);
-            }}
-            onSave={handleSave}
-          />
+            <div className="productDialogBody">
+              <ProductForm
+                mode={formMode === "edit" ? "edit" : "create"}
+                initialProduct={editingProduct}
+                onCancel={closeForm}
+                onSave={handleSave}
+              />
+            </div>
+          </section>
         </div>
       ) : null}
 
@@ -271,9 +292,23 @@ export default function ProductsPage() {
               </div>
             </div>
             <div className="cardActions">
-              <button type="button" className="secondaryButton" onClick={() => openEditForm(product)}>
+              <button
+                type="button"
+                className="secondaryButton"
+                aria-label={`编辑 ${product.name}`}
+                onClick={() => openEditForm(product)}
+              >
                 <Edit3 size={17} aria-hidden="true" />
                 编辑
+              </button>
+              <button
+                type="button"
+                className="secondaryButton"
+                aria-label={`复制 ${product.name}`}
+                onClick={() => openCopyForm(product)}
+              >
+                <Copy size={17} aria-hidden="true" />
+                复制
               </button>
               <button
                 type="button"

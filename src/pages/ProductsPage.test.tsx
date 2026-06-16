@@ -56,3 +56,33 @@ test("rejects saving a product when the generated product code already exists", 
   expect(await screen.findByText("完整商品编码已存在，请调整 SPU 编码或 SKU 编码。")).toBeVisible();
   await waitFor(() => expect(repositories.upsertProduct).not.toHaveBeenCalled());
 });
+
+test("opens create and edit product forms in dialogs", async () => {
+  render(<ProductsPage />);
+
+  expect(await screen.findByText("编码 CLTH-24001-BLK-M")).toBeVisible();
+
+  fireEvent.click(screen.getByRole("button", { name: "新增商品" }));
+  expect(screen.getByRole("dialog", { name: "新增商品" })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "关闭商品弹窗" }));
+
+  fireEvent.click(screen.getByRole("button", { name: "编辑 已有商品" }));
+  expect(screen.getByRole("dialog", { name: "编辑商品" })).toBeVisible();
+  expect(screen.getByLabelText("商品名称")).toHaveValue("已有商品");
+});
+
+test("copies an existing product into a new dialog draft with blank SKU and zero stock", async () => {
+  render(<ProductsPage />);
+
+  expect(await screen.findByText("编码 CLTH-24001-BLK-M")).toBeVisible();
+
+  fireEvent.click(screen.getByRole("button", { name: "复制 已有商品" }));
+
+  expect(screen.getByRole("dialog", { name: "复制创建商品" })).toBeVisible();
+  expect(screen.getByLabelText("商品名称")).toHaveValue("已有商品");
+  expect(screen.getByLabelText("SPU")).toHaveValue("服装");
+  expect(screen.getByLabelText("SPU 编码")).toHaveValue("CLTH-24001");
+  expect(screen.getByLabelText("SKU 编码")).toHaveValue("");
+  expect(screen.getByLabelText("库存")).toHaveValue(0);
+  expect(screen.getByLabelText("完整商品编码")).toHaveValue("未设置编码");
+});
