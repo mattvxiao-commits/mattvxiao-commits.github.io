@@ -1,12 +1,16 @@
 import { ImagePlus } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { saveImage } from "../db/repositories";
+import { buildProductCode, displayProductCode, validateProductCodeParts } from "../domain/productCode";
 import type { Product, ProductStatus } from "../domain/types";
 import { getImageUrl } from "../utils/image";
 
 export type ProductFormValues = {
   name: string;
   spu: string;
+  spuCode: string;
+  skuCode: string;
+  productCode: string;
   imageId?: string;
   costPrice: number;
   salePrice: number;
@@ -26,6 +30,8 @@ type ProductFormProps = {
 type Draft = {
   name: string;
   spu: string;
+  spuCode: string;
+  skuCode: string;
   imageId?: string;
   costPrice: string;
   salePrice: string;
@@ -39,6 +45,8 @@ function productToDraft(product?: Product): Draft {
   return {
     name: product?.name ?? "",
     spu: product?.spu ?? "",
+    spuCode: product?.spuCode ?? "",
+    skuCode: product?.skuCode ?? "",
     imageId: product?.imageId,
     costPrice: product ? String(product.costPrice) : "0",
     salePrice: product ? String(product.salePrice) : "0",
@@ -80,6 +88,10 @@ export default function ProductForm({
   const [imageError, setImageError] = useState<string>();
   const [saveError, setSaveError] = useState<string>();
 
+  const productCodePreview = useMemo(() => {
+    return buildProductCode(draft.spuCode, draft.skuCode);
+  }, [draft.spuCode, draft.skuCode]);
+
   useEffect(() => {
     setDraft(productToDraft(initialProduct));
   }, [initialProduct]);
@@ -108,6 +120,8 @@ export default function ProductForm({
     return (
       draft.name.trim().length > 0 &&
       draft.spu.trim().length > 0 &&
+      draft.spuCode.trim().length > 0 &&
+      draft.skuCode.trim().length > 0 &&
       isNonNegativeNumber(draft.costPrice) &&
       isNonNegativeNumber(draft.salePrice) &&
       isNonNegativeInteger(draft.stockQty)
@@ -141,6 +155,12 @@ export default function ProductForm({
 
     setSaveError(undefined);
 
+    const codeValidation = validateProductCodeParts(draft.spuCode, draft.skuCode);
+    if (!codeValidation.ok) {
+      setSaveError(codeValidation.message);
+      return;
+    }
+
     if (mode === "edit" && !window.confirm("确认保存商品修改？")) {
       return;
     }
@@ -151,6 +171,9 @@ export default function ProductForm({
       await onSave({
         name: draft.name.trim(),
         spu: draft.spu.trim(),
+        spuCode: draft.spuCode.trim(),
+        skuCode: draft.skuCode.trim(),
+        productCode: codeValidation.productCode,
         imageId: draft.imageId,
         costPrice: Number(draft.costPrice),
         salePrice: Number(draft.salePrice),
@@ -188,6 +211,33 @@ export default function ProductForm({
             placeholder="例如：DRINK-LEMON"
           />
         </label>
+
+        <div className="fieldGrid">
+          <label>
+            <span>SPU 编码</span>
+            <input
+              aria-label="SPU 编码"
+              value={draft.spuCode}
+              onChange={(event) => setDraft((current) => ({ ...current, spuCode: event.target.value }))}
+              placeholder="例如：CLTH-24001"
+            />
+          </label>
+
+          <label>
+            <span>SKU 编码</span>
+            <input
+              aria-label="SKU 编码"
+              value={draft.skuCode}
+              onChange={(event) => setDraft((current) => ({ ...current, skuCode: event.target.value }))}
+              placeholder="例如：BLK-M"
+            />
+          </label>
+
+          <label>
+            <span>完整商品编码</span>
+            <input aria-label="完整商品编码" value={displayProductCode(productCodePreview)} readOnly />
+          </label>
+        </div>
 
         <div className="fieldGrid">
           <label>

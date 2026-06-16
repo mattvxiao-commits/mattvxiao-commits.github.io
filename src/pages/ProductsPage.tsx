@@ -105,6 +105,22 @@ export default function ProductsPage() {
   }
 
   async function handleSave(values: ProductFormValues) {
+    setError(undefined);
+
+    const normalizedProductCode = values.productCode.trim();
+    const hasDuplicateProductCode = normalizedProductCode.length > 0 && products.some((product) => {
+      if (editingProduct && product.id === editingProduct.id) {
+        return false;
+      }
+
+      return product.productCode?.trim() === normalizedProductCode;
+    });
+
+    if (hasDuplicateProductCode) {
+      setError("完整商品编码已存在，请调整 SPU 编码或 SKU 编码。");
+      return;
+    }
+
     const now = new Date().toISOString();
     const product: Product = editingProduct
       ? {

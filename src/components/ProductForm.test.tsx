@@ -16,6 +16,12 @@ test("disables save until required fields are valid and submits numeric fields a
   fireEvent.change(screen.getByLabelText("SPU"), {
     target: { value: "DRINK-LEMON" }
   });
+  fireEvent.change(screen.getByLabelText("SPU 编码"), {
+    target: { value: "DRINK-LEMON" }
+  });
+  fireEvent.change(screen.getByLabelText("SKU 编码"), {
+    target: { value: "COLD" }
+  });
   fireEvent.change(screen.getByLabelText("成本价"), {
     target: { value: "4.5" }
   });
@@ -33,6 +39,9 @@ test("disables save until required fields are valid and submits numeric fields a
     expect.objectContaining({
       name: "手作柠檬茶",
       spu: "DRINK-LEMON",
+      spuCode: "DRINK-LEMON",
+      skuCode: "COLD",
+      productCode: "DRINK-LEMON-COLD",
       costPrice: 4.5,
       salePrice: 12,
       stockQty: 18
@@ -57,6 +66,12 @@ test("ignores duplicate submit while save is pending", async () => {
   fireEvent.change(screen.getByLabelText("SPU"), {
     target: { value: "DRINK-LEMON" }
   });
+  fireEvent.change(screen.getByLabelText("SPU 编码"), {
+    target: { value: "DRINK-LEMON" }
+  });
+  fireEvent.change(screen.getByLabelText("SKU 编码"), {
+    target: { value: "COLD" }
+  });
 
   const saveButton = screen.getByRole("button", { name: "保存商品" });
   fireEvent.click(saveButton);
@@ -65,4 +80,47 @@ test("ignores duplicate submit while save is pending", async () => {
   expect(onSave).toHaveBeenCalledTimes(1);
 
   resolveSave();
+});
+
+test("shows generated product code preview", () => {
+  render(<ProductForm mode="create" onCancel={() => undefined} onSave={() => undefined} />);
+
+  expect(screen.getByLabelText("完整商品编码")).toHaveValue("未设置编码");
+
+  fireEvent.change(screen.getByLabelText("SPU 编码"), {
+    target: { value: "CLTH-24001" }
+  });
+  fireEvent.change(screen.getByLabelText("SKU 编码"), {
+    target: { value: "BLK-M" }
+  });
+
+  expect(screen.getByLabelText("完整商品编码")).toHaveValue("CLTH-24001-BLK-M");
+});
+
+test("rejects SKU code that repeats SPU code content", () => {
+  const onSave = vi.fn();
+
+  render(<ProductForm mode="create" onCancel={() => undefined} onSave={onSave} />);
+
+  fireEvent.change(screen.getByLabelText("商品名称"), {
+    target: { value: "黑色中码衣服" }
+  });
+  fireEvent.change(screen.getByLabelText("SPU"), {
+    target: { value: "服装" }
+  });
+  fireEvent.change(screen.getByLabelText("SPU 编码"), {
+    target: { value: "CLTH-24001" }
+  });
+  fireEvent.change(screen.getByLabelText("SKU 编码"), {
+    target: { value: "CLTH-24001-BLK-M" }
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "保存商品" }));
+
+  expect(
+    screen.getByText(
+      "SPU 编码与 SKU 编码存在重复内容。SKU 编码只需填写规格/变体部分，例如：BLK-M。完整商品编码将由系统自动生成：CLTH-24001-BLK-M。"
+    )
+  ).toBeVisible();
+  expect(onSave).not.toHaveBeenCalled();
 });
