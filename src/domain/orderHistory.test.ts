@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 import { defaultPromotion } from "../test/fixtures";
 import type { Order } from "./types";
 import {
@@ -35,13 +35,13 @@ const emptyFilters: OrderHistoryFilters = {
 };
 
 describe("order history filters", () => {
-  test("filters by order number query case-insensitively", () => {
+  test("filters by trimmed order number query case-insensitively", () => {
     const result = filterAndSortOrders(
       [
         order({ id: "match", orderNo: "ECRM-20260617-ABC" }),
         order({ id: "miss", orderNo: "SHOP-20260617-002" })
       ],
-      { ...emptyFilters, query: "abc" },
+      { ...emptyFilters, query: "  abc  " },
       new Date("2026-06-17T12:00:00.000Z")
     );
 
@@ -51,17 +51,18 @@ describe("order history filters", () => {
   test.each([
     ["today", ["today"]],
     ["yesterday", ["yesterday"]],
-    ["last7", ["today", "yesterday", "last7"]],
-    ["last30", ["today", "yesterday", "last7", "last30"]],
-    ["all", ["today", "yesterday", "last7", "last30", "old"]]
+    ["last7", ["today", "yesterday", "last7-boundary"]],
+    ["last30", ["today", "yesterday", "last7-boundary", "last7-excluded", "last30-boundary"]],
+    ["all", ["today", "yesterday", "last7-boundary", "last7-excluded", "last30-boundary", "last30-excluded"]]
   ] satisfies Array<[OrderDateRange, string[]]>)("filters date range %s", (dateRange, expectedIds) => {
     const result = filterAndSortOrders(
       [
         order({ id: "today", paidAt: "2026-06-17T08:00:00.000Z", createdAt: "2026-06-16T20:00:00.000Z" }),
         order({ id: "yesterday", paidAt: undefined, createdAt: "2026-06-16T09:00:00.000Z" }),
-        order({ id: "last7", paidAt: "2026-06-12T09:00:00.000Z" }),
-        order({ id: "last30", paidAt: "2026-05-25T09:00:00.000Z" }),
-        order({ id: "old", paidAt: "2026-05-01T09:00:00.000Z" })
+        order({ id: "last7-boundary", paidAt: "2026-06-11T09:00:00.000Z" }),
+        order({ id: "last7-excluded", paidAt: "2026-06-10T09:00:00.000Z" }),
+        order({ id: "last30-boundary", paidAt: "2026-05-19T09:00:00.000Z" }),
+        order({ id: "last30-excluded", paidAt: "2026-05-18T09:00:00.000Z" })
       ],
       { ...emptyFilters, dateRange },
       new Date("2026-06-17T12:00:00.000Z")
@@ -84,6 +85,32 @@ describe("order history filters", () => {
     expect(result.map((item) => item.id)).toEqual(["cash-paid"]);
   });
 
+  test("does not filter by status or payment method when both filters are all", () => {
+    const result = filterAndSortOrders(
+      [
+        order({ id: "wechat-paid", status: "paid", paymentMethod: "wechat", paidAt: "2026-06-17T11:00:00.000Z" }),
+        order({
+          id: "cash-cancelled",
+          status: "cancelled",
+          paymentMethod: "cash",
+          paidAt: undefined,
+          createdAt: "2026-06-17T10:00:00.000Z"
+        }),
+        order({
+          id: "alipay-pending",
+          status: "pending_payment",
+          paymentMethod: "alipay",
+          paidAt: undefined,
+          createdAt: "2026-06-17T09:00:00.000Z"
+        })
+      ],
+      { ...emptyFilters, status: "all", paymentMethod: "all" },
+      new Date("2026-06-17T12:00:00.000Z")
+    );
+
+    expect(result.map((item) => item.id)).toEqual(["wechat-paid", "cash-cancelled", "alipay-pending"]);
+  });
+
   test("sorts by paid time with created time fallback descending", () => {
     const result = filterAndSortOrders(
       [
@@ -99,8 +126,23 @@ describe("order history filters", () => {
   });
 
   test("exports Chinese labels used by the sales page", () => {
-    expect(dateRangeLabels.today).toBe("今日");
-    expect(orderStatusLabels.paid).toBe("已支付");
-    expect(paymentMethodLabels.alipay).toBe("支付宝");
+    expect(dateRangeLabels).toEqual({
+      today: "今日",
+      yesterday: "昨日",
+      last7: "近 7 天",
+      last30: "近 30 天",
+      all: "全部"
+    });
+    expect(orderStatusLabels).toEqual({
+      pending_payment: "待支付",
+      paid: "已支付",
+      cancelled: "已取消"
+    });
+    expect(paymentMethodLabels).toEqual({
+      wechat: "微信",
+      alipay: "支付宝",
+      cash: "现金",
+      other: "其他"
+    });
   });
 });
