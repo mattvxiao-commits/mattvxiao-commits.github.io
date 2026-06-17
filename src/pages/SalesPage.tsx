@@ -17,9 +17,12 @@ import {
   getSettings,
   listInventoryLogsForOrder,
   listOrderItems,
+  listOrderRefunds,
   listOrders,
   listProducts,
+  listRefunds,
   savePaidOrder,
+  saveOrderRefund,
   voidPaidOrder
 } from "../db/repositories";
 import { resolveGiftLines, type GiftSelections } from "../domain/giftSelection";
@@ -37,7 +40,17 @@ import {
   type OrderHistoryStatusFilter
 } from "../domain/orderHistory";
 import { calculateCart } from "../domain/promotions";
-import type { AppSettings, InventoryLog, Order, OrderCancelReason, OrderItem, PaymentMethod, Product } from "../domain/types";
+import type {
+  AppSettings,
+  InventoryLog,
+  Order,
+  OrderCancelReason,
+  OrderItem,
+  OrderRefund,
+  PaymentMethod,
+  Product,
+  RefundReason
+} from "../domain/types";
 import { useCartStore } from "../state/cartStore";
 import { getImageUrl } from "../utils/image";
 
@@ -46,6 +59,12 @@ type SalesViewMode = "list" | "grid";
 type VoidOrderInput = {
   cancelReason: OrderCancelReason;
   cancelNote?: string;
+};
+type SaveRefundInput = {
+  amount: number;
+  method: PaymentMethod;
+  reason: RefundReason;
+  note?: string;
 };
 type StatusMessage = {
   kind: "success" | "error";
@@ -213,6 +232,7 @@ function CheckoutOrderReview({ calculated, products }: { calculated: ReturnType<
 export default function SalesPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [refunds, setRefunds] = useState<OrderRefund[]>([]);
   const [settings, setSettings] = useState<AppSettings>();
   const [selectedSpu, setSelectedSpu] = useState("全部");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("wechat");
@@ -227,8 +247,10 @@ export default function SalesPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order>();
   const [selectedOrderItems, setSelectedOrderItems] = useState<OrderItem[]>([]);
   const [selectedOrderInventoryLogs, setSelectedOrderInventoryLogs] = useState<InventoryLog[]>([]);
+  const [selectedOrderRefunds, setSelectedOrderRefunds] = useState<OrderRefund[]>([]);
   const [isOrderDetailLoading, setIsOrderDetailLoading] = useState(false);
   const [isVoidingOrder, setIsVoidingOrder] = useState(false);
+  const [isSavingRefund, setIsSavingRefund] = useState(false);
   const [giftSelections, setGiftSelections] = useState<GiftSelections>({});
   const [qrImageUrls, setQrImageUrls] = useState<{ wechat?: string; alipay?: string }>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -246,10 +268,16 @@ export default function SalesPage() {
     }
 
     try {
-      const [loadedProducts, loadedSettings, loadedOrders] = await Promise.all([listProducts(), getSettings(), listOrders()]);
+      const [loadedProducts, loadedSettings, loadedOrders, loadedRefunds] = await Promise.all([
+        listProducts(),
+        getSettings(),
+        listOrders(),
+        listRefunds()
+      ]);
       setProducts(loadedProducts);
       setSettings(loadedSettings);
       setOrders(loadedOrders);
+      setRefunds(loadedRefunds);
     } catch {
       setStatus({ kind: "error", text: "售卖数据加载失败，请刷新后重试。" });
     } finally {
@@ -355,13 +383,15 @@ export default function SalesPage() {
     setStatus(undefined);
 
     try {
-      const [items, inventoryLogs] = await Promise.all([
+      const [items, inventoryLogs, orderRefunds] = await Promise.all([
         listOrderItems(order.id),
-        listInventoryLogsForOrder(order.id)
+        listInventoryLogsForOrder(order.id),
+        listOrderRefunds(order.id)
       ]);
       setSelectedOrder(order);
       setSelectedOrderItems(items);
       setSelectedOrderInventoryLogs(inventoryLogs);
+      setSelectedOrderRefunds(orderRefunds);
     } catch {
       setStatus({ kind: "error", text: "订单详情加载失败，请稍后重试。" });
     } finally {
@@ -373,6 +403,7 @@ export default function SalesPage() {
     setSelectedOrder(undefined);
     setSelectedOrderItems([]);
     setSelectedOrderInventoryLogs([]);
+    setSelectedOrderRefunds([]);
   }
 
   async function handleVoidSelectedOrder(input: VoidOrderInput) {
@@ -405,6 +436,33 @@ export default function SalesPage() {
       setStatus({ kind: "error", text: "订单作废失败，请刷新后重试。" });
     } finally {
       setIsVoidingOrder(false);
+    }
+  }
+
+  async function handleSaveSelectedRefund(input: SaveRefundInput) {
+    if (!selectedOrder) {
+      return;
+    }
+
+    setIsSavingRefund(true);
+    setStatus(undefined);
+
+    try {
+      await saveOrderRefund({
+        orderId: selectedOrder.id,
+        amount: input.amount,
+        method: input.method,
+        reason: input.reason,
+        note: input.note
+      });
+      const updatedRefunds = await listOrderRefunds(selectedOrder.id);
+      setSelectedOrderRefunds(updatedRefunds);
+      setStatus({ kind: "success", text: `订单 ${selectedOrder.orderNo} 已记录退款 ${formatMoney(input.amount)}。` });
+      await refreshSalesData({ preserveStatus: true });
+    } catch {
+      setStatus({ kind: "error", text: "退款记录保存失败，请刷新后重试。" });
+    } finally {
+      setIsSavingRefund(false);
     }
   }
 
@@ -740,7 +798,7 @@ export default function SalesPage() {
             {isLoading ? <p className="emptyState">正在加载订单记录...</p> : null}
             {!isLoading && filteredOrders.length === 0 ? <p className="emptyState">当前筛选下暂无订单。</p> : null}
             {filteredOrders.map((order) => {
-              const afterSalesBadges = getOrderAfterSalesBadges(order);
+              const afterSalesBadges = getOrderAfterSalesBadges(order, refunds);
 
               return (
                 <article className="orderHistoryRow" key={order.id}>
@@ -787,9 +845,12 @@ export default function SalesPage() {
           order={selectedOrder}
           orderItems={selectedOrderItems}
           inventoryLogs={selectedOrderInventoryLogs}
+          orderRefunds={selectedOrderRefunds}
           onClose={closeOrderDetail}
           onVoidOrder={handleVoidSelectedOrder}
           isVoiding={isVoidingOrder}
+          onSaveRefund={handleSaveSelectedRefund}
+          isSavingRefund={isSavingRefund}
         />
       ) : null}
     </section>

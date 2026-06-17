@@ -3,20 +3,39 @@ import { useMemo, useState } from "react";
 import { formatMoney } from "../domain/money";
 import { buildOrderInventorySummary, type InventorySummaryMetric } from "../domain/orderInventorySummary";
 import { orderStatusLabels, paymentMethodLabels } from "../domain/orderHistory";
-import type { InventoryLog, Order, OrderCancelReason, OrderItem, OrderLineType } from "../domain/types";
+import type {
+  InventoryLog,
+  Order,
+  OrderCancelReason,
+  OrderItem,
+  OrderLineType,
+  OrderRefund,
+  PaymentMethod,
+  RefundReason
+} from "../domain/types";
 
 type VoidOrderInput = {
   cancelReason: OrderCancelReason;
   cancelNote?: string;
 };
 
+type SaveRefundInput = {
+  amount: number;
+  method: PaymentMethod;
+  reason: RefundReason;
+  note?: string;
+};
+
 type OrderDetailDialogProps = {
   order: Order;
   orderItems: OrderItem[];
   inventoryLogs: InventoryLog[];
+  orderRefunds: OrderRefund[];
   onClose: () => void;
   onVoidOrder?: (input: VoidOrderInput) => Promise<void> | void;
   isVoiding?: boolean;
+  onSaveRefund?: (input: SaveRefundInput) => Promise<void> | void;
+  isSavingRefund?: boolean;
 };
 
 const orderLineTypeLabels: Record<OrderLineType, string> = {
@@ -41,7 +60,17 @@ const cancelReasonLabels: Record<OrderCancelReason, string> = {
   other: "其他"
 };
 
+const refundReasonLabels: Record<RefundReason, string> = {
+  customer_return: "客户退单",
+  overcharge: "多收款",
+  product_issue: "商品问题",
+  manual_adjustment: "人工调整",
+  other: "其他"
+};
+
 const cancelReasonOptions = Object.keys(cancelReasonLabels) as OrderCancelReason[];
+const refundReasonOptions = Object.keys(refundReasonLabels) as RefundReason[];
+const paymentMethodOptions = Object.keys(paymentMethodLabels) as PaymentMethod[];
 
 function formatDateTime(value?: string): string {
   if (!value) {
@@ -91,15 +120,34 @@ export default function OrderDetailDialog({
   order,
   orderItems,
   inventoryLogs,
+  orderRefunds,
   onClose,
   onVoidOrder,
-  isVoiding = false
+  isVoiding = false,
+  onSaveRefund,
+  isSavingRefund = false
 }: OrderDetailDialogProps) {
   const [isVoidConfirmOpen, setIsVoidConfirmOpen] = useState(false);
+  const [isRefundDialogOpen, setIsRefundDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState<OrderCancelReason>("mistake");
   const [cancelNote, setCancelNote] = useState("");
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundMethod, setRefundMethod] = useState<PaymentMethod>(order.paymentMethod ?? "cash");
+  const [refundReason, setRefundReason] = useState<RefundReason>("customer_return");
+  const [refundNote, setRefundNote] = useState("");
+  const [refundError, setRefundError] = useState("");
   const paymentLabel = order.paymentMethod ? paymentMethodLabels[order.paymentMethod] : "未记录";
   const canVoidOrder = order.status === "paid" && onVoidOrder;
+  const refundedAmount = useMemo(
+    () => orderRefunds.reduce((sum, refund) => sum + refund.amount, 0),
+    [orderRefunds]
+  );
+  const remainingRefundAmount = Math.max(0, order.payableAmount - refundedAmount);
+  const canSaveRefund =
+    (order.status === "paid" || order.status === "cancelled") &&
+    Boolean(onSaveRefund) &&
+    remainingRefundAmount > 0;
+  const shouldShowAfterSalesSection = order.status === "cancelled" || orderRefunds.length > 0 || canSaveRefund;
   const orderItemByProductId = useMemo(
     () => new Map(orderItems.map((item) => [item.productId, item])),
     [orderItems]
@@ -122,12 +170,52 @@ export default function OrderDetailDialog({
     setIsVoidConfirmOpen(false);
   }
 
+  function openRefundDialog() {
+    setRefundAmount("");
+    setRefundMethod(order.paymentMethod ?? "cash");
+    setRefundReason("customer_return");
+    setRefundNote("");
+    setRefundError("");
+    setIsRefundDialogOpen(true);
+  }
+
+  async function confirmSaveRefund() {
+    if (!onSaveRefund) {
+      return;
+    }
+
+    const trimmedAmount = refundAmount.trim();
+    if (!trimmedAmount) {
+      setRefundError("请填写退款金额。");
+      return;
+    }
+
+    const amount = Number(trimmedAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setRefundError("退款金额必须大于 0。");
+      return;
+    }
+
+    if (amount > remainingRefundAmount) {
+      setRefundError("退款金额不能超过剩余可退金额。");
+      return;
+    }
+
+    await onSaveRefund({
+      amount,
+      method: refundMethod,
+      reason: refundReason,
+      note: refundNote.trim() || undefined
+    });
+    setIsRefundDialogOpen(false);
+  }
+
   return (
     <div className="modalBackdrop" role="presentation">
       <section
         className="orderDetailDialog"
-        role="dialog"
-        aria-modal={isVoidConfirmOpen ? undefined : "true"}
+        role={isRefundDialogOpen || isVoidConfirmOpen ? undefined : "dialog"}
+        aria-modal={isRefundDialogOpen || isVoidConfirmOpen ? undefined : "true"}
         aria-label={`订单详情 ${order.orderNo}`}
       >
         <header className="dialogHeader">
@@ -182,29 +270,69 @@ export default function OrderDetailDialog({
             </dl>
           </section>
 
-          {order.status === "cancelled" ? (
+          {shouldShowAfterSalesSection ? (
             <section className="orderDetailSection" aria-labelledby="order-detail-after-sales-title">
               <div className="sectionTitle">
                 <ReceiptText size={19} aria-hidden="true" />
                 <div>
                   <h2 id="order-detail-after-sales-title">售后记录</h2>
-                  <p>作废原因和处理备注</p>
+                  <p>作废处理和人工退款记录</p>
                 </div>
               </div>
               <dl className="orderDetailMetrics">
+                {order.status === "cancelled" ? (
+                  <>
+                    <div>
+                      <dt>作废时间</dt>
+                      <dd>{formatDateTime(order.cancelledAt)}</dd>
+                    </div>
+                    <div>
+                      <dt>作废原因</dt>
+                      <dd>{cancelReasonLabels[order.cancelReason ?? "mistake"]}</dd>
+                    </div>
+                    <div>
+                      <dt>作废备注</dt>
+                      <dd>{order.cancelNote || "未记录"}</dd>
+                    </div>
+                  </>
+                ) : null}
                 <div>
-                  <dt>作废时间</dt>
-                  <dd>{formatDateTime(order.cancelledAt)}</dd>
+                  <dt>累计退款</dt>
+                  <dd>{formatMoney(refundedAmount)}</dd>
                 </div>
                 <div>
-                  <dt>作废原因</dt>
-                  <dd>{cancelReasonLabels[order.cancelReason ?? "mistake"]}</dd>
-                </div>
-                <div>
-                  <dt>作废备注</dt>
-                  <dd>{order.cancelNote || "未记录"}</dd>
+                  <dt>剩余可退</dt>
+                  <dd>{formatMoney(remainingRefundAmount)}</dd>
                 </div>
               </dl>
+              {orderRefunds.length > 0 ? (
+                <div className="refundRecordList" role="list" aria-label="人工退款记录">
+                  {orderRefunds.map((refund) => (
+                    <article className="refundRecordRow" role="listitem" key={refund.id}>
+                      <div>
+                        <span>退款金额</span>
+                        <strong>{formatMoney(refund.amount)}</strong>
+                      </div>
+                      <div>
+                        <span>退款方式</span>
+                        <strong>{paymentMethodLabels[refund.method]}</strong>
+                      </div>
+                      <div>
+                        <span>退款原因</span>
+                        <strong>{refundReasonLabels[refund.reason]}</strong>
+                      </div>
+                      <div>
+                        <span>记录时间</span>
+                        <strong>{formatDateTime(refund.createdAt)}</strong>
+                      </div>
+                      <div className="refundNoteCell">
+                        <span>退款备注</span>
+                        <strong>{refund.note || "未记录"}</strong>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
             </section>
           ) : null}
 
@@ -310,16 +438,28 @@ export default function OrderDetailDialog({
             </details>
           </section>
 
-          {canVoidOrder ? (
+          {canVoidOrder || canSaveRefund ? (
             <section className="orderDetailActions" aria-label="订单操作">
-              <button
-                type="button"
-                className="dangerButton"
-                disabled={isVoiding}
-                onClick={() => setIsVoidConfirmOpen(true)}
-              >
-                作废订单
-              </button>
+              {canSaveRefund ? (
+                <button
+                  type="button"
+                  className="secondaryButton"
+                  disabled={isSavingRefund}
+                  onClick={openRefundDialog}
+                >
+                  记录退款
+                </button>
+              ) : null}
+              {canVoidOrder ? (
+                <button
+                  type="button"
+                  className="dangerButton"
+                  disabled={isVoiding}
+                  onClick={() => setIsVoidConfirmOpen(true)}
+                >
+                  作废订单
+                </button>
+              ) : null}
             </section>
           ) : null}
         </div>
@@ -377,6 +517,95 @@ export default function OrderDetailDialog({
                 onClick={() => void confirmVoidOrder()}
               >
                 {isVoiding ? "作废中..." : "确认作废"}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {isRefundDialogOpen ? (
+        <div className="modalBackdrop nestedModalBackdrop" role="presentation">
+          <section className="confirmDialog" role="dialog" aria-modal="true" aria-label="记录人工退款">
+            <div>
+              <p className="eyebrow">Manual Refund</p>
+              <h2>记录人工退款</h2>
+            </div>
+            <p className="fieldHint">{`剩余可退 ${formatMoney(remainingRefundAmount)}`}</p>
+            <label className="dialogField">
+              <span>退款金额</span>
+              <input
+                aria-label="退款金额"
+                type="number"
+                min="0"
+                step="0.01"
+                value={refundAmount}
+                disabled={isSavingRefund}
+                onChange={(event) => {
+                  setRefundAmount(event.target.value);
+                  setRefundError("");
+                }}
+                placeholder="0.00"
+              />
+            </label>
+            <label className="dialogField">
+              <span>退款方式</span>
+              <select
+                aria-label="退款方式"
+                value={refundMethod}
+                disabled={isSavingRefund}
+                onChange={(event) => setRefundMethod(event.target.value as PaymentMethod)}
+              >
+                {paymentMethodOptions.map((method) => (
+                  <option key={method} value={method}>
+                    {paymentMethodLabels[method]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="dialogField">
+              <span>退款原因</span>
+              <select
+                aria-label="退款原因"
+                value={refundReason}
+                disabled={isSavingRefund}
+                onChange={(event) => setRefundReason(event.target.value as RefundReason)}
+              >
+                {refundReasonOptions.map((reason) => (
+                  <option key={reason} value={reason}>
+                    {refundReasonLabels[reason]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="dialogField">
+              <span>退款备注</span>
+              <textarea
+                aria-label="退款备注"
+                value={refundNote}
+                disabled={isSavingRefund}
+                maxLength={120}
+                rows={3}
+                onChange={(event) => setRefundNote(event.target.value)}
+                placeholder="可选"
+              />
+            </label>
+            {refundError ? <p className="fieldError">{refundError}</p> : null}
+            <div className="dialogActions">
+              <button
+                type="button"
+                className="secondaryButton"
+                disabled={isSavingRefund}
+                onClick={() => setIsRefundDialogOpen(false)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="primaryButton"
+                disabled={isSavingRefund}
+                onClick={() => void confirmSaveRefund()}
+              >
+                {isSavingRefund ? "保存中..." : "保存退款记录"}
               </button>
             </div>
           </section>

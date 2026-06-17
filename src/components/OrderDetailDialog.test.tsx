@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
-import type { InventoryLog, Order, OrderItem } from "../domain/types";
+import type { InventoryLog, Order, OrderItem, OrderRefund } from "../domain/types";
 import OrderDetailDialog from "./OrderDetailDialog";
 
 const order: Order = {
@@ -78,6 +78,17 @@ const inventoryLogs: InventoryLog[] = [
     createdAt: "2026-06-17T09:35:02.000Z"
   }
 ];
+const refunds: OrderRefund[] = [
+  {
+    id: "refund-1",
+    orderId: "order-1",
+    amount: 25,
+    method: "wechat",
+    reason: "customer_return",
+    note: "客户退回。",
+    createdAt: "2026-06-17T11:00:00.000Z"
+  }
+];
 const rollbackLog: InventoryLog = {
   id: "log-rollback",
   productId: "sku-normal",
@@ -109,6 +120,7 @@ test("shows a read-only order detail dialog with order, item snapshot, and inven
       order={order}
       orderItems={orderItems}
       inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
       onClose={onClose}
     />
   );
@@ -175,6 +187,7 @@ test("shows void action for paid orders and confirms before calling handler", ()
       order={order}
       orderItems={orderItems}
       inventoryLogs={[...inventoryLogs, rollbackLog]}
+      orderRefunds={[]}
       onClose={() => undefined}
       onVoidOrder={onVoidOrder}
     />
@@ -215,6 +228,7 @@ test("shows cancel reason and note for cancelled orders", () => {
       }}
       orderItems={orderItems}
       inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
       onClose={() => undefined}
     />
   );
@@ -232,6 +246,7 @@ test("shows readable inventory product snapshots and rollback summary", () => {
       order={{ ...order, status: "cancelled", cancelledAt: "2026-06-17T10:00:00.000Z" }}
       orderItems={orderItems}
       inventoryLogs={[...inventoryLogs, rollbackLog]}
+      orderRefunds={[]}
       onClose={() => undefined}
     />
   );
@@ -266,6 +281,7 @@ test("shows an empty inventory state when an order has no inventory logs", () =>
       order={order}
       orderItems={orderItems}
       inventoryLogs={[]}
+      orderRefunds={[]}
       onClose={() => undefined}
     />
   );
@@ -282,6 +298,7 @@ test("does not show void action for cancelled orders", () => {
       order={{ ...order, status: "cancelled", cancelledAt: "2026-06-17T10:00:00.000Z" }}
       orderItems={orderItems}
       inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
       onClose={() => undefined}
       onVoidOrder={() => undefined}
     />
@@ -297,6 +314,7 @@ test("does not show void action for pending payment orders", () => {
       order={{ ...order, status: "pending_payment", paidAt: undefined, paymentMethod: undefined }}
       orderItems={orderItems}
       inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
       onClose={() => undefined}
       onVoidOrder={() => undefined}
     />
@@ -304,4 +322,171 @@ test("does not show void action for pending payment orders", () => {
 
   expect(screen.queryByRole("button", { name: "作废订单" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "退款" })).not.toBeInTheDocument();
+});
+
+test("shows refund records and totals in the after-sales section", () => {
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={refunds}
+      onClose={() => undefined}
+      onSaveRefund={() => undefined}
+    />
+  );
+
+  expect(screen.getByText("售后记录")).toBeVisible();
+  expect(screen.getByText("累计退款")).toBeVisible();
+  expect(screen.getAllByText("¥25.00").length).toBeGreaterThanOrEqual(2);
+  expect(screen.getByText("剩余可退")).toBeVisible();
+  expect(screen.getByText("¥75.00")).toBeVisible();
+
+  const refundList = screen.getByRole("list", { name: "人工退款记录" });
+  expect(within(refundList).getByText("客户退单")).toBeVisible();
+  expect(within(refundList).getByText("微信")).toBeVisible();
+  expect(within(refundList).getByText(expectedDateTime("2026-06-17T11:00:00.000Z"))).toBeVisible();
+  expect(within(refundList).getByText("客户退回。")).toBeVisible();
+});
+
+test("shows refund action for paid orders", () => {
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
+      onClose={() => undefined}
+      onSaveRefund={() => undefined}
+    />
+  );
+
+  expect(screen.getByRole("button", { name: "记录退款" })).toBeVisible();
+});
+
+test("shows refund action for cancelled orders without void action", () => {
+  render(
+    <OrderDetailDialog
+      order={{ ...order, status: "cancelled", cancelledAt: "2026-06-17T10:00:00.000Z" }}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
+      onClose={() => undefined}
+      onVoidOrder={() => undefined}
+      onSaveRefund={() => undefined}
+    />
+  );
+
+  expect(screen.getByRole("button", { name: "记录退款" })).toBeVisible();
+  expect(screen.queryByRole("button", { name: "作废订单" })).not.toBeInTheDocument();
+});
+
+test("does not show refund action for pending payment orders", () => {
+  render(
+    <OrderDetailDialog
+      order={{ ...order, status: "pending_payment", paidAt: undefined, paymentMethod: undefined }}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
+      onClose={() => undefined}
+      onSaveRefund={() => undefined}
+    />
+  );
+
+  expect(screen.queryByRole("button", { name: "记录退款" })).not.toBeInTheDocument();
+});
+
+test("does not show refund action after the order is fully refunded", () => {
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[{ ...refunds[0], amount: 100 }]}
+      onClose={() => undefined}
+      onSaveRefund={() => undefined}
+    />
+  );
+
+  expect(screen.queryByRole("button", { name: "记录退款" })).not.toBeInTheDocument();
+});
+
+test("submits a manual refund from the refund dialog", () => {
+  const onSaveRefund = vi.fn();
+
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
+      onClose={() => undefined}
+      onSaveRefund={onSaveRefund}
+    />
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "记录退款" }));
+
+  const refundDialog = screen.getByRole("dialog", { name: "记录人工退款" });
+  expect(within(refundDialog).getByLabelText("退款方式")).toHaveValue("wechat");
+  expect(within(refundDialog).getByLabelText("退款原因")).toHaveValue("customer_return");
+  fireEvent.change(within(refundDialog).getByLabelText("退款金额"), { target: { value: "12.5" } });
+  fireEvent.change(within(refundDialog).getByLabelText("退款方式"), { target: { value: "cash" } });
+  fireEvent.change(within(refundDialog).getByLabelText("退款原因"), { target: { value: "product_issue" } });
+  fireEvent.change(within(refundDialog).getByLabelText("退款备注"), { target: { value: " 商品问题。 " } });
+  fireEvent.click(within(refundDialog).getByRole("button", { name: "保存退款记录" }));
+
+  expect(onSaveRefund).toHaveBeenCalledWith({
+    amount: 12.5,
+    method: "cash",
+    reason: "product_issue",
+    note: "商品问题。"
+  });
+});
+
+test("defaults refund method to cash when order has no payment method", () => {
+  render(
+    <OrderDetailDialog
+      order={{ ...order, status: "cancelled", paymentMethod: undefined }}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
+      onClose={() => undefined}
+      onSaveRefund={() => undefined}
+    />
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "记录退款" }));
+
+  expect(screen.getByLabelText("退款方式")).toHaveValue("cash");
+});
+
+test("validates refund amount before submitting", () => {
+  const onSaveRefund = vi.fn();
+
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={refunds}
+      onClose={() => undefined}
+      onSaveRefund={onSaveRefund}
+    />
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "记录退款" }));
+  const refundDialog = screen.getByRole("dialog", { name: "记录人工退款" });
+
+  fireEvent.click(within(refundDialog).getByRole("button", { name: "保存退款记录" }));
+  expect(screen.getByText("请填写退款金额。")).toBeVisible();
+
+  fireEvent.change(within(refundDialog).getByLabelText("退款金额"), { target: { value: "0" } });
+  fireEvent.click(within(refundDialog).getByRole("button", { name: "保存退款记录" }));
+  expect(screen.getByText("退款金额必须大于 0。")).toBeVisible();
+
+  fireEvent.change(within(refundDialog).getByLabelText("退款金额"), { target: { value: "100" } });
+  fireEvent.click(within(refundDialog).getByRole("button", { name: "保存退款记录" }));
+  expect(screen.getByText("退款金额不能超过剩余可退金额。")).toBeVisible();
+  expect(onSaveRefund).not.toHaveBeenCalled();
 });

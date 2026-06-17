@@ -27,7 +27,10 @@ const repositories = vi.hoisted(() => ({
   listOrderItems: vi.fn(),
   listOrders: vi.fn(),
   listProducts: vi.fn(),
+  listOrderRefunds: vi.fn(),
+  listRefunds: vi.fn(),
   savePaidOrder: vi.fn(),
+  saveOrderRefund: vi.fn(),
   voidPaidOrder: vi.fn()
 }));
 
@@ -51,7 +54,17 @@ beforeEach(() => {
   repositories.listOrderItems.mockResolvedValue([]);
   repositories.listOrders.mockResolvedValue([]);
   repositories.listProducts.mockResolvedValue([sellableProduct]);
+  repositories.listOrderRefunds.mockResolvedValue([]);
+  repositories.listRefunds.mockResolvedValue([]);
   repositories.savePaidOrder.mockResolvedValue(undefined);
+  repositories.saveOrderRefund.mockResolvedValue({
+    id: "refund-1",
+    orderId: "order-detail",
+    amount: 10,
+    method: "cash",
+    reason: "customer_return",
+    createdAt: localIsoDateTime(0, 10, 0)
+  });
   repositories.voidPaidOrder.mockResolvedValue(undefined);
   useCartStore.getState().replace([]);
 });
@@ -426,6 +439,7 @@ test("opens order detail dialog with order items and inventory logs", async () =
   const inventoryList = within(dialog).getByRole("list", { name: "完整库存流水" });
   expect(repositories.listOrderItems).toHaveBeenCalledWith("order-detail");
   expect(repositories.listInventoryLogsForOrder).toHaveBeenCalledWith("order-detail");
+  expect(repositories.listOrderRefunds).toHaveBeenCalledWith("order-detail");
   expect(within(itemList).getByText("历史普通商品")).toBeVisible();
   expect(within(itemList).getByText("HIS-BASE")).toBeVisible();
   expect(within(itemList).getByText("加购优惠")).toBeVisible();
@@ -433,6 +447,117 @@ test("opens order detail dialog with order items and inventory logs", async () =
   expect(within(inventoryList).getByText("HIS-BASE / 历史SPU")).toBeVisible();
   expect(within(inventoryList).getByText("库存 10 -> 8")).toBeVisible();
   expect(within(dialog).queryByRole("button", { name: "退款" })).not.toBeInTheDocument();
+});
+
+test("opens order detail dialog with refund records", async () => {
+  repositories.listOrders.mockResolvedValue([
+    order({
+      id: "order-detail",
+      orderNo: "ECRM-DETAIL",
+      payableAmount: 20,
+      createdAt: localIsoDateTime(0, 9, 20),
+      paidAt: localIsoDateTime(0, 9, 25)
+    })
+  ]);
+  repositories.listOrderItems.mockResolvedValue([orderItem({ orderId: "order-detail" })]);
+  repositories.listInventoryLogsForOrder.mockResolvedValue([inventoryLog({ orderId: "order-detail" })]);
+  repositories.listOrderRefunds.mockResolvedValue([
+    {
+      id: "refund-1",
+      orderId: "order-detail",
+      amount: 8,
+      method: "wechat",
+      reason: "customer_return",
+      note: "客户退回。",
+      createdAt: localIsoDateTime(0, 10, 0)
+    }
+  ]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
+
+  expect(await screen.findByText("累计退款")).toBeVisible();
+  expect(screen.getAllByText("¥8.00").length).toBeGreaterThanOrEqual(2);
+  expect(screen.getByText("¥12.00")).toBeVisible();
+  expect(repositories.listOrderRefunds).toHaveBeenCalledWith("order-detail");
+});
+
+test("records a manual refund from the order detail dialog", async () => {
+  repositories.listOrders.mockResolvedValue([
+    order({
+      id: "order-detail",
+      orderNo: "ECRM-DETAIL",
+      payableAmount: 20,
+      createdAt: localIsoDateTime(0, 9, 20),
+      paidAt: localIsoDateTime(0, 9, 25)
+    })
+  ]);
+  repositories.listOrderItems.mockResolvedValue([orderItem({ orderId: "order-detail" })]);
+  repositories.listInventoryLogsForOrder.mockResolvedValue([inventoryLog({ orderId: "order-detail" })]);
+  repositories.listOrderRefunds
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([
+      {
+        id: "refund-1",
+        orderId: "order-detail",
+        amount: 10,
+        method: "cash",
+        reason: "customer_return",
+        createdAt: localIsoDateTime(0, 10, 0)
+      }
+    ]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
+  fireEvent.click(await screen.findByRole("button", { name: "记录退款" }));
+
+  const refundDialog = await screen.findByRole("dialog", { name: "记录人工退款" });
+  fireEvent.change(within(refundDialog).getByLabelText("退款金额"), { target: { value: "10" } });
+  fireEvent.change(within(refundDialog).getByLabelText("退款方式"), { target: { value: "cash" } });
+  fireEvent.click(within(refundDialog).getByRole("button", { name: "保存退款记录" }));
+
+  await waitFor(() =>
+    expect(repositories.saveOrderRefund).toHaveBeenCalledWith({
+      orderId: "order-detail",
+      amount: 10,
+      method: "cash",
+      reason: "customer_return",
+      note: undefined
+    })
+  );
+  expect(await screen.findByText("订单 ECRM-DETAIL 已记录退款 ¥10.00。")).toBeVisible();
+  expect(await screen.findByText("累计退款")).toBeVisible();
+  expect(repositories.listOrderRefunds).toHaveBeenLastCalledWith("order-detail");
+  expect(repositories.listOrders.mock.calls.length).toBeGreaterThanOrEqual(2);
+});
+
+test("shows sanitized error when refund save fails", async () => {
+  repositories.saveOrderRefund.mockRejectedValue(new Error("raw refund failure"));
+  repositories.listOrders.mockResolvedValue([
+    order({
+      id: "order-detail",
+      orderNo: "ECRM-DETAIL",
+      createdAt: localIsoDateTime(0, 9, 20),
+      paidAt: localIsoDateTime(0, 9, 25)
+    })
+  ]);
+  repositories.listOrderItems.mockResolvedValue([orderItem({ orderId: "order-detail" })]);
+  repositories.listInventoryLogsForOrder.mockResolvedValue([inventoryLog({ orderId: "order-detail" })]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
+  fireEvent.click(await screen.findByRole("button", { name: "记录退款" }));
+  fireEvent.change(await screen.findByLabelText("退款金额"), { target: { value: "1" } });
+  fireEvent.click(screen.getByRole("button", { name: "保存退款记录" }));
+
+  expect(await screen.findByText("退款记录保存失败，请刷新后重试。")).toBeVisible();
+  expect(screen.queryByText("raw refund failure")).not.toBeInTheDocument();
 });
 
 test("voids an order from the detail dialog and refreshes the order detail", async () => {
@@ -645,6 +770,52 @@ test("shows after-sales badges for cancelled orders in order history", async () 
   expect(within(cancelledOrderButton).getByText("客户取消")).toBeVisible();
   expect(within(cancelledOrderButton).getByText("有备注")).toBeVisible();
   expect(within(paidOrderButton).queryByText("已作废")).not.toBeInTheDocument();
+});
+
+test("shows refund badges in order history", async () => {
+  repositories.listOrders.mockResolvedValue([
+    order({
+      id: "partial-order",
+      orderNo: "ECRM-PARTIAL",
+      payableAmount: 20,
+      paidAt: localIsoDateTime(0, 9, 25)
+    }),
+    order({
+      id: "refunded-order",
+      orderNo: "ECRM-REFUNDED",
+      payableAmount: 20,
+      paidAt: localIsoDateTime(0, 10, 25)
+    })
+  ]);
+  repositories.listRefunds.mockResolvedValue([
+    {
+      id: "refund-partial",
+      orderId: "partial-order",
+      amount: 5,
+      method: "cash",
+      reason: "customer_return",
+      createdAt: localIsoDateTime(0, 11, 0)
+    },
+    {
+      id: "refund-full",
+      orderId: "refunded-order",
+      amount: 20,
+      method: "wechat",
+      reason: "customer_return",
+      createdAt: localIsoDateTime(0, 11, 10)
+    }
+  ]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+
+  const history = await screen.findByRole("region", { name: "订单记录列表" });
+  const partialOrderButton = within(history).getByRole("button", { name: "查看订单 ECRM-PARTIAL" });
+  const refundedOrderButton = within(history).getByRole("button", { name: "查看订单 ECRM-REFUNDED" });
+
+  expect(within(partialOrderButton).getByText("部分退款")).toBeVisible();
+  expect(within(refundedOrderButton).getByText("已退款")).toBeVisible();
 });
 
 test("sorts recent paid order history by paid time with created time fallback", async () => {
