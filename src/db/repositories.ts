@@ -1,4 +1,14 @@
-import type { AppSettings, InventoryLog, Order, OrderCancelReason, OrderItem, Product } from "../domain/types";
+import type {
+  AppSettings,
+  InventoryLog,
+  Order,
+  OrderCancelReason,
+  OrderItem,
+  OrderRefund,
+  PaymentMethod,
+  Product,
+  RefundReason
+} from "../domain/types";
 import { createDefaultSettings, db, type StoredImage } from "./db";
 
 export function makeId(prefix: string): string {
@@ -177,6 +187,67 @@ export async function listInventoryLogsForOrder(orderId: string): Promise<Invent
     .sortBy("createdAt");
 }
 
+export type SaveOrderRefundInput = {
+  orderId: string;
+  amount: number;
+  method: PaymentMethod;
+  reason: RefundReason;
+  note?: string;
+};
+
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+export async function listOrderRefunds(orderId: string): Promise<OrderRefund[]> {
+  return db.orderRefunds.where("orderId").equals(orderId).sortBy("createdAt");
+}
+
+export async function listRefunds(): Promise<OrderRefund[]> {
+  return db.orderRefunds.orderBy("createdAt").toArray();
+}
+
+export async function saveOrderRefund(input: SaveOrderRefundInput, now = new Date()): Promise<OrderRefund> {
+  const amount = roundMoney(input.amount);
+
+  if (!Number.isFinite(input.amount) || amount <= 0) {
+    throw new Error("退款金额必须大于 0。");
+  }
+
+  return db.transaction("rw", db.orders, db.orderRefunds, async () => {
+    const order = await db.orders.get(input.orderId);
+
+    if (!order) {
+      throw new Error("订单不存在，无法记录退款。");
+    }
+
+    if (order.status === "pending_payment") {
+      throw new Error("待支付订单不能记录退款。");
+    }
+
+    const existingRefunds = await db.orderRefunds.where("orderId").equals(input.orderId).toArray();
+    const refundedAmount = roundMoney(existingRefunds.reduce((sum, refund) => sum + refund.amount, 0));
+    const remainingAmount = roundMoney(order.payableAmount - refundedAmount);
+
+    if (amount > remainingAmount) {
+      throw new Error("退款金额不能超过订单剩余可退金额。");
+    }
+
+    const refund: OrderRefund = {
+      id: makeId("refund"),
+      orderId: input.orderId,
+      amount,
+      method: input.method,
+      reason: input.reason,
+      note: input.note?.trim() || undefined,
+      createdAt: now.toISOString()
+    };
+
+    await db.orderRefunds.put(refund);
+    return refund;
+  });
+}
+
 export type VoidPaidOrderOptions = {
   cancelReason?: OrderCancelReason;
   cancelNote?: string;
@@ -273,7 +344,7 @@ export async function clearAllData(): Promise<void> {
   // Only for full data replacement or backup restore flows. Callers must complete backup validation first.
   await db.transaction(
     "rw",
-    [db.products, db.images, db.settings, db.orders, db.orderItems, db.inventoryLogs],
+    [db.products, db.images, db.settings, db.orders, db.orderItems, db.inventoryLogs, db.orderRefunds],
     async () => {
       await Promise.all([
         db.products.clear(),
@@ -281,7 +352,8 @@ export async function clearAllData(): Promise<void> {
         db.settings.clear(),
         db.orders.clear(),
         db.orderItems.clear(),
-        db.inventoryLogs.clear()
+        db.inventoryLogs.clear(),
+        db.orderRefunds.clear()
       ]);
     }
   );

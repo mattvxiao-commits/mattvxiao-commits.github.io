@@ -26,6 +26,13 @@ export type CartItem = {
 
 export type PaymentMethod = "wechat" | "alipay" | "cash" | "other";
 
+export type RefundReason =
+  | "customer_return"
+  | "overcharge"
+  | "product_issue"
+  | "manual_adjustment"
+  | "other";
+
 export type OrderStatus = "pending_payment" | "paid" | "cancelled";
 
 export type OrderLineType = "normal" | "discount_addon" | "gift";
@@ -133,6 +140,16 @@ export type Order = {
   cancelledAt?: string;
   cancelReason?: OrderCancelReason;
   cancelNote?: string;
+};
+
+export type OrderRefund = {
+  id: string;
+  orderId: string;
+  amount: number;
+  method: PaymentMethod;
+  reason: RefundReason;
+  note?: string;
+  createdAt: string;
 };
 
 export type OrderItem = {

@@ -1,8 +1,15 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, test } from "vitest";
 import { db } from "./db";
-import { listInventoryLogsForOrder, savePaidOrder, voidPaidOrder } from "./repositories";
-import type { InventoryLog, Order, OrderItem, Product } from "../domain/types";
+import {
+  listInventoryLogsForOrder,
+  listOrderRefunds,
+  listRefunds,
+  saveOrderRefund,
+  savePaidOrder,
+  voidPaidOrder
+} from "./repositories";
+import type { InventoryLog, Order, OrderItem, OrderRefund, Product } from "../domain/types";
 import { defaultPromotion, product } from "../test/fixtures";
 
 const now = "2026-06-15T12:00:00.000Z";
@@ -79,14 +86,15 @@ function updatedProducts(): Product[] {
 }
 
 async function clearDb() {
-  await db.transaction("rw", [db.products, db.images, db.settings, db.orders, db.orderItems, db.inventoryLogs], async () => {
+  await db.transaction("rw", [db.products, db.images, db.settings, db.orders, db.orderItems, db.inventoryLogs, db.orderRefunds], async () => {
     await Promise.all([
       db.products.clear(),
       db.images.clear(),
       db.settings.clear(),
       db.orders.clear(),
       db.orderItems.clear(),
-      db.inventoryLogs.clear()
+      db.inventoryLogs.clear(),
+      db.orderRefunds.clear()
     ]);
   });
 }
@@ -190,6 +198,150 @@ describe("listInventoryLogsForOrder", () => {
     await expect(listInventoryLogsForOrder("order-1")).resolves.toEqual([
       expect.objectContaining({ id: "log-early" }),
       expect.objectContaining({ id: "log-late" })
+    ]);
+  });
+});
+
+describe("order refunds", () => {
+  test("saves a manual refund for a paid order", async () => {
+    const refundedAt = "2026-06-17T12:00:00.000Z";
+    await db.orders.put(paidOrder());
+
+    await expect(
+      saveOrderRefund(
+        {
+          orderId: "order-1",
+          amount: 8.235,
+          method: "wechat",
+          reason: "customer_return",
+          note: " 客户退回。 "
+        },
+        new Date(refundedAt)
+      )
+    ).resolves.toEqual(
+      expect.objectContaining({
+        orderId: "order-1",
+        amount: 8.24,
+        method: "wechat",
+        reason: "customer_return",
+        note: "客户退回。",
+        createdAt: refundedAt
+      })
+    );
+
+    await expect(db.orderRefunds.toArray()).resolves.toEqual([
+      expect.objectContaining({ orderId: "order-1", amount: 8.24 })
+    ]);
+  });
+
+  test("saves a manual refund for a cancelled order", async () => {
+    await db.orders.put({ ...paidOrder(), status: "cancelled", cancelledAt: "2026-06-17T10:00:00.000Z" });
+
+    await expect(
+      saveOrderRefund({
+        orderId: "order-1",
+        amount: 20,
+        method: "cash",
+        reason: "manual_adjustment"
+      })
+    ).resolves.toEqual(expect.objectContaining({ orderId: "order-1", amount: 20 }));
+  });
+
+  test("rejects refunding a pending payment order", async () => {
+    await db.orders.put({ ...paidOrder(), status: "pending_payment", paidAt: undefined, paymentMethod: undefined });
+
+    await expect(
+      saveOrderRefund({
+        orderId: "order-1",
+        amount: 1,
+        method: "cash",
+        reason: "customer_return"
+      })
+    ).rejects.toThrow("待支付订单不能记录退款。");
+  });
+
+  test("rejects refunding a missing order", async () => {
+    await expect(
+      saveOrderRefund({
+        orderId: "missing-order",
+        amount: 1,
+        method: "cash",
+        reason: "customer_return"
+      })
+    ).rejects.toThrow("订单不存在，无法记录退款。");
+  });
+
+  test.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])("rejects invalid refund amount %s", async (amount) => {
+    await db.orders.put(paidOrder());
+
+    await expect(
+      saveOrderRefund({
+        orderId: "order-1",
+        amount,
+        method: "cash",
+        reason: "customer_return"
+      })
+    ).rejects.toThrow("退款金额必须大于 0。");
+  });
+
+  test("rejects refunds above remaining refundable amount", async () => {
+    await db.orders.put(paidOrder());
+    await db.orderRefunds.put({
+      id: "refund-existing",
+      orderId: "order-1",
+      amount: 15,
+      method: "cash",
+      reason: "customer_return",
+      createdAt: "2026-06-17T11:00:00.000Z"
+    });
+
+    await expect(
+      saveOrderRefund({
+        orderId: "order-1",
+        amount: 5.01,
+        method: "cash",
+        reason: "customer_return"
+      })
+    ).rejects.toThrow("退款金额不能超过订单剩余可退金额。");
+  });
+
+  test("lists refunds sorted by created time", async () => {
+    const refunds: OrderRefund[] = [
+      {
+        id: "refund-late",
+        orderId: "order-1",
+        amount: 2,
+        method: "cash",
+        reason: "other",
+        createdAt: "2026-06-17T12:00:00.000Z"
+      },
+      {
+        id: "refund-other",
+        orderId: "order-2",
+        amount: 3,
+        method: "cash",
+        reason: "other",
+        createdAt: "2026-06-17T10:00:00.000Z"
+      },
+      {
+        id: "refund-early",
+        orderId: "order-1",
+        amount: 1,
+        method: "wechat",
+        reason: "customer_return",
+        createdAt: "2026-06-17T09:00:00.000Z"
+      }
+    ];
+    await db.orderRefunds.bulkPut(refunds);
+
+    await expect(listOrderRefunds("order-1")).resolves.toEqual([
+      expect.objectContaining({ id: "refund-early" }),
+      expect.objectContaining({ id: "refund-late" })
+    ]);
+    await expect(listRefunds()).resolves.toEqual([
+      expect.objectContaining({ id: "refund-early" }),
+      expect.objectContaining({ id: "refund-other" }),
+      expect.objectContaining({ id: "refund-late" })
     ]);
   });
 });

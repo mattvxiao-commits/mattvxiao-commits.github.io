@@ -4,6 +4,7 @@ import type {
   InventoryLog,
   Order,
   OrderItem,
+  OrderRefund,
   Product,
   PromotionConfig
 } from "../domain/types";
@@ -23,6 +24,7 @@ export class EcrmDatabase extends Dexie {
   orders!: Table<Order, string>;
   orderItems!: Table<OrderItem, string>;
   inventoryLogs!: Table<InventoryLog, string>;
+  orderRefunds!: Table<OrderRefund, string>;
 
   constructor() {
     super("ecrm-offline-pos");
@@ -34,6 +36,16 @@ export class EcrmDatabase extends Dexie {
       orders: "id, &orderNo, status, createdAt, paidAt, [status+paidAt]",
       orderItems: "id, orderId, productId, lineType",
       inventoryLogs: "id, productId, orderId, createdAt"
+    });
+    this.version(2).stores({
+      products:
+        "id, spu, name, status, salePrice, stockQty, isSellable, isGiftEligible, createdAt, [status+isSellable], [status+isGiftEligible]",
+      images: "id, createdAt",
+      settings: "id",
+      orders: "id, &orderNo, status, createdAt, paidAt, [status+paidAt]",
+      orderItems: "id, orderId, productId, lineType",
+      inventoryLogs: "id, productId, orderId, createdAt",
+      orderRefunds: "id, orderId, createdAt"
     });
   }
 }
