@@ -450,7 +450,7 @@ function backupImageToStoredImage(image: BackupImage): StoredImage {
 export async function replaceAllDataInTransaction(data: BackupData): Promise<void> {
   await db.transaction(
     "rw",
-    [db.products, db.images, db.settings, db.orders, db.orderItems, db.inventoryLogs],
+    [db.products, db.images, db.settings, db.orders, db.orderItems, db.inventoryLogs, db.orderRefunds],
     async () => {
       await Promise.all([
         db.products.clear(),
@@ -458,7 +458,8 @@ export async function replaceAllDataInTransaction(data: BackupData): Promise<voi
         db.settings.clear(),
         db.orders.clear(),
         db.orderItems.clear(),
-        db.inventoryLogs.clear()
+        db.inventoryLogs.clear(),
+        db.orderRefunds.clear()
       ]);
 
       if (data.products.length > 0) {

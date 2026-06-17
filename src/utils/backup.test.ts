@@ -474,6 +474,44 @@ describe("backup utilities", () => {
     expect(importData).toHaveBeenCalledOnce();
   });
 
+  test("default import replacement clears existing refunds when restoring old backup data", async () => {
+    await db.orderRefunds.put({
+      id: "refund-existing",
+      orderId: "old-order",
+      amount: 5,
+      method: "cash",
+      reason: "customer_return",
+      createdAt: "2026-06-17T10:00:00.000Z"
+    });
+
+    await replaceAllDataInTransaction({
+      products: [],
+      settings: [
+        {
+          id: "settings",
+          shopName: "ECRM 摊位",
+          orderPrefix: "ECRM",
+          promotion: {
+            enabled: false,
+            addonDiscount: {
+              enabled: false,
+              discountSpu: "",
+              discountPrice: 3,
+              maxDiscountQty: 3
+            },
+            giftTiers: []
+          }
+        }
+      ],
+      orders: [],
+      orderItems: [],
+      inventoryLogs: [],
+      images: []
+    });
+
+    await expect(db.orderRefunds.count()).resolves.toBe(0);
+  });
+
   test("default import replacement keeps old data when transaction fails", async () => {
     const tableStubs = [
       db.products,
@@ -481,7 +519,8 @@ describe("backup utilities", () => {
       db.settings,
       db.orders,
       db.orderItems,
-      db.inventoryLogs
+      db.inventoryLogs,
+      db.orderRefunds
     ].map((table) => ({
       table,
       clear: vi.spyOn(table, "clear"),
