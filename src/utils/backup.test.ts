@@ -223,6 +223,53 @@ describe("backup utilities", () => {
   });
 
   test("imports version 3 order refunds into the refund table", async () => {
+    const importData = vi.fn();
+
+    await importJsonBackupFromText(
+      JSON.stringify({
+        version: 3,
+        exportedAt: "2026-06-17T10:00:00.000Z",
+        note: "图片已包含在 JSON 备份中",
+        data: {
+          products: [],
+          settings: validPayload().data.settings,
+          orders: [],
+          orderItems: [],
+          inventoryLogs: [],
+          images: [],
+          orderRefunds: [
+            {
+              id: "refund-1",
+              orderId: "order-1",
+              amount: 5,
+              method: "cash",
+              reason: "customer_return",
+              note: "客户退单。",
+              createdAt: "2026-06-17T10:00:00.000Z"
+            }
+          ]
+        }
+      }),
+      { importData }
+    );
+
+    expect(importData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderRefunds: [
+          expect.objectContaining({
+            id: "refund-1",
+            orderId: "order-1",
+            amount: 5,
+            method: "cash",
+            reason: "customer_return",
+            note: "客户退单。"
+          })
+        ]
+      })
+    );
+  });
+
+  test("default import replacement writes version 3 order refunds into the refund table", async () => {
     const refundBulkPut = vi.spyOn(db.orderRefunds, "bulkPut").mockResolvedValue(["refund-1"] as never);
 
     await replaceAllDataInTransaction({

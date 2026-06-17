@@ -321,9 +321,9 @@ function validateOrderRefunds(orderRefunds: unknown[]): asserts orderRefunds is 
     assertRecord(refund, "备份文件格式不正确。");
     assertString(refund, "id");
     assertString(refund, "orderId");
-    assertFiniteNumber(refund, "amount");
+    const amount = refund.amount;
 
-    if (refund.amount <= 0) {
+    if (!isFiniteNumber(amount) || amount <= 0) {
       throw new Error("备份文件格式不正确。");
     }
 
