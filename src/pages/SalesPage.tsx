@@ -839,15 +839,17 @@ export default function SalesPage() {
                       <em>{formatPaidTime(orderBusinessTime(order))}</em>
                     </span>
                     <span className="orderHistoryMeta">
-                      <span>{orderStatusLabels[order.status]}</span>
-                      <span>{order.paymentMethod ? paymentMethodLabels[order.paymentMethod] : "未记录"}</span>
+                      <span className="orderHistoryChip isStatus">{orderStatusLabels[order.status]}</span>
+                      <span className="orderHistoryChip isPayment">{order.paymentMethod ? paymentMethodLabels[order.paymentMethod] : "未记录"}</span>
                       <strong>{formatMoney(order.payableAmount)}</strong>
                       {afterSalesBadges.length > 0 ? (
                         <span className="orderAfterSalesBadges" aria-label="订单售后标识">
                           {afterSalesBadges.map((badge) => (
                             <span
                               className={
-                                badge.tone === "danger" ? "orderAfterSalesBadge isDanger" : "orderAfterSalesBadge"
+                                badge.tone === "danger"
+                                  ? "orderHistoryChip isAfterSales isDanger"
+                                  : "orderHistoryChip isAfterSales"
                               }
                               key={`${order.id}-${badge.label}`}
                             >

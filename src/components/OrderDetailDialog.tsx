@@ -283,7 +283,7 @@ export default function OrderDetailDialog({
                   <p>作废处理和人工退款记录</p>
                 </div>
               </div>
-              <dl className="orderDetailMetrics">
+              <dl className="orderDetailMetrics afterSalesMetrics" aria-label="售后摘要指标">
                 {order.status === "cancelled" ? (
                   <>
                     <div>
@@ -444,26 +444,28 @@ export default function OrderDetailDialog({
 
           {canVoidOrder || canSaveRefund ? (
             <section className="orderDetailActions" aria-label="订单操作">
-              {canSaveRefund ? (
-                <button
-                  type="button"
-                  className="secondaryButton"
-                  disabled={isSavingRefund}
-                  onClick={openRefundDialog}
-                >
-                  记录退款
-                </button>
-              ) : null}
-              {canVoidOrder ? (
-                <button
-                  type="button"
-                  className="dangerButton"
-                  disabled={isVoiding}
-                  onClick={() => setIsVoidConfirmOpen(true)}
-                >
-                  作废订单
-                </button>
-              ) : null}
+              <div className="orderDetailActionButtons" role="group" aria-label="订单操作按钮">
+                {canSaveRefund ? (
+                  <button
+                    type="button"
+                    className="secondaryButton"
+                    disabled={isSavingRefund}
+                    onClick={openRefundDialog}
+                  >
+                    记录退款
+                  </button>
+                ) : null}
+                {canVoidOrder ? (
+                  <button
+                    type="button"
+                    className="dangerButton"
+                    disabled={isVoiding}
+                    onClick={() => setIsVoidConfirmOpen(true)}
+                  >
+                    作废订单
+                  </button>
+                ) : null}
+              </div>
             </section>
           ) : null}
         </div>

@@ -1310,19 +1310,6 @@ p {
   flex-wrap: wrap;
 }
 
-.orderHistoryMeta span {
-  min-height: 30px;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 9px;
-  border-radius: 8px;
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  font-size: 13px;
-  font-weight: 900;
-  white-space: nowrap;
-}
-
 .orderHistoryMeta strong {
   color: var(--ink);
   font-size: 16px;
@@ -1332,7 +1319,7 @@ p {
 .orderHistoryMeta .orderAfterSalesBadges {
   min-height: 0;
   display: inline-flex;
-  gap: 5px;
+  gap: 6px;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
@@ -1341,22 +1328,37 @@ p {
   background: transparent;
 }
 
-.orderHistoryMeta .orderAfterSalesBadge {
-  min-height: 22px;
+.orderHistoryChip {
+  min-height: 28px;
   display: inline-flex;
   align-items: center;
-  padding: 3px 7px;
+  justify-content: center;
+  padding: 0 9px;
   border: 1px solid rgba(122, 112, 98, 0.24);
-  border-radius: 999px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.74);
   color: var(--muted-strong);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   line-height: 1;
   white-space: nowrap;
 }
 
-.orderHistoryMeta .orderAfterSalesBadge.isDanger {
+.orderHistoryChip.isStatus,
+.orderHistoryChip.isPayment {
+  border-color: rgba(47, 111, 94, 0.18);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.orderHistoryChip.isAfterSales {
+  min-height: 26px;
+  padding: 0 8px;
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 11px;
+}
+
+.orderHistoryChip.isDanger {
   border-color: rgba(175, 54, 38, 0.28);
   background: rgba(175, 54, 38, 0.08);
   color: #8f2f22;
@@ -1903,9 +1905,18 @@ p {
   background: rgba(255, 255, 255, 0.72);
 }
 
+.afterSalesMetrics {
+  gap: 8px;
+}
+
+.afterSalesMetrics div {
+  padding: 10px 12px;
+}
+
 .orderDetailMetrics dt,
 .orderDetailLine span,
-.inventoryLogRow span {
+.inventoryLogRow span,
+.refundRecordRow span {
   color: var(--muted);
   font-size: 11px;
   font-weight: 850;
@@ -1993,15 +2004,15 @@ p {
 
 .refundRecordList {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .refundRecordRow {
   display: grid;
-  grid-template-columns: minmax(96px, 0.6fr) minmax(96px, 0.55fr) minmax(110px, 0.65fr) minmax(150px, 0.95fr) minmax(140px, 1fr);
-  gap: 10px;
+  grid-template-columns: minmax(90px, 0.55fr) minmax(82px, 0.45fr) minmax(96px, 0.55fr) minmax(142px, 0.8fr) minmax(132px, 0.9fr);
+  gap: 8px;
   align-items: center;
-  padding: 10px 12px;
+  padding: 9px 12px;
   border: 1px solid rgba(222, 214, 201, 0.92);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.72);
@@ -2011,13 +2022,6 @@ p {
   min-width: 0;
   display: grid;
   gap: 3px;
-}
-
-.refundRecordRow span {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 850;
-  letter-spacing: 0;
 }
 
 .refundRecordRow strong {
@@ -2089,11 +2093,24 @@ p {
 
 .orderDetailActions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  padding: 12px;
-  border: 1px solid rgba(175, 54, 38, 0.2);
+  padding: 10px 12px;
+  border: 1px solid rgba(222, 214, 201, 0.92);
   border-radius: 8px;
-  background: rgba(175, 54, 38, 0.05);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.orderDetailActionButtons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.orderDetailActionButtons button {
+  min-width: 116px;
 }
 
 .warningText {
@@ -2438,6 +2455,14 @@ p {
     grid-template-columns: 1fr;
   }
 
+  .orderDetailActionButtons {
+    width: 100%;
+  }
+
+  .orderDetailActionButtons button {
+    flex: 1 1 140px;
+  }
+
   .settingsHeader .primaryButton,
   .dashboardHeader .secondaryButton,
   .salesHeader .secondaryButton,
@@ -2528,6 +2553,7 @@ p {
 
   .formActions button,
   .cardActions button,
+  .orderDetailActionButtons button,
   .cartActions button,
   .toggleRow .checkControl,
   .checkControl,

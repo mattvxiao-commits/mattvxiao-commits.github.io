@@ -342,7 +342,10 @@ test("shows refund records and totals in the after-sales section", () => {
   expect(screen.getByText("剩余可退")).toBeVisible();
   expect(screen.getByText("¥75.00")).toBeVisible();
 
+  expect(screen.getByLabelText("售后摘要指标")).toHaveClass("afterSalesMetrics");
   const refundList = screen.getByRole("list", { name: "人工退款记录" });
+  expect(refundList).toHaveClass("refundRecordList");
+  expect(within(refundList).getAllByRole("listitem")[0]).toHaveClass("refundRecordRow");
   expect(within(refundList).getByText("客户退单")).toBeVisible();
   expect(within(refundList).getByText("微信")).toBeVisible();
   expect(within(refundList).getByText(expectedDateTime("2026-06-17T11:00:00.000Z"))).toBeVisible();
@@ -357,11 +360,15 @@ test("shows refund action for paid orders", () => {
       inventoryLogs={inventoryLogs}
       orderRefunds={[]}
       onClose={() => undefined}
+      onVoidOrder={() => undefined}
       onSaveRefund={() => undefined}
     />
   );
 
-  expect(screen.getByRole("button", { name: "记录退款" })).toBeVisible();
+  const actions = screen.getByRole("group", { name: "订单操作按钮" });
+  expect(actions).toHaveClass("orderDetailActionButtons");
+  expect(within(actions).getByRole("button", { name: "记录退款" })).toBeVisible();
+  expect(within(actions).getByRole("button", { name: "作废订单" })).toBeVisible();
 });
 
 test("shows refund action for cancelled orders without void action", () => {

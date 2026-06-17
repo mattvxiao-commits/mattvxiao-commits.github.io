@@ -817,8 +817,8 @@ test("shows recent paid order history behind a toggle", async () => {
   const paidOrderButton = within(history).getByRole("button", { name: "查看订单 ECRM-PAID" });
 
   expect(within(paidOrderButton).getByText("ECRM-PAID")).toBeVisible();
-  expect(within(paidOrderButton).getByText("支付宝")).toBeVisible();
-  expect(within(paidOrderButton).getByText("已支付")).toBeVisible();
+  expect(within(paidOrderButton).getByText("支付宝")).toHaveClass("orderHistoryChip", "isPayment");
+  expect(within(paidOrderButton).getByText("已支付")).toHaveClass("orderHistoryChip", "isStatus");
   expect(within(paidOrderButton).getByText("¥42.50")).toBeVisible();
   expect(within(history).queryByText("ECRM-PENDING")).not.toBeInTheDocument();
 });
@@ -853,9 +853,9 @@ test("shows after-sales badges for cancelled orders in order history", async () 
   const paidOrderButton = within(history).getByRole("button", { name: "查看订单 ECRM-PAID" });
   const cancelledOrderButton = within(history).getByRole("button", { name: "查看订单 ECRM-CANCELLED" });
 
-  expect(within(cancelledOrderButton).getByText("已作废")).toBeVisible();
-  expect(within(cancelledOrderButton).getByText("客户取消")).toBeVisible();
-  expect(within(cancelledOrderButton).getByText("有备注")).toBeVisible();
+  expect(within(cancelledOrderButton).getByText("已作废")).toHaveClass("orderHistoryChip", "isAfterSales", "isDanger");
+  expect(within(cancelledOrderButton).getByText("客户取消")).toHaveClass("orderHistoryChip", "isAfterSales");
+  expect(within(cancelledOrderButton).getByText("有备注")).toHaveClass("orderHistoryChip", "isAfterSales");
   expect(within(paidOrderButton).queryByText("已作废")).not.toBeInTheDocument();
 });
 
@@ -901,8 +901,8 @@ test("shows refund badges in order history", async () => {
   const partialOrderButton = within(history).getByRole("button", { name: "查看订单 ECRM-PARTIAL" });
   const refundedOrderButton = within(history).getByRole("button", { name: "查看订单 ECRM-REFUNDED" });
 
-  expect(within(partialOrderButton).getByText("部分退款")).toBeVisible();
-  expect(within(refundedOrderButton).getByText("已退款")).toBeVisible();
+  expect(within(partialOrderButton).getByText("部分退款")).toHaveClass("orderHistoryChip", "isAfterSales");
+  expect(within(refundedOrderButton).getByText("已退款")).toHaveClass("orderHistoryChip", "isAfterSales");
 });
 
 test("keeps core sales data visible when refund badge loading fails", async () => {
