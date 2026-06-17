@@ -505,6 +505,47 @@ test("shows sanitized error when order void fails", async () => {
   expect(screen.queryByText("raw internal rollback failure")).not.toBeInTheDocument();
 });
 
+test("keeps a voided order visible when detail refresh fails after voiding", async () => {
+  const paidOrder = order({
+    id: "order-detail",
+    orderNo: "ECRM-DETAIL",
+    createdAt: localIsoDateTime(0, 9, 20),
+    paidAt: localIsoDateTime(0, 9, 25)
+  });
+  const cancelledOrder = {
+    ...paidOrder,
+    status: "cancelled" as const,
+    cancelledAt: localIsoDateTime(0, 10, 0)
+  };
+
+  repositories.listOrders
+    .mockResolvedValueOnce([paidOrder])
+    .mockResolvedValueOnce([cancelledOrder]);
+  repositories.listOrderItems
+    .mockResolvedValueOnce([orderItem({ orderId: "order-detail" })])
+    .mockResolvedValueOnce([orderItem({ orderId: "order-detail" })]);
+  repositories.listInventoryLogsForOrder
+    .mockResolvedValueOnce([inventoryLog({ orderId: "order-detail" })])
+    .mockRejectedValueOnce(new Error("raw detail refresh failure"));
+  repositories.voidPaidOrder.mockResolvedValue(cancelledOrder);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
+  fireEvent.click(await screen.findByRole("button", { name: "作废订单" }));
+  fireEvent.click(await screen.findByRole("button", { name: "确认作废" }));
+
+  await waitFor(() => expect(repositories.voidPaidOrder).toHaveBeenCalledWith("order-detail"));
+  expect(await screen.findByText("订单 ECRM-DETAIL 已作废，但详情刷新失败，请刷新页面查看最新库存流水。")).toBeVisible();
+  expect(screen.queryByText("订单作废失败，请刷新后重试。")).not.toBeInTheDocument();
+  expect(screen.queryByText("raw detail refresh failure")).not.toBeInTheDocument();
+
+  const dialog = await screen.findByRole("dialog", { name: "订单详情 ECRM-DETAIL" });
+  expect(within(dialog).getByText("已取消")).toBeVisible();
+  expect(within(dialog).queryByRole("button", { name: "作废订单" })).not.toBeInTheDocument();
+});
+
 test("shows recent paid order history behind a toggle", async () => {
   repositories.listOrders.mockResolvedValue([
     order({

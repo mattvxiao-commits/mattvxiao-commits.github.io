@@ -80,7 +80,7 @@ export default function OrderDetailDialog({
       <section
         className="orderDetailDialog"
         role="dialog"
-        aria-modal="true"
+        aria-modal={isVoidConfirmOpen ? undefined : "true"}
         aria-label={`订单详情 ${order.orderNo}`}
       >
         <header className="dialogHeader">

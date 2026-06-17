@@ -380,15 +380,21 @@ export default function SalesPage() {
 
     try {
       const voidedOrder = await voidPaidOrder(selectedOrder.id);
-      const [items, inventoryLogs] = await Promise.all([
-        listOrderItems(voidedOrder.id),
-        listInventoryLogsForOrder(voidedOrder.id)
-      ]);
-
       setSelectedOrder(voidedOrder);
-      setSelectedOrderItems(items);
-      setSelectedOrderInventoryLogs(inventoryLogs);
-      setStatus({ kind: "success", text: `订单 ${voidedOrder.orderNo} 已作废，库存已回滚。` });
+
+      try {
+        const [items, inventoryLogs] = await Promise.all([
+          listOrderItems(voidedOrder.id),
+          listInventoryLogsForOrder(voidedOrder.id)
+        ]);
+
+        setSelectedOrderItems(items);
+        setSelectedOrderInventoryLogs(inventoryLogs);
+        setStatus({ kind: "success", text: `订单 ${voidedOrder.orderNo} 已作废，库存已回滚。` });
+      } catch {
+        setStatus({ kind: "error", text: `订单 ${voidedOrder.orderNo} 已作废，但详情刷新失败，请刷新页面查看最新库存流水。` });
+      }
+
       await refreshSalesData({ preserveStatus: true });
     } catch {
       setStatus({ kind: "error", text: "订单作废失败，请刷新后重试。" });
