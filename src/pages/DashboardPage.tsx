@@ -81,7 +81,7 @@ export default function DashboardPage() {
     setRangePreset(nextPreset);
 
     if (nextPreset === "custom") {
-      const nextCustomRange = customRange.startDate && customRange.endDate ? customRange : todayCustomRange();
+      const nextCustomRange = todayCustomRange();
       setCustomRange(nextCustomRange);
       setDateRange(buildDashboardDateRange("custom", new Date(), nextCustomRange));
       setRangeError(undefined);

@@ -345,6 +345,39 @@ test("initializes custom range to today instead of keeping the previous range", 
   expect(repositories.listOrders).toHaveBeenCalledTimes(1);
 });
 
+test("resets custom range to today every time custom is selected", async () => {
+  repositories.listOrders.mockResolvedValue([
+    paidOrder({ id: "today", orderNo: "ECRM-TODAY", payableAmount: 10, paidAt: "2026-06-15T09:00:00.000Z" }),
+    paidOrder({ id: "yesterday", orderNo: "ECRM-YESTERDAY", payableAmount: 20, paidAt: "2026-06-14T09:00:00.000Z" }),
+    paidOrder({ id: "old-custom", orderNo: "ECRM-OLD-CUSTOM", payableAmount: 30, paidAt: "2026-06-12T12:00:00.000Z" })
+  ]);
+  repositories.listOrderItems.mockResolvedValue([]);
+
+  render(<DashboardPage />);
+
+  expect(await screen.findByText("统计范围：今日")).toBeVisible();
+
+  fireEvent.click(screen.getByRole("button", { name: "自定义" }));
+  fireEvent.change(screen.getByLabelText("开始日期"), { target: { value: "2026-06-12" } });
+  fireEvent.change(screen.getByLabelText("结束日期"), { target: { value: "2026-06-12" } });
+
+  expect(screen.getByText("统计范围：2026-06-12 至 2026-06-12")).toBeVisible();
+  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥30.00");
+
+  fireEvent.click(screen.getByRole("button", { name: "昨天" }));
+
+  expect(screen.getByText("统计范围：昨天")).toBeVisible();
+  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥20.00");
+
+  fireEvent.click(screen.getByRole("button", { name: "自定义" }));
+
+  expect(screen.getByLabelText("开始日期")).toHaveValue("2026-06-15");
+  expect(screen.getByLabelText("结束日期")).toHaveValue("2026-06-15");
+  expect(screen.getByText("统计范围：2026-06-15 至 2026-06-15")).toBeVisible();
+  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥10.00");
+  expect(repositories.listOrders).toHaveBeenCalledTimes(1);
+});
+
 test("refresh reloads repositories while range switching does not", async () => {
   repositories.listOrders.mockResolvedValue([
     paidOrder({ id: "today", payableAmount: 10, paidAt: "2026-06-15T09:00:00.000Z" }),
