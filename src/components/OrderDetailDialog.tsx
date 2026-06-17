@@ -2,14 +2,19 @@ import { ClipboardList, PackageCheck, ReceiptText, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { formatMoney } from "../domain/money";
 import { orderStatusLabels, paymentMethodLabels } from "../domain/orderHistory";
-import type { InventoryLog, Order, OrderItem, OrderLineType } from "../domain/types";
+import type { InventoryLog, Order, OrderCancelReason, OrderItem, OrderLineType } from "../domain/types";
+
+type VoidOrderInput = {
+  cancelReason: OrderCancelReason;
+  cancelNote?: string;
+};
 
 type OrderDetailDialogProps = {
   order: Order;
   orderItems: OrderItem[];
   inventoryLogs: InventoryLog[];
   onClose: () => void;
-  onVoidOrder?: () => Promise<void> | void;
+  onVoidOrder?: (input: VoidOrderInput) => Promise<void> | void;
   isVoiding?: boolean;
 };
 
@@ -25,6 +30,17 @@ const inventoryReasonLabels: Record<InventoryLog["reason"], string> = {
   order_cancelled_rollback: "作废回滚",
   manual_adjust: "手动调整"
 };
+
+const cancelReasonLabels: Record<OrderCancelReason, string> = {
+  mistake: "误操作",
+  customer_cancelled: "客户取消",
+  duplicate_order: "重复下单",
+  inventory_issue: "库存/赠品异常",
+  payment_issue: "收款异常",
+  other: "其他"
+};
+
+const cancelReasonOptions = Object.keys(cancelReasonLabels) as OrderCancelReason[];
 
 function formatDateTime(value?: string): string {
   if (!value) {
@@ -71,6 +87,8 @@ export default function OrderDetailDialog({
   isVoiding = false
 }: OrderDetailDialogProps) {
   const [isVoidConfirmOpen, setIsVoidConfirmOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState<OrderCancelReason>("mistake");
+  const [cancelNote, setCancelNote] = useState("");
   const paymentLabel = order.paymentMethod ? paymentMethodLabels[order.paymentMethod] : "未记录";
   const canVoidOrder = order.status === "paid" && onVoidOrder;
   const orderItemByProductId = useMemo(
@@ -87,7 +105,10 @@ export default function OrderDetailDialog({
       return;
     }
 
-    await onVoidOrder();
+    await onVoidOrder({
+      cancelReason,
+      cancelNote: cancelNote.trim() || undefined
+    });
     setIsVoidConfirmOpen(false);
   }
 
@@ -150,6 +171,32 @@ export default function OrderDetailDialog({
               </div>
             </dl>
           </section>
+
+          {order.status === "cancelled" ? (
+            <section className="orderDetailSection" aria-labelledby="order-detail-after-sales-title">
+              <div className="sectionTitle">
+                <ReceiptText size={19} aria-hidden="true" />
+                <div>
+                  <h2 id="order-detail-after-sales-title">售后记录</h2>
+                  <p>作废原因和处理备注</p>
+                </div>
+              </div>
+              <dl className="orderDetailMetrics">
+                <div>
+                  <dt>作废时间</dt>
+                  <dd>{formatDateTime(order.cancelledAt)}</dd>
+                </div>
+                <div>
+                  <dt>作废原因</dt>
+                  <dd>{cancelReasonLabels[order.cancelReason ?? "mistake"]}</dd>
+                </div>
+                <div>
+                  <dt>作废备注</dt>
+                  <dd>{order.cancelNote || "未记录"}</dd>
+                </div>
+              </dl>
+            </section>
+          ) : null}
 
           <section className="orderDetailSection" aria-labelledby="order-detail-items-title">
             <div className="sectionTitle">
@@ -258,6 +305,33 @@ export default function OrderDetailDialog({
               <h2>确认作废订单</h2>
             </div>
             <p className="warningText">作废后订单会标记为已取消，并自动回滚本订单扣减的库存。此操作不可撤销。</p>
+            <label className="dialogField">
+              <span>作废原因</span>
+              <select
+                aria-label="作废原因"
+                value={cancelReason}
+                disabled={isVoiding}
+                onChange={(event) => setCancelReason(event.target.value as OrderCancelReason)}
+              >
+                {cancelReasonOptions.map((reason) => (
+                  <option key={reason} value={reason}>
+                    {cancelReasonLabels[reason]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="dialogField">
+              <span>作废备注</span>
+              <textarea
+                aria-label="作废备注"
+                value={cancelNote}
+                disabled={isVoiding}
+                maxLength={120}
+                rows={3}
+                onChange={(event) => setCancelNote(event.target.value)}
+                placeholder="可选"
+              />
+            </label>
             <p className="fieldHint">{order.orderNo}</p>
             <div className="dialogActions">
               <button

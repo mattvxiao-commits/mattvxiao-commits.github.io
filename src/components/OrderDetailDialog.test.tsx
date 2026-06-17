@@ -177,10 +177,42 @@ test("shows void action for paid orders and confirms before calling handler", ()
   const confirmDialog = screen.getByRole("dialog", { name: "确认作废订单" });
   expect(within(confirmDialog).getByText("ECRM-20260617-001")).toBeVisible();
   expect(within(confirmDialog).getByText("作废后订单会标记为已取消，并自动回滚本订单扣减的库存。此操作不可撤销。")).toBeVisible();
+  fireEvent.change(within(confirmDialog).getByLabelText("作废原因"), {
+    target: { value: "customer_cancelled" }
+  });
+  fireEvent.change(within(confirmDialog).getByLabelText("作废备注"), {
+    target: { value: "客户临时取消。" }
+  });
 
   fireEvent.click(within(confirmDialog).getByRole("button", { name: "确认作废" }));
 
-  expect(onVoidOrder).toHaveBeenCalledTimes(1);
+  expect(onVoidOrder).toHaveBeenCalledWith({
+    cancelReason: "customer_cancelled",
+    cancelNote: "客户临时取消。"
+  });
+});
+
+test("shows cancel reason and note for cancelled orders", () => {
+  render(
+    <OrderDetailDialog
+      order={{
+        ...order,
+        status: "cancelled",
+        cancelledAt: "2026-06-17T10:00:00.000Z",
+        cancelReason: "duplicate_order",
+        cancelNote: "重复保存了一次订单。"
+      }}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      onClose={() => undefined}
+    />
+  );
+
+  expect(screen.getByText("售后记录")).toBeVisible();
+  expect(screen.getByText("作废原因")).toBeVisible();
+  expect(screen.getByText("重复下单")).toBeVisible();
+  expect(screen.getByText("作废备注")).toBeVisible();
+  expect(screen.getByText("重复保存了一次订单。")).toBeVisible();
 });
 
 test("shows readable inventory product snapshots and rollback summary", () => {

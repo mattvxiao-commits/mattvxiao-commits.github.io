@@ -1815,6 +1815,22 @@ p {
   line-height: 1.5;
 }
 
+.dialogField {
+  display: grid;
+  gap: 6px;
+}
+
+.dialogField span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.dialogField textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
 .orderDetailDialog {
   width: min(940px, 100%);
   max-height: min(88vh, 820px);
