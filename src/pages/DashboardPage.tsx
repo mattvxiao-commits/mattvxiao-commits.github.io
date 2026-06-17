@@ -126,45 +126,53 @@ export default function DashboardPage() {
           <h1 id="dashboard-title">仪表盘</h1>
           <p>统计范围：{dateRange?.label ?? "自定义日期无效"}</p>
         </div>
-        <button type="button" className="secondaryButton" disabled={isLoading} onClick={() => void refreshDashboard()}>
-          <RefreshCw size={17} aria-hidden="true" />
-          刷新
-        </button>
-      </div>
 
-      <div className="dashboardRangeControls" aria-label="时间范围">
-        {rangeOptions.map((option) => (
+        <div className="dashboardHeaderControls" aria-label="仪表盘时间范围">
+          <div className="dashboardRangeSwitch" role="group" aria-label="时间范围">
+            {rangeOptions.map((option) => (
+              <button
+                type="button"
+                className={rangePreset === option.preset ? "secondaryButton isActive" : "secondaryButton"}
+                key={option.preset}
+                onClick={() => selectRangePreset(option.preset)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
           <button
             type="button"
-            className={rangePreset === option.preset ? "secondaryButton isActive" : "secondaryButton"}
-            key={option.preset}
-            onClick={() => selectRangePreset(option.preset)}
+            className="secondaryButton dashboardRefreshButton"
+            disabled={isLoading}
+            onClick={() => void refreshDashboard()}
           >
-            {option.label}
+            <RefreshCw size={17} aria-hidden="true" />
+            刷新
           </button>
-        ))}
-      </div>
 
-      {rangePreset === "custom" ? (
-        <div className="dashboardCustomRange">
-          <label>
-            开始日期
-            <input
-              type="date"
-              value={customRange.startDate}
-              onChange={(event) => updateCustomRange({ ...customRange, startDate: event.target.value })}
-            />
-          </label>
-          <label>
-            结束日期
-            <input
-              type="date"
-              value={customRange.endDate}
-              onChange={(event) => updateCustomRange({ ...customRange, endDate: event.target.value })}
-            />
-          </label>
+          {rangePreset === "custom" ? (
+            <div className="dashboardCustomRange">
+              <label>
+                开始日期
+                <input
+                  type="date"
+                  value={customRange.startDate}
+                  onChange={(event) => updateCustomRange({ ...customRange, startDate: event.target.value })}
+                />
+              </label>
+              <label>
+                结束日期
+                <input
+                  type="date"
+                  value={customRange.endDate}
+                  onChange={(event) => updateCustomRange({ ...customRange, endDate: event.target.value })}
+                />
+              </label>
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      </div>
 
       {rangeError ? (
         <p className="errorBanner" role="status">

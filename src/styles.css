@@ -775,6 +775,62 @@ p {
   line-height: 1.35;
 }
 
+.dashboardHeaderControls {
+  display: grid;
+  grid-template-columns: minmax(0, auto) auto;
+  gap: 8px;
+  align-items: start;
+  justify-content: end;
+  max-width: min(100%, 680px);
+}
+
+.dashboardRangeSwitch {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.dashboardRangeSwitch .secondaryButton,
+.dashboardRefreshButton {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.dashboardRangeSwitch .secondaryButton.isActive {
+  border-color: rgba(47, 111, 94, 0.55);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.dashboardCustomRange {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(132px, 1fr));
+  gap: 8px;
+  justify-self: end;
+  width: min(100%, 330px);
+}
+
+.dashboardCustomRange label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dashboardCustomRange input {
+  min-height: 34px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+
 .dashboardGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2439,6 +2495,30 @@ p {
     flex-direction: column;
   }
 
+  .dashboardHeaderControls {
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+    max-width: 100%;
+  }
+
+  .dashboardRangeSwitch {
+    justify-content: flex-start;
+  }
+
+  .dashboardRangeSwitch .secondaryButton {
+    flex: 1 1 86px;
+  }
+
+  .dashboardRefreshButton,
+  .dashboardCustomRange {
+    width: 100%;
+  }
+
+  .dashboardCustomRange {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-self: stretch;
+  }
+
   .salesHeader {
     align-items: stretch;
     grid-template-columns: 1fr;
@@ -2541,7 +2621,7 @@ p {
   }
 
   .settingsHeader .primaryButton,
-  .dashboardHeader .secondaryButton,
+  .dashboardRefreshButton,
   .salesHeader .secondaryButton,
   .backupActions button {
     width: 100%;
@@ -2639,6 +2719,10 @@ p {
   .dashboardBadgeList {
     justify-content: flex-start;
     text-align: left;
+  }
+
+  .dashboardCustomRange {
+    grid-template-columns: 1fr;
   }
 
   .choiceRow,

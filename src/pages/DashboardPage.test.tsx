@@ -223,6 +223,33 @@ test("shows dashboard empty states after successful empty load", async () => {
   expect(screen.getByLabelText("售后概览")).toBeVisible();
 });
 
+test("uses compact dashboard time range control structure", async () => {
+  render(<DashboardPage />);
+
+  expect(await screen.findByText("统计范围：今日")).toBeVisible();
+
+  expect(screen.getByLabelText("仪表盘时间范围")).toHaveClass("dashboardHeaderControls");
+  expect(screen.getByRole("group", { name: "时间范围" })).toHaveClass("dashboardRangeSwitch");
+
+  fireEvent.click(screen.getByRole("button", { name: "自定义" }));
+
+  const customRange = screen.getByLabelText("开始日期").closest(".dashboardCustomRange");
+  expect(customRange).not.toBeNull();
+  expect(customRange).toHaveClass("dashboardCustomRange");
+
+  const startDate = screen.getByLabelText("开始日期");
+  const endDate = screen.getByLabelText("结束日期");
+  expect(startDate).toHaveValue("2026-06-15");
+  expect(endDate).toHaveValue("2026-06-15");
+
+  fireEvent.change(startDate, { target: { value: "2026-06-12" } });
+  fireEvent.change(endDate, { target: { value: "2026-06-12" } });
+
+  expect(startDate).toHaveValue("2026-06-12");
+  expect(endDate).toHaveValue("2026-06-12");
+  expect(screen.getByText("统计范围：2026-06-12 至 2026-06-12")).toBeVisible();
+});
+
 test("defaults to today and switches to yesterday using already loaded data", async () => {
   repositories.listOrders.mockResolvedValue([
     paidOrder({ id: "today", orderNo: "ECRM-TODAY", payableAmount: 80, paidAt: "2026-06-15T09:00:00.000Z" }),
