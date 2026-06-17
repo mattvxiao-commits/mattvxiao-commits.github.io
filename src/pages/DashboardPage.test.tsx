@@ -228,8 +228,19 @@ test("uses compact dashboard time range control structure", async () => {
 
   expect(await screen.findByText("统计范围：今日")).toBeVisible();
 
-  expect(screen.getByLabelText("仪表盘时间范围")).toHaveClass("dashboardHeaderControls");
-  expect(screen.getByRole("group", { name: "时间范围" })).toHaveClass("dashboardRangeSwitch");
+  const controls = screen.getByLabelText("仪表盘时间范围");
+  expect(controls).toHaveClass("dashboardHeaderControls");
+  expect(within(controls).getByRole("button", { name: "刷新" })).toBeVisible();
+
+  const rangeSwitch = screen.getByRole("group", { name: "时间范围" });
+  expect(rangeSwitch).toHaveClass("dashboardRangeSwitch");
+  expect(within(rangeSwitch).getAllByRole("button").map((button) => button.textContent)).toEqual([
+    "今日",
+    "昨天",
+    "近 3 天",
+    "近 7 天",
+    "自定义"
+  ]);
 
   fireEvent.click(screen.getByRole("button", { name: "自定义" }));
 
