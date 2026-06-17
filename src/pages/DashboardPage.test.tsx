@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { Order, OrderItem, OrderRefund } from "../domain/types";
 import { defaultPromotion, product } from "../test/fixtures";
@@ -133,8 +133,8 @@ test("loads full dashboard data and renders core sections", async () => {
     )
   );
   repositories.listRefunds.mockResolvedValue([
-    refund({ id: "partial-refund", orderId: "paid-partial", amount: 10 }),
-    refund({ id: "full-refund", orderId: "paid-full", amount: 20 })
+    refund({ id: "partial-refund", orderId: "paid-partial", amount: 10, createdAt: "2026-06-15T09:40:00.000Z" }),
+    refund({ id: "full-refund", orderId: "paid-full", amount: 20, createdAt: "2026-06-15T09:50:00.000Z" })
   ]);
   repositories.listProducts.mockResolvedValue([
     product({ id: "low-1", name: "低库存商品", spu: "挂件", stockQty: 2, status: "active" }),
@@ -145,18 +145,20 @@ test("loads full dashboard data and renders core sections", async () => {
 
   expect(await screen.findByText("热销挂件")).toBeVisible();
 
-  const businessOverview = screen.getByLabelText("今日经营概览");
-  expect(businessOverview).toHaveClass("dashboardMetricStrip");
-  expectMetricValue(businessOverview, "今日销售额", "¥130.00");
-  expect(within(businessOverview).getByText("今日销售额")).toBeVisible();
-  expectMetricValue(businessOverview, "今日退款", "¥30.00");
-  expect(within(businessOverview).getByText("今日退款")).toBeVisible();
-  expectMetricValue(businessOverview, "今日实收", "¥100.00");
-  expect(within(businessOverview).getByText("今日实收")).toBeVisible();
-  expectMetricValue(businessOverview, "今日订单", "3");
-  expect(within(businessOverview).getByText("今日订单")).toBeVisible();
+  expect(screen.getByText("统计范围：今日")).toBeVisible();
 
-  const afterSalesOverview = screen.getByLabelText("今日售后概览");
+  const businessOverview = screen.getByLabelText("经营概览");
+  expect(businessOverview).toHaveClass("dashboardMetricStrip");
+  expectMetricValue(businessOverview, "销售额", "¥130.00");
+  expect(within(businessOverview).getByText("销售额")).toBeVisible();
+  expectMetricValue(businessOverview, "退款", "¥30.00");
+  expect(within(businessOverview).getByText("退款")).toBeVisible();
+  expectMetricValue(businessOverview, "实收", "¥100.00");
+  expect(within(businessOverview).getByText("实收")).toBeVisible();
+  expectMetricValue(businessOverview, "订单", "3");
+  expect(within(businessOverview).getByText("订单")).toBeVisible();
+
+  const afterSalesOverview = screen.getByLabelText("售后概览");
   expect(afterSalesOverview).toHaveClass("dashboardAfterSalesStrip");
   expectMetricValue(afterSalesOverview, "作废订单", "1");
   expect(within(afterSalesOverview).getByText("作废订单")).toBeVisible();
@@ -189,7 +191,7 @@ test("loads full dashboard data and renders core sections", async () => {
   expect(within(lowStockRow as HTMLElement).getByText("NORMAL-BASE")).toBeVisible();
   expect(within(lowStockRow as HTMLElement).getByText("库存 2")).toBeVisible();
 
-  const exceptions = screen.getByRole("region", { name: "今日异常订单" });
+  const exceptions = screen.getByRole("region", { name: "异常订单" });
   expect(exceptions.querySelector(".dashboardExceptionList")).not.toBeNull();
   expect(exceptions.querySelector(".dashboardExceptionRow")).not.toBeNull();
   expect(within(exceptions).getByText("ECRM-002")).toBeVisible();
@@ -212,13 +214,133 @@ test("loads full dashboard data and renders core sections", async () => {
 test("shows dashboard empty states after successful empty load", async () => {
   render(<DashboardPage />);
 
-  expect(await screen.findByText("今日暂无已支付订单。")).toBeVisible();
-  expect(screen.getByText("今日暂无赠品消耗。")).toBeVisible();
+  expect(await screen.findByText("当前范围暂无已支付订单。")).toBeVisible();
+  expect(screen.getByText("当前范围暂无赠品消耗。")).toBeVisible();
   expect(screen.getByText("暂无低库存商品。")).toBeVisible();
-  expect(screen.getByText("今日暂无异常订单。")).toBeVisible();
+  expect(screen.getByText("当前范围暂无异常订单。")).toBeVisible();
 
-  expect(screen.getByLabelText("今日经营概览")).toBeVisible();
-  expect(screen.getByLabelText("今日售后概览")).toBeVisible();
+  expect(screen.getByLabelText("经营概览")).toBeVisible();
+  expect(screen.getByLabelText("售后概览")).toBeVisible();
+});
+
+test("defaults to today and switches to yesterday using already loaded data", async () => {
+  repositories.listOrders.mockResolvedValue([
+    paidOrder({ id: "today", orderNo: "ECRM-TODAY", payableAmount: 80, paidAt: "2026-06-15T09:00:00.000Z" }),
+    paidOrder({ id: "yesterday", orderNo: "ECRM-YESTERDAY", payableAmount: 30, paidAt: "2026-06-14T09:00:00.000Z" })
+  ]);
+  repositories.listOrderItems.mockImplementation((orderId: string) =>
+    Promise.resolve([
+      orderItem({
+        id: `${orderId}-item`,
+        orderId,
+        productId: `${orderId}-sku`,
+        productNameSnapshot: orderId === "today" ? "今日商品" : "昨天商品",
+        quantity: 1,
+        lineTotal: orderId === "today" ? 80 : 30
+      })
+    ])
+  );
+
+  render(<DashboardPage />);
+
+  expect(await screen.findByText("今日商品")).toBeVisible();
+  expect(screen.getByText("统计范围：今日")).toBeVisible();
+  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥80.00");
+  expect(screen.queryByText("昨天商品")).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "昨天" }));
+
+  expect(screen.getByText("统计范围：昨天")).toBeVisible();
+  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥30.00");
+  expect(screen.getByText("昨天商品")).toBeVisible();
+  expect(screen.queryByText("今日商品")).not.toBeInTheDocument();
+  expect(repositories.listOrders).toHaveBeenCalledTimes(1);
+  expect(repositories.listProducts).toHaveBeenCalledTimes(1);
+  expect(repositories.listRefunds).toHaveBeenCalledTimes(1);
+  expect(repositories.listOrderItems).toHaveBeenCalledTimes(2);
+});
+
+test("supports last 3 days and last 7 days ranges", async () => {
+  repositories.listOrders.mockResolvedValue([
+    paidOrder({ id: "today", orderNo: "ECRM-TODAY", payableAmount: 10, paidAt: "2026-06-15T09:00:00.000Z" }),
+    paidOrder({ id: "three-days", orderNo: "ECRM-3D", payableAmount: 20, paidAt: "2026-06-13T12:00:00.000Z" }),
+    paidOrder({ id: "seven-days", orderNo: "ECRM-7D", payableAmount: 30, paidAt: "2026-06-09T12:00:00.000Z" }),
+    paidOrder({ id: "outside", orderNo: "ECRM-OLD", payableAmount: 40, paidAt: "2026-06-08T12:00:00.000Z" })
+  ]);
+  repositories.listOrderItems.mockResolvedValue([]);
+
+  render(<DashboardPage />);
+
+  expect(await screen.findByText("统计范围：今日")).toBeVisible();
+  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥10.00");
+
+  fireEvent.click(screen.getByRole("button", { name: "近 3 天" }));
+
+  expect(screen.getByText("统计范围：近 3 天")).toBeVisible();
+  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥30.00");
+
+  fireEvent.click(screen.getByRole("button", { name: "近 7 天" }));
+
+  expect(screen.getByText("统计范围：近 7 天")).toBeVisible();
+  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥60.00");
+  expect(repositories.listOrders).toHaveBeenCalledTimes(1);
+});
+
+test("supports custom date range and shows an error when end date is before start date", async () => {
+  repositories.listOrders.mockResolvedValue([
+    paidOrder({ id: "custom-in", orderNo: "ECRM-CUSTOM-IN", payableAmount: 25, paidAt: "2026-06-12T12:00:00.000Z" }),
+    paidOrder({ id: "custom-out", orderNo: "ECRM-CUSTOM-OUT", payableAmount: 60, paidAt: "2026-06-14T12:00:00.000Z" })
+  ]);
+  repositories.listOrderItems.mockResolvedValue([]);
+
+  render(<DashboardPage />);
+
+  expect(await screen.findByText("统计范围：今日")).toBeVisible();
+
+  fireEvent.click(screen.getByRole("button", { name: "自定义" }));
+
+  const startDate = screen.getByLabelText("开始日期");
+  const endDate = screen.getByLabelText("结束日期");
+  expect(startDate).toHaveAttribute("type", "date");
+  expect(endDate).toHaveAttribute("type", "date");
+
+  fireEvent.change(startDate, { target: { value: "2026-06-12" } });
+  fireEvent.change(endDate, { target: { value: "2026-06-12" } });
+
+  expect(screen.getByText("统计范围：2026-06-12 至 2026-06-12")).toBeVisible();
+  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥25.00");
+
+  fireEvent.change(endDate, { target: { value: "2026-06-11" } });
+
+  expect(screen.getByText("结束日期不能早于开始日期。")).toBeVisible();
+  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥25.00");
+  expect(repositories.listOrders).toHaveBeenCalledTimes(1);
+});
+
+test("refresh reloads repositories while range switching does not", async () => {
+  repositories.listOrders.mockResolvedValue([
+    paidOrder({ id: "today", payableAmount: 10, paidAt: "2026-06-15T09:00:00.000Z" }),
+    paidOrder({ id: "yesterday", payableAmount: 20, paidAt: "2026-06-14T09:00:00.000Z" })
+  ]);
+  repositories.listOrderItems.mockResolvedValue([]);
+
+  render(<DashboardPage />);
+
+  expect(await screen.findByText("统计范围：今日")).toBeVisible();
+  expect(repositories.listOrders).toHaveBeenCalledTimes(1);
+
+  fireEvent.click(screen.getByRole("button", { name: "昨天" }));
+
+  expect(screen.getByText("统计范围：昨天")).toBeVisible();
+  expect(repositories.listOrders).toHaveBeenCalledTimes(1);
+
+  fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+
+  expect(await screen.findByText("统计范围：昨天")).toBeVisible();
+  expect(repositories.listOrders).toHaveBeenCalledTimes(2);
+  expect(repositories.listProducts).toHaveBeenCalledTimes(2);
+  expect(repositories.listRefunds).toHaveBeenCalledTimes(2);
+  expect(repositories.listOrderItems).toHaveBeenCalledTimes(4);
 });
 
 test("shows sanitized error when dashboard loading fails", async () => {
@@ -228,11 +350,11 @@ test("shows sanitized error when dashboard loading fails", async () => {
 
   expect(await screen.findByText("仪表盘数据加载失败，请刷新后重试。")).toBeVisible();
   expect(screen.queryByText(/raw refund database failure/)).not.toBeInTheDocument();
-  expect(screen.queryByLabelText("今日经营概览")).not.toBeInTheDocument();
-  expect(screen.queryByLabelText("今日售后概览")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("经营概览")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("售后概览")).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "热销 SKU" })).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "赠品消耗" })).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "低库存 SKU" })).not.toBeInTheDocument();
-  expect(screen.queryByRole("region", { name: "今日异常订单" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "异常订单" })).not.toBeInTheDocument();
   expect(screen.queryByText(/^暂无/)).not.toBeInTheDocument();
 });

@@ -1,7 +1,12 @@
 import { AlertTriangle, BarChart3, PackageX, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { listOrderItems, listOrders, listProducts, listRefunds } from "../db/repositories";
-import { buildDashboardModel } from "../domain/dashboard";
+import {
+  buildDashboardDateRange,
+  buildDashboardModel,
+  type DashboardCustomRangeInput,
+  type DashboardRangePreset
+} from "../domain/dashboard";
 import { formatMoney } from "../domain/money";
 import type { Order, OrderItem, OrderRefund, Product } from "../domain/types";
 
@@ -17,6 +22,10 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadedData, setHasLoadedData] = useState(false);
   const [error, setError] = useState<string>();
+  const [dateRange, setDateRange] = useState(() => buildDashboardDateRange("today"));
+  const [rangePreset, setRangePreset] = useState<DashboardRangePreset>("today");
+  const [customRange, setCustomRange] = useState<DashboardCustomRangeInput>({ startDate: "", endDate: "" });
+  const [rangeError, setRangeError] = useState<string>();
 
   async function refreshDashboard() {
     setIsLoading(true);
@@ -41,14 +50,50 @@ export default function DashboardPage() {
   const dashboard = useMemo(
     () =>
       buildDashboardModel({
-        day: new Date(),
+        dateRange,
         orders: data.orders,
         orderItems: data.orderItems,
         products: data.products,
         refunds: data.refunds
       }),
-    [data]
+    [data, dateRange]
   );
+
+  function selectRangePreset(nextPreset: DashboardRangePreset) {
+    setRangePreset(nextPreset);
+
+    if (nextPreset === "custom") {
+      setRangeError(undefined);
+      return;
+    }
+
+    setDateRange(buildDashboardDateRange(nextPreset));
+    setRangeError(undefined);
+  }
+
+  function updateCustomRange(nextCustomRange: DashboardCustomRangeInput) {
+    setCustomRange(nextCustomRange);
+
+    if (!nextCustomRange.startDate || !nextCustomRange.endDate) {
+      setRangeError(undefined);
+      return;
+    }
+
+    try {
+      setDateRange(buildDashboardDateRange("custom", new Date(), nextCustomRange));
+      setRangeError(undefined);
+    } catch (customRangeError) {
+      setRangeError(customRangeError instanceof Error ? customRangeError.message : "自定义日期范围无效。");
+    }
+  }
+
+  const rangeOptions: Array<{ preset: DashboardRangePreset; label: string }> = [
+    { preset: "today", label: "今日" },
+    { preset: "yesterday", label: "昨天" },
+    { preset: "last3days", label: "近 3 天" },
+    { preset: "last7days", label: "近 7 天" },
+    { preset: "custom", label: "自定义" }
+  ];
 
   return (
     <section className="dashboardPage" aria-labelledby="dashboard-title">
@@ -56,13 +101,53 @@ export default function DashboardPage() {
         <div>
           <p className="eyebrow">经营看板</p>
           <h1 id="dashboard-title">仪表盘</h1>
-          <p>查看今日销售、售后、热销商品和库存风险。</p>
+          <p>统计范围：{dateRange.label}</p>
         </div>
         <button type="button" className="secondaryButton" disabled={isLoading} onClick={() => void refreshDashboard()}>
           <RefreshCw size={17} aria-hidden="true" />
           刷新
         </button>
       </div>
+
+      <div className="dashboardRangeControls" aria-label="时间范围">
+        {rangeOptions.map((option) => (
+          <button
+            type="button"
+            className={rangePreset === option.preset ? "secondaryButton isActive" : "secondaryButton"}
+            key={option.preset}
+            onClick={() => selectRangePreset(option.preset)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      {rangePreset === "custom" ? (
+        <div className="dashboardCustomRange">
+          <label>
+            开始日期
+            <input
+              type="date"
+              value={customRange.startDate}
+              onChange={(event) => updateCustomRange({ ...customRange, startDate: event.target.value })}
+            />
+          </label>
+          <label>
+            结束日期
+            <input
+              type="date"
+              value={customRange.endDate}
+              onChange={(event) => updateCustomRange({ ...customRange, endDate: event.target.value })}
+            />
+          </label>
+        </div>
+      ) : null}
+
+      {rangeError ? (
+        <p className="errorBanner" role="status">
+          {rangeError}
+        </p>
+      ) : null}
 
       {error ? (
         <p className="errorBanner" role="status">
@@ -75,26 +160,26 @@ export default function DashboardPage() {
       {hasLoadedData ? (
         <>
           <div className="dashboardGrid">
-            <div className="dashboardMetricStrip" aria-label="今日经营概览">
+            <div className="dashboardMetricStrip" aria-label="经营概览">
               <div>
                 <span>{formatMoney(dashboard.summary.paidAmount)}</span>
-                <p>今日销售额</p>
+                <p>销售额</p>
               </div>
               <div>
                 <span>{formatMoney(dashboard.summary.refundAmount)}</span>
-                <p>今日退款</p>
+                <p>退款</p>
               </div>
               <div>
                 <span>{formatMoney(dashboard.summary.netAmount)}</span>
-                <p>今日实收</p>
+                <p>实收</p>
               </div>
               <div>
                 <span>{dashboard.summary.paidOrderCount}</span>
-                <p>今日订单</p>
+                <p>订单</p>
               </div>
             </div>
 
-            <div className="dashboardAfterSalesStrip" aria-label="今日售后概览">
+            <div className="dashboardAfterSalesStrip" aria-label="售后概览">
               <div>
                 <span>{dashboard.summary.cancelledOrderCount}</span>
                 <p>作废订单</p>
@@ -118,14 +203,14 @@ export default function DashboardPage() {
                 <BarChart3 size={21} aria-hidden="true" />
                 <div>
                   <h2 id="top-selling-sku-title">热销 SKU</h2>
-                  <p>今日已支付订单中销量最高的商品。</p>
+                  <p>当前范围已支付订单中销量最高的商品。</p>
                 </div>
               </div>
 
               {!isLoading && dashboard.topSellingSkuRows.length === 0 ? (
                 <div className="dashboardEmpty">
                   <PackageX size={24} aria-hidden="true" />
-                  <p>今日暂无已支付订单。</p>
+                  <p>当前范围暂无已支付订单。</p>
                 </div>
               ) : null}
 
@@ -150,14 +235,14 @@ export default function DashboardPage() {
                 <BarChart3 size={21} aria-hidden="true" />
                 <div>
                   <h2 id="gift-consumption-title">赠品消耗</h2>
-                  <p>今日已支付订单中发出的赠品数量。</p>
+                  <p>当前范围已支付订单中发出的赠品数量。</p>
                 </div>
               </div>
 
               {!isLoading && dashboard.giftConsumptionRows.length === 0 ? (
                 <div className="dashboardEmpty">
                   <PackageX size={24} aria-hidden="true" />
-                  <p>今日暂无赠品消耗。</p>
+                  <p>当前范围暂无赠品消耗。</p>
                 </div>
               ) : null}
 
@@ -211,15 +296,15 @@ export default function DashboardPage() {
               <div className="sectionTitle">
                 <AlertTriangle size={21} aria-hidden="true" />
                 <div>
-                  <h2 id="exception-orders-title">今日异常订单</h2>
-                  <p>今日作废、退款、备注或赠品异常的订单。</p>
+                  <h2 id="exception-orders-title">异常订单</h2>
+                  <p>当前范围作废、退款、备注或赠品异常的订单。</p>
                 </div>
               </div>
 
               {!isLoading && dashboard.exceptionRows.length === 0 ? (
                 <div className="dashboardEmpty">
                   <PackageX size={24} aria-hidden="true" />
-                  <p>今日暂无异常订单。</p>
+                  <p>当前范围暂无异常订单。</p>
                 </div>
               ) : null}
 
