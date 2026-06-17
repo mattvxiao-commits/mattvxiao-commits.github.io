@@ -1515,8 +1515,7 @@ p {
 .promotionSummary,
 .giftSummary,
 .cartWarning,
-.manualConfirm,
-.checkoutAmount {
+.manualConfirm {
   display: grid;
   gap: 4px;
   padding: 8px 10px;
@@ -1571,8 +1570,7 @@ p {
   font-weight: 900;
 }
 
-.payableRow strong,
-.checkoutAmount strong {
+.payableRow strong {
   color: var(--accent-strong);
   font-size: 28px;
   line-height: 1;
@@ -1613,17 +1611,6 @@ p {
   margin-top: 10px;
 }
 
-.checkoutAmount span {
-  color: var(--muted-strong);
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.checkoutAmount p {
-  font-size: 13px;
-  font-weight: 800;
-}
-
 .paymentMethods {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1636,7 +1623,7 @@ p {
 
 .qrGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
 }
 
@@ -1644,7 +1631,7 @@ p {
   display: grid;
   gap: 9px;
   align-content: start;
-  min-height: 218px;
+  min-height: 278px;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1658,9 +1645,10 @@ p {
 }
 
 .qrBox img {
-  width: 100%;
+  width: min(100%, 260px);
   aspect-ratio: 1 / 1;
   object-fit: contain;
+  justify-self: center;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
@@ -1668,7 +1656,7 @@ p {
 
 .qrBox p {
   display: grid;
-  min-height: 150px;
+  min-height: 210px;
   place-items: center;
   padding: 12px;
   border: 1px dashed var(--line-strong);

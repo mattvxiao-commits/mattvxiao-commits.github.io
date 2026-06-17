@@ -32,10 +32,6 @@ const paymentOptions: Array<{ value: PaymentMethod; label: string }> = [
   { value: "other", label: "其他" }
 ];
 
-function formatMoney(value: number): string {
-  return `¥${value.toFixed(2)}`;
-}
-
 function formatGiftOptionLabel(option: GiftSelectionOption): string {
   const code = option.productCode?.trim();
   return code
@@ -66,7 +62,6 @@ function giftGroupLabel(requirement: GiftSelectionRequirement, index: number): s
 
 export default function CheckoutPanel({
   calculated,
-  settings,
   products = [],
   giftSelections = {},
   setGiftSelection,
@@ -116,12 +111,6 @@ export default function CheckoutPanel({
           <ArrowLeft size={17} aria-hidden="true" />
           返回
         </button>
-      </div>
-
-      <div className="checkoutAmount">
-        <span>订单金额</span>
-        <strong>{formatMoney(calculated.payableAmount)}</strong>
-        <p>{settings.shopName} / {settings.orderPrefix}</p>
       </div>
 
       <div className="paymentMethods" role="group" aria-label="收款方式">

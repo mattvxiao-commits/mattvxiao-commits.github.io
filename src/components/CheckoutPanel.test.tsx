@@ -36,7 +36,7 @@ const settings: AppSettings = {
   promotion: defaultPromotion()
 };
 
-test("shows only the selected QR payment code and ignores duplicate paid confirmation while saving", async () => {
+test("shows only the selected QR payment code without a duplicate amount card and ignores duplicate paid confirmation while saving", async () => {
   let resolveConfirm: () => void = () => undefined;
   const confirmPaid = vi.fn(
     () =>
@@ -57,8 +57,9 @@ test("shows only the selected QR payment code and ignores duplicate paid confirm
     />
   );
 
-  expect(screen.getByText("订单金额")).toBeVisible();
-  expect(screen.getByText("¥20.00")).toBeVisible();
+  expect(screen.queryByText("订单金额")).not.toBeInTheDocument();
+  expect(screen.queryByText("¥20.00")).not.toBeInTheDocument();
+  expect(screen.queryByText("ECRM 摊位 / ECRM")).not.toBeInTheDocument();
   expect(screen.getByAltText("微信收款码")).toHaveAttribute("src", "wechat-url");
   expect(screen.queryByText("支付宝收款码未设置")).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "支付宝收款码" })).not.toBeInTheDocument();
