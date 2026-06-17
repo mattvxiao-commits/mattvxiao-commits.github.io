@@ -13,6 +13,10 @@ const repositories = vi.hoisted(() => ({
 
 vi.mock("../db/repositories", () => repositories);
 
+function expectMetricValue(region: HTMLElement, label: string, value: string) {
+  expect(within(region).getByText(label).previousElementSibling).toHaveTextContent(value);
+}
+
 function paidOrder(overrides: Partial<Order> = {}): Order {
   return {
     id: "order-1",
@@ -139,19 +143,26 @@ test("loads full dashboard data and renders core sections", async () => {
 
   render(<DashboardPage />);
 
-  const businessOverview = await screen.findByLabelText("今日经营概览");
-  expect(within(businessOverview).getByText("¥130.00")).toBeVisible();
+  expect(await screen.findByText("热销挂件")).toBeVisible();
+
+  const businessOverview = screen.getByLabelText("今日经营概览");
+  expectMetricValue(businessOverview, "今日销售额", "¥130.00");
   expect(within(businessOverview).getByText("今日销售额")).toBeVisible();
-  expect(within(businessOverview).getByText("¥30.00")).toBeVisible();
+  expectMetricValue(businessOverview, "今日退款", "¥30.00");
   expect(within(businessOverview).getByText("今日退款")).toBeVisible();
-  expect(within(businessOverview).getByText("¥100.00")).toBeVisible();
+  expectMetricValue(businessOverview, "今日实收", "¥100.00");
   expect(within(businessOverview).getByText("今日实收")).toBeVisible();
+  expectMetricValue(businessOverview, "今日订单", "3");
   expect(within(businessOverview).getByText("今日订单")).toBeVisible();
 
   const afterSalesOverview = screen.getByLabelText("今日售后概览");
+  expectMetricValue(afterSalesOverview, "作废订单", "1");
   expect(within(afterSalesOverview).getByText("作废订单")).toBeVisible();
+  expectMetricValue(afterSalesOverview, "部分退款", "1");
   expect(within(afterSalesOverview).getByText("部分退款")).toBeVisible();
+  expectMetricValue(afterSalesOverview, "已退款", "1");
   expect(within(afterSalesOverview).getByText("已退款")).toBeVisible();
+  expectMetricValue(afterSalesOverview, "作废备注", "1");
   expect(within(afterSalesOverview).getByText("作废备注")).toBeVisible();
 
   expect(within(screen.getByRole("region", { name: "热销 SKU" })).getByText("热销挂件")).toBeVisible();
@@ -181,4 +192,11 @@ test("shows sanitized error when dashboard loading fails", async () => {
 
   expect(await screen.findByText("仪表盘数据加载失败，请刷新后重试。")).toBeVisible();
   expect(screen.queryByText(/raw refund database failure/)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("今日经营概览")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("今日售后概览")).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "热销 SKU" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "赠品消耗" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "低库存 SKU" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "今日异常订单" })).not.toBeInTheDocument();
+  expect(screen.queryByText(/^暂无/)).not.toBeInTheDocument();
 });
