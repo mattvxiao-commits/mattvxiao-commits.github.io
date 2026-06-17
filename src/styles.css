@@ -1638,14 +1638,8 @@ p {
   background: #ffffff;
 }
 
-.qrBox h3 {
-  margin: 0;
-  color: var(--ink);
-  font-size: 15px;
-}
-
 .qrBox img {
-  width: min(100%, 260px);
+  width: min(100%, 340px);
   aspect-ratio: 1 / 1;
   object-fit: contain;
   justify-self: center;

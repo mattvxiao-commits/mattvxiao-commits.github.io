@@ -60,6 +60,7 @@ test("shows only the selected QR payment code without a duplicate amount card an
   expect(screen.queryByText("订单金额")).not.toBeInTheDocument();
   expect(screen.queryByText("¥20.00")).not.toBeInTheDocument();
   expect(screen.queryByText("ECRM 摊位 / ECRM")).not.toBeInTheDocument();
+  expect(screen.queryByText("微信收款码")).not.toBeInTheDocument();
   expect(screen.getByAltText("微信收款码")).toHaveAttribute("src", "wechat-url");
   expect(screen.queryByText("支付宝收款码未设置")).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "支付宝收款码" })).not.toBeInTheDocument();

@@ -65,6 +65,8 @@ test("opens create and edit product forms in dialogs", async () => {
   render(<ProductsPage />);
 
   expect(await screen.findByText("编码 CLTH-24001-BLK-M")).toBeVisible();
+  expect(screen.getByText("服装")).toBeVisible();
+  expect(screen.queryByText("SPU 服装")).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("button", { name: "新增商品" }));
   expect(screen.getByRole("dialog", { name: "新增商品" })).toBeVisible();

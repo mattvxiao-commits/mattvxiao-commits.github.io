@@ -130,8 +130,7 @@ export default function CheckoutPanel({
 
       {paymentMethod === "wechat" ? (
         <div className="qrGrid">
-          <section className="qrBox" aria-labelledby="wechat-qr-title">
-            <h3 id="wechat-qr-title">微信收款码</h3>
+          <section className="qrBox" aria-label="微信收款码">
             {qrImageUrls.wechat ? (
               <img src={qrImageUrls.wechat} alt="微信收款码" />
             ) : (
@@ -143,8 +142,7 @@ export default function CheckoutPanel({
 
       {paymentMethod === "alipay" ? (
         <div className="qrGrid">
-          <section className="qrBox" aria-labelledby="alipay-qr-title">
-            <h3 id="alipay-qr-title">支付宝收款码</h3>
+          <section className="qrBox" aria-label="支付宝收款码">
             {qrImageUrls.alipay ? (
               <img src={qrImageUrls.alipay} alt="支付宝收款码" />
             ) : (
