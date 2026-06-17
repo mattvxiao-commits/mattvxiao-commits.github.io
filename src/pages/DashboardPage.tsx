@@ -74,169 +74,174 @@ export default function DashboardPage() {
 
       {hasLoadedData ? (
         <>
-          <div className="dashboardMetricStrip" aria-label="今日经营概览">
-            <div>
-              <span>{formatMoney(dashboard.summary.paidAmount)}</span>
-              <p>今日销售额</p>
+          <div className="dashboardGrid">
+            <div className="dashboardMetricStrip" aria-label="今日经营概览">
+              <div>
+                <span>{formatMoney(dashboard.summary.paidAmount)}</span>
+                <p>今日销售额</p>
+              </div>
+              <div>
+                <span>{formatMoney(dashboard.summary.refundAmount)}</span>
+                <p>今日退款</p>
+              </div>
+              <div>
+                <span>{formatMoney(dashboard.summary.netAmount)}</span>
+                <p>今日实收</p>
+              </div>
+              <div>
+                <span>{dashboard.summary.paidOrderCount}</span>
+                <p>今日订单</p>
+              </div>
             </div>
-            <div>
-              <span>{formatMoney(dashboard.summary.refundAmount)}</span>
-              <p>今日退款</p>
+
+            <div className="dashboardAfterSalesStrip" aria-label="今日售后概览">
+              <div>
+                <span>{dashboard.summary.cancelledOrderCount}</span>
+                <p>作废订单</p>
+              </div>
+              <div>
+                <span>{dashboard.summary.partialRefundOrderCount}</span>
+                <p>部分退款</p>
+              </div>
+              <div>
+                <span>{dashboard.summary.fullyRefundedOrderCount}</span>
+                <p>已退款</p>
+              </div>
+              <div>
+                <span>{dashboard.summary.notedCancelledOrderCount}</span>
+                <p>作废备注</p>
+              </div>
             </div>
-            <div>
-              <span>{formatMoney(dashboard.summary.netAmount)}</span>
-              <p>今日实收</p>
-            </div>
-            <div>
-              <span>{dashboard.summary.paidOrderCount}</span>
-              <p>今日订单</p>
-            </div>
+
+            <section className="dashboardSection" aria-labelledby="top-selling-sku-title">
+              <div className="sectionTitle">
+                <BarChart3 size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="top-selling-sku-title">热销 SKU</h2>
+                  <p>今日已支付订单中销量最高的商品。</p>
+                </div>
+              </div>
+
+              {!isLoading && dashboard.topSellingSkuRows.length === 0 ? (
+                <div className="dashboardEmpty">
+                  <PackageX size={24} aria-hidden="true" />
+                  <p>今日暂无已支付订单。</p>
+                </div>
+              ) : null}
+
+              <div className="dashboardRankList">
+                {dashboard.topSellingSkuRows.map((row) => (
+                  <article className="dashboardRankRow" key={row.productId}>
+                    <div>
+                      <h3>{row.productName}</h3>
+                      <p>{row.productCode ?? row.spu}</p>
+                    </div>
+                    <div className="dashboardRowMetric">
+                      <span>{row.quantity} 件</span>
+                      <strong>{formatMoney(row.amount)}</strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="dashboardSection" aria-labelledby="gift-consumption-title">
+              <div className="sectionTitle">
+                <BarChart3 size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="gift-consumption-title">赠品消耗</h2>
+                  <p>今日已支付订单中发出的赠品数量。</p>
+                </div>
+              </div>
+
+              {!isLoading && dashboard.giftConsumptionRows.length === 0 ? (
+                <div className="dashboardEmpty">
+                  <PackageX size={24} aria-hidden="true" />
+                  <p>今日暂无赠品消耗。</p>
+                </div>
+              ) : null}
+
+              <div className="dashboardRankList">
+                {dashboard.giftConsumptionRows.map((row) => (
+                  <article className="dashboardRankRow" key={row.productId}>
+                    <div>
+                      <h3>{row.productName}</h3>
+                      <p>{row.productCode ?? row.spu}</p>
+                    </div>
+                    <div className="dashboardRowMetric">
+                      <span>{row.quantity} 件</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="dashboardSection" aria-labelledby="low-stock-sku-title">
+              <div className="sectionTitle">
+                <AlertTriangle size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="low-stock-sku-title">低库存 SKU</h2>
+                  <p>库存低于 3 的启用商品。</p>
+                </div>
+              </div>
+
+              {!isLoading && dashboard.lowStockRows.length === 0 ? (
+                <div className="dashboardEmpty">
+                  <PackageX size={24} aria-hidden="true" />
+                  <p>暂无低库存商品。</p>
+                </div>
+              ) : null}
+
+              <div className="dashboardRankList">
+                {dashboard.lowStockRows.map((row) => (
+                  <article className="dashboardRankRow" key={row.productId}>
+                    <div>
+                      <h3>{row.productName}</h3>
+                      <p>{row.productCode ?? row.spu}</p>
+                    </div>
+                    <div className={row.stockQty === 0 ? "dashboardRowMetric isOut" : "dashboardRowMetric"}>
+                      <span>库存 {row.stockQty}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="dashboardSection" aria-labelledby="exception-orders-title">
+              <div className="sectionTitle">
+                <AlertTriangle size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="exception-orders-title">今日异常订单</h2>
+                  <p>今日作废、退款、备注或赠品异常的订单。</p>
+                </div>
+              </div>
+
+              {!isLoading && dashboard.exceptionRows.length === 0 ? (
+                <div className="dashboardEmpty">
+                  <PackageX size={24} aria-hidden="true" />
+                  <p>今日暂无异常订单。</p>
+                </div>
+              ) : null}
+
+              <div className="dashboardExceptionList">
+                {dashboard.exceptionRows.map((row) => (
+                  <article className="dashboardExceptionRow" key={row.orderId}>
+                    <div>
+                      <h3>{row.orderNo}</h3>
+                      <p>{formatMoney(row.payableAmount)}</p>
+                    </div>
+                    <div className="dashboardBadgeList">
+                      {row.badges.map((badge) => (
+                        <span className="dashboardBadge" key={`${row.orderId}-${badge}`}>
+                          {badge}
+                        </span>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
           </div>
-
-          <div className="dashboardMetricStrip" aria-label="今日售后概览">
-            <div>
-              <span>{dashboard.summary.cancelledOrderCount}</span>
-              <p>作废订单</p>
-            </div>
-            <div>
-              <span>{dashboard.summary.partialRefundOrderCount}</span>
-              <p>部分退款</p>
-            </div>
-            <div>
-              <span>{dashboard.summary.fullyRefundedOrderCount}</span>
-              <p>已退款</p>
-            </div>
-            <div>
-              <span>{dashboard.summary.notedCancelledOrderCount}</span>
-              <p>作废备注</p>
-            </div>
-          </div>
-
-          <section className="dashboardSection" aria-labelledby="top-selling-sku-title">
-            <div className="sectionTitle">
-              <BarChart3 size={21} aria-hidden="true" />
-              <div>
-                <h2 id="top-selling-sku-title">热销 SKU</h2>
-                <p>今日已支付订单中销量最高的商品。</p>
-              </div>
-            </div>
-
-            {!isLoading && dashboard.topSellingSkuRows.length === 0 ? (
-              <div className="dashboardEmpty">
-                <PackageX size={24} aria-hidden="true" />
-                <p>暂无热销 SKU。</p>
-              </div>
-            ) : null}
-
-            <div className="lowStockList">
-              {dashboard.topSellingSkuRows.map((row) => (
-                <article className="lowStockRow" key={row.productId}>
-                  <div>
-                    <h3>{row.productName}</h3>
-                    <p>{row.spu}</p>
-                  </div>
-                  <span className="stockBadge">
-                    {row.quantity} 件 / {formatMoney(row.amount)}
-                  </span>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="dashboardSection" aria-labelledby="gift-consumption-title">
-            <div className="sectionTitle">
-              <BarChart3 size={21} aria-hidden="true" />
-              <div>
-                <h2 id="gift-consumption-title">赠品消耗</h2>
-                <p>今日已支付订单中发出的赠品数量。</p>
-              </div>
-            </div>
-
-            {!isLoading && dashboard.giftConsumptionRows.length === 0 ? (
-              <div className="dashboardEmpty">
-                <PackageX size={24} aria-hidden="true" />
-                <p>暂无赠品消耗。</p>
-              </div>
-            ) : null}
-
-            <div className="lowStockList">
-              {dashboard.giftConsumptionRows.map((row) => (
-                <article className="lowStockRow" key={row.productId}>
-                  <div>
-                    <h3>{row.productName}</h3>
-                    <p>{row.spu}</p>
-                  </div>
-                  <span className="stockBadge">消耗 {row.quantity}</span>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="dashboardSection" aria-labelledby="low-stock-sku-title">
-            <div className="sectionTitle">
-              <AlertTriangle size={21} aria-hidden="true" />
-              <div>
-                <h2 id="low-stock-sku-title">低库存 SKU</h2>
-                <p>库存低于 3 的启用商品。</p>
-              </div>
-            </div>
-
-            {!isLoading && dashboard.lowStockRows.length === 0 ? (
-              <div className="dashboardEmpty">
-                <PackageX size={24} aria-hidden="true" />
-                <p>暂无低库存 SKU。</p>
-              </div>
-            ) : null}
-
-            <div className="lowStockList">
-              {dashboard.lowStockRows.map((row) => (
-                <article className="lowStockRow" key={row.productId}>
-                  <div>
-                    <h3>{row.productName}</h3>
-                    <p>{row.spu}</p>
-                  </div>
-                  <span className={row.stockQty === 0 ? "stockBadge isOut" : "stockBadge"}>
-                    库存 {row.stockQty}
-                  </span>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="dashboardSection" aria-labelledby="exception-orders-title">
-            <div className="sectionTitle">
-              <AlertTriangle size={21} aria-hidden="true" />
-              <div>
-                <h2 id="exception-orders-title">今日异常订单</h2>
-                <p>今日作废、退款、备注或赠品异常的订单。</p>
-              </div>
-            </div>
-
-            {!isLoading && dashboard.exceptionRows.length === 0 ? (
-              <div className="dashboardEmpty">
-                <PackageX size={24} aria-hidden="true" />
-                <p>暂无异常订单。</p>
-              </div>
-            ) : null}
-
-            <div className="lowStockList">
-              {dashboard.exceptionRows.map((row) => (
-                <article className="lowStockRow" key={row.orderId}>
-                  <div>
-                    <h3>{row.orderNo}</h3>
-                    <p>{formatMoney(row.payableAmount)}</p>
-                  </div>
-                  <span>
-                    {row.badges.map((badge) => (
-                      <span className="stockBadge" key={`${row.orderId}-${badge}`}>
-                        {badge}
-                      </span>
-                    ))}
-                  </span>
-                </article>
-              ))}
-            </div>
-          </section>
         </>
       ) : null}
     </section>

@@ -775,106 +775,183 @@ p {
   line-height: 1.35;
 }
 
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
 .dashboardMetricStrip {
   display: grid;
-  grid-template-columns: 1.35fr 1fr 1fr;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1px;
   overflow: hidden;
-  margin-top: 18px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--line);
 }
 
+.dashboardAfterSalesStrip {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--line);
+}
+
+.dashboardMetricStrip div,
+.dashboardAfterSalesStrip div {
+  background: rgba(255, 255, 255, 0.86);
+}
+
 .dashboardMetricStrip div {
-  min-height: 92px;
-  padding: 18px;
-  background: rgba(255, 255, 255, 0.84);
+  min-height: 76px;
+  padding: 14px;
+}
+
+.dashboardAfterSalesStrip div {
+  min-height: 60px;
+  padding: 12px 14px;
 }
 
 .dashboardMetricStrip span {
   display: block;
   color: var(--ink);
-  font-size: clamp(28px, 4vw, 40px);
+  font-size: 26px;
   font-weight: 900;
   line-height: 1;
   overflow-wrap: anywhere;
 }
 
-.dashboardMetricStrip p {
-  margin-top: 9px;
+.dashboardAfterSalesStrip span {
+  display: block;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.dashboardMetricStrip p,
+.dashboardAfterSalesStrip p {
   color: var(--muted-strong);
-  font-size: 13px;
   font-weight: 800;
+}
+
+.dashboardMetricStrip p {
+  margin-top: 7px;
+  font-size: 13px;
+}
+
+.dashboardAfterSalesStrip p {
+  margin-top: 6px;
+  font-size: 12px;
 }
 
 .dashboardSection {
   display: grid;
-  gap: 14px;
-  margin-top: 18px;
-  padding: 18px;
+  align-content: start;
+  gap: 10px;
+  min-height: 0;
+  padding: 14px;
   border: 1px solid rgba(222, 214, 201, 0.94);
   border-radius: 8px;
   background: rgba(255, 253, 250, 0.92);
 }
 
-.lowStockList {
+.dashboardRankList,
+.dashboardExceptionList {
   display: grid;
-  gap: 8px;
+  gap: 7px;
 }
 
-.lowStockRow {
+.dashboardRankRow,
+.dashboardExceptionRow {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
+  min-height: 58px;
+  padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
 }
 
-.lowStockRow h3 {
+.dashboardRankRow h3,
+.dashboardExceptionRow h3 {
   margin: 0;
   color: var(--ink);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
 
-.lowStockRow p {
-  margin-top: 4px;
-  font-size: 13px;
+.dashboardRankRow p,
+.dashboardExceptionRow p {
+  margin-top: 3px;
+  color: var(--muted-strong);
+  font-size: 12px;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
 
-.stockBadge {
-  min-height: 34px;
+.dashboardRowMetric {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  color: #8a4512;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.dashboardRowMetric strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.dashboardRowMetric.isOut {
+  color: #8f2f22;
+}
+
+.dashboardBadgeList {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.dashboardBadge {
+  min-height: 26px;
   display: inline-flex;
   align-items: center;
-  padding: 0 10px;
+  padding: 0 8px;
   border: 1px solid rgba(168, 95, 24, 0.32);
   border-radius: 8px;
   background: #fff7eb;
   color: #8a4512;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
 }
 
-.stockBadge.isOut {
-  border-color: rgba(143, 47, 34, 0.28);
-  background: #fff0ed;
-  color: #8f2f22;
-}
-
 .dashboardEmpty {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  min-height: 72px;
-  padding: 14px;
+  min-height: 54px;
+  padding: 10px;
   border: 1px dashed var(--line-strong);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.62);
@@ -882,7 +959,7 @@ p {
 }
 
 .dashboardEmpty p {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -2480,8 +2557,21 @@ p {
     width: 100%;
   }
 
-  .dashboardMetricStrip {
+  .dashboardGrid {
     grid-template-columns: 1fr;
+  }
+
+  .dashboardMetricStrip,
+  .dashboardAfterSalesStrip {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboardMetricStrip {
+    grid-column: auto;
+  }
+
+  .dashboardAfterSalesStrip {
+    grid-column: auto;
   }
 
   .productForm,
@@ -2538,8 +2628,17 @@ p {
     grid-template-columns: 1fr;
   }
 
-  .lowStockRow {
+  .lowStockRow,
+  .dashboardRankRow,
+  .dashboardExceptionRow {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dashboardRowMetric,
+  .dashboardBadgeList {
+    justify-content: flex-start;
+    text-align: left;
   }
 
   .choiceRow,
