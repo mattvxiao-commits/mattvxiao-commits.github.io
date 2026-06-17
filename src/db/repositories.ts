@@ -170,6 +170,13 @@ export async function listOrderItems(orderId: string): Promise<OrderItem[]> {
   return db.orderItems.where("orderId").equals(orderId).toArray();
 }
 
+export async function listInventoryLogsForOrder(orderId: string): Promise<InventoryLog[]> {
+  return db.inventoryLogs
+    .where("orderId")
+    .equals(orderId)
+    .sortBy("createdAt");
+}
+
 export async function clearAllData(): Promise<void> {
   // Only for full data replacement or backup restore flows. Callers must complete backup validation first.
   await db.transaction(

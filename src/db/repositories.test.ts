@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, test } from "vitest";
 import { db } from "./db";
-import { savePaidOrder } from "./repositories";
+import { listInventoryLogsForOrder, savePaidOrder } from "./repositories";
 import type { InventoryLog, Order, OrderItem, Product } from "../domain/types";
 import { defaultPromotion, product } from "../test/fixtures";
 
@@ -138,5 +138,47 @@ describe("savePaidOrder", () => {
     expect(await db.orderItems.count()).toBe(0);
     expect(await db.inventoryLogs.count()).toBe(0);
     expect((await db.products.get("normal"))?.stockQty).toBe(0);
+  });
+});
+
+describe("listInventoryLogsForOrder", () => {
+  test("lists inventory logs for one order sorted by created time", async () => {
+    await db.inventoryLogs.bulkPut([
+      {
+        id: "log-late",
+        productId: "product-1",
+        orderId: "order-1",
+        changeQty: -1,
+        reason: "order_paid",
+        beforeQty: 9,
+        afterQty: 8,
+        createdAt: "2026-06-17T10:02:00.000Z"
+      },
+      {
+        id: "log-other",
+        productId: "product-1",
+        orderId: "order-2",
+        changeQty: -1,
+        reason: "order_paid",
+        beforeQty: 8,
+        afterQty: 7,
+        createdAt: "2026-06-17T10:03:00.000Z"
+      },
+      {
+        id: "log-early",
+        productId: "product-2",
+        orderId: "order-1",
+        changeQty: -2,
+        reason: "gift_order_paid",
+        beforeQty: 5,
+        afterQty: 3,
+        createdAt: "2026-06-17T10:01:00.000Z"
+      }
+    ]);
+
+    await expect(listInventoryLogsForOrder("order-1")).resolves.toEqual([
+      expect.objectContaining({ id: "log-early" }),
+      expect.objectContaining({ id: "log-late" })
+    ]);
   });
 });
