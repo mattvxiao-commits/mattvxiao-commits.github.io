@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, test } from "vitest";
 import { db } from "./db";
-import { listInventoryLogsForOrder, savePaidOrder } from "./repositories";
+import { listInventoryLogsForOrder, savePaidOrder, voidPaidOrder } from "./repositories";
 import type { InventoryLog, Order, OrderItem, Product } from "../domain/types";
 import { defaultPromotion, product } from "../test/fixtures";
 
@@ -53,6 +53,17 @@ function inventoryLogs(): InventoryLog[] {
       createdAt: now
     }
   ];
+}
+
+function paidGiftOrder(): Order {
+  return {
+    ...paidOrder(),
+    id: "order-with-gift",
+    orderNo: "ECRM-20260615-120000-002",
+    subtotalBeforeDiscount: 35,
+    payableAmount: 35,
+    triggeredGiftTier: 35
+  };
 }
 
 function updatedProducts(): Product[] {
@@ -180,5 +191,97 @@ describe("listInventoryLogsForOrder", () => {
       expect.objectContaining({ id: "log-early" }),
       expect.objectContaining({ id: "log-late" })
     ]);
+  });
+});
+
+describe("voidPaidOrder", () => {
+  test("voids a paid order and rolls inventory back from current stock", async () => {
+    const voidedAt = "2026-06-17T10:00:00.000Z";
+
+    await db.products.bulkPut([
+      product({ id: "normal", name: "普通商品", stockQty: 4, updatedAt: "2026-06-17T09:00:00.000Z" }),
+      product({ id: "gift", name: "赠品", stockQty: 1, updatedAt: "2026-06-17T09:00:00.000Z" })
+    ]);
+    await db.orders.put(paidGiftOrder());
+    await db.inventoryLogs.bulkPut([
+      {
+        id: "normal-deduct",
+        productId: "normal",
+        orderId: "order-with-gift",
+        changeQty: -2,
+        reason: "order_paid",
+        beforeQty: 10,
+        afterQty: 8,
+        createdAt: "2026-06-15T12:00:01.000Z"
+      },
+      {
+        id: "gift-deduct",
+        productId: "gift",
+        orderId: "order-with-gift",
+        changeQty: -1,
+        reason: "gift_order_paid",
+        beforeQty: 3,
+        afterQty: 2,
+        createdAt: "2026-06-15T12:00:02.000Z"
+      }
+    ]);
+
+    await expect(voidPaidOrder("order-with-gift", new Date(voidedAt))).resolves.toEqual(
+      expect.objectContaining({
+        id: "order-with-gift",
+        status: "cancelled",
+        cancelledAt: voidedAt
+      })
+    );
+
+    await expect(db.products.get("normal")).resolves.toEqual(expect.objectContaining({ stockQty: 6, updatedAt: voidedAt }));
+    await expect(db.products.get("gift")).resolves.toEqual(expect.objectContaining({ stockQty: 2, updatedAt: voidedAt }));
+
+    const rollbackLogs = await db.inventoryLogs
+      .where("orderId")
+      .equals("order-with-gift")
+      .filter((log) => log.reason === "order_cancelled_rollback")
+      .sortBy("productId");
+
+    expect(rollbackLogs).toEqual([
+      expect.objectContaining({
+        productId: "gift",
+        changeQty: 1,
+        beforeQty: 1,
+        afterQty: 2,
+        createdAt: voidedAt
+      }),
+      expect.objectContaining({
+        productId: "normal",
+        changeQty: 2,
+        beforeQty: 4,
+        afterQty: 6,
+        createdAt: voidedAt
+      })
+    ]);
+  });
+
+  test("rejects voiding an order that is not paid", async () => {
+    await db.orders.put({ ...paidOrder(), status: "cancelled", cancelledAt: now });
+
+    await expect(voidPaidOrder("order-1")).rejects.toThrow("只有已支付订单可以作废。");
+  });
+
+  test("rejects voiding a paid order without rollback inventory logs", async () => {
+    await db.orders.put(paidOrder());
+
+    await expect(voidPaidOrder("order-1")).rejects.toThrow("订单缺少可回滚的库存流水。");
+    await expect(db.orders.get("order-1")).resolves.toEqual(expect.objectContaining({ status: "paid" }));
+  });
+
+  test("keeps order and product unchanged when rollback product is missing", async () => {
+    await db.orders.put(paidOrder());
+    await db.inventoryLogs.bulkPut(inventoryLogs());
+
+    await expect(voidPaidOrder("order-1")).rejects.toThrow("订单关联商品不存在，无法回滚库存。");
+
+    await expect(db.orders.get("order-1")).resolves.toEqual(expect.objectContaining({ status: "paid" }));
+    const logs = await db.inventoryLogs.where("orderId").equals("order-1").toArray();
+    expect(logs.some((log) => log.reason === "order_cancelled_rollback")).toBe(false);
   });
 });

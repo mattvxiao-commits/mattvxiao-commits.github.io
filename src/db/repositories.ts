@@ -177,6 +177,69 @@ export async function listInventoryLogsForOrder(orderId: string): Promise<Invent
     .sortBy("createdAt");
 }
 
+export async function voidPaidOrder(orderId: string, now = new Date()): Promise<Order> {
+  const voidedAt = now.toISOString();
+
+  return db.transaction("rw", db.orders, db.inventoryLogs, db.products, async () => {
+    const order = await db.orders.get(orderId);
+
+    if (!order || order.status !== "paid") {
+      throw new Error("只有已支付订单可以作废。");
+    }
+
+    const originalLogs = (await db.inventoryLogs.where("orderId").equals(orderId).toArray())
+      .filter((log) => log.changeQty < 0 && (log.reason === "order_paid" || log.reason === "gift_order_paid"));
+
+    if (originalLogs.length === 0) {
+      throw new Error("订单缺少可回滚的库存流水。");
+    }
+
+    const rollbackLogs: InventoryLog[] = [];
+    const updatedProducts = new Map<string, Product>();
+
+    for (const originalLog of originalLogs) {
+      const product = updatedProducts.get(originalLog.productId) ?? await db.products.get(originalLog.productId);
+
+      if (!product) {
+        throw new Error("订单关联商品不存在，无法回滚库存。");
+      }
+
+      const beforeQty = product.stockQty;
+      const changeQty = Math.abs(originalLog.changeQty);
+      const afterQty = beforeQty + changeQty;
+      const updatedProduct = {
+        ...product,
+        stockQty: afterQty,
+        updatedAt: voidedAt
+      };
+
+      updatedProducts.set(product.id, updatedProduct);
+      rollbackLogs.push({
+        id: makeId("inventory"),
+        productId: product.id,
+        orderId,
+        changeQty,
+        reason: "order_cancelled_rollback",
+        beforeQty,
+        afterQty,
+        createdAt: voidedAt
+      });
+    }
+
+    const nextOrder: Order = {
+      ...order,
+      status: "cancelled",
+      cancelledAt: voidedAt
+    };
+
+    await db.orders.put(nextOrder);
+    await db.products.bulkPut([...updatedProducts.values()]);
+    await db.inventoryLogs.bulkPut(rollbackLogs);
+
+    return nextOrder;
+  });
+}
+
 export async function clearAllData(): Promise<void> {
   // Only for full data replacement or backup restore flows. Callers must complete backup validation first.
   await db.transaction(
