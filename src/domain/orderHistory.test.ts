@@ -4,6 +4,8 @@ import type { Order } from "./types";
 import {
   dateRangeLabels,
   filterAndSortOrders,
+  getOrderAfterSalesBadges,
+  orderCancelReasonLabels,
   orderStatusLabels,
   paymentMethodLabels,
   type OrderDateRange,
@@ -125,6 +127,34 @@ describe("order history filters", () => {
     expect(result.map((item) => item.id)).toEqual(["paid-newest", "created-middle", "paid-oldest"]);
   });
 
+  test("returns no after-sales badges for paid orders", () => {
+    expect(getOrderAfterSalesBadges(order({ status: "paid" }))).toEqual([]);
+  });
+
+  test("returns default void badges for cancelled orders without a reason", () => {
+    expect(getOrderAfterSalesBadges(order({ status: "cancelled", cancelledAt: "2026-06-17T10:00:00.000Z" }))).toEqual([
+      { label: "已作废", tone: "danger" },
+      { label: "误操作", tone: "neutral" }
+    ]);
+  });
+
+  test("returns reason and note badges for cancelled orders", () => {
+    expect(
+      getOrderAfterSalesBadges(
+        order({
+          status: "cancelled",
+          cancelledAt: "2026-06-17T10:00:00.000Z",
+          cancelReason: "customer_cancelled",
+          cancelNote: " 客户临时取消。 "
+        })
+      )
+    ).toEqual([
+      { label: "已作废", tone: "danger" },
+      { label: "客户取消", tone: "neutral" },
+      { label: "有备注", tone: "neutral" }
+    ]);
+  });
+
   test("exports Chinese labels used by the sales page", () => {
     expect(dateRangeLabels).toEqual({
       today: "今日",
@@ -142,6 +172,14 @@ describe("order history filters", () => {
       wechat: "微信",
       alipay: "支付宝",
       cash: "现金",
+      other: "其他"
+    });
+    expect(orderCancelReasonLabels).toEqual({
+      mistake: "误操作",
+      customer_cancelled: "客户取消",
+      duplicate_order: "重复下单",
+      inventory_issue: "库存/赠品异常",
+      payment_issue: "收款异常",
       other: "其他"
     });
   });

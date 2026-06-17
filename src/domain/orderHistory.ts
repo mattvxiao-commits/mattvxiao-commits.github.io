@@ -1,4 +1,4 @@
-import type { Order, OrderStatus, PaymentMethod } from "./types";
+import type { Order, OrderCancelReason, OrderStatus, PaymentMethod } from "./types";
 
 export type OrderDateRange = "today" | "yesterday" | "last7" | "last30" | "all";
 export type OrderHistoryStatusFilter = OrderStatus | "all";
@@ -31,6 +31,39 @@ export const paymentMethodLabels: Record<PaymentMethod, string> = {
   cash: "现金",
   other: "其他"
 };
+
+export const orderCancelReasonLabels: Record<OrderCancelReason, string> = {
+  mistake: "误操作",
+  customer_cancelled: "客户取消",
+  duplicate_order: "重复下单",
+  inventory_issue: "库存/赠品异常",
+  payment_issue: "收款异常",
+  other: "其他"
+};
+
+export type OrderAfterSalesBadgeTone = "danger" | "neutral";
+
+export type OrderAfterSalesBadge = {
+  label: string;
+  tone: OrderAfterSalesBadgeTone;
+};
+
+export function getOrderAfterSalesBadges(order: Order): OrderAfterSalesBadge[] {
+  if (order.status !== "cancelled") {
+    return [];
+  }
+
+  const badges: OrderAfterSalesBadge[] = [
+    { label: "已作废", tone: "danger" },
+    { label: orderCancelReasonLabels[order.cancelReason ?? "mistake"], tone: "neutral" }
+  ];
+
+  if (order.cancelNote?.trim()) {
+    badges.push({ label: "有备注", tone: "neutral" });
+  }
+
+  return badges;
+}
 
 export function orderBusinessTime(order: Order): string {
   return order.paidAt ?? order.createdAt;
