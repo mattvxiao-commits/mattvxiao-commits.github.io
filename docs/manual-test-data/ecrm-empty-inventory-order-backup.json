@@ -1,0 +1,83 @@
+{
+  "version": 2,
+  "exportedAt": "2026-06-17T00:00:00.000Z",
+  "note": "图片已包含在 JSON 备份中",
+  "data": {
+    "products": [
+      {
+        "id": "manual-empty-inventory-product",
+        "name": "空流水验收商品",
+        "spu": "验收SPU",
+        "spuCode": "TEST",
+        "skuCode": "EMPTY-INV",
+        "productCode": "TEST-EMPTY-INV",
+        "costPrice": 1,
+        "salePrice": 20,
+        "stockQty": 10,
+        "isSellable": true,
+        "isGiftEligible": false,
+        "status": "active",
+        "createdAt": "2026-06-17T00:00:00.000Z",
+        "updatedAt": "2026-06-17T00:00:00.000Z"
+      }
+    ],
+    "settings": [
+      {
+        "id": "settings",
+        "shopName": "ECRM 空库存流水验收",
+        "orderPrefix": "ECRM",
+        "promotion": {
+          "enabled": false,
+          "addonDiscount": {
+            "enabled": false,
+            "discountSpu": "",
+            "discountPrice": 3,
+            "maxDiscountQty": 3
+          },
+          "giftTiers": []
+        }
+      }
+    ],
+    "orders": [
+      {
+        "id": "manual-empty-inventory-order",
+        "orderNo": "ECRM-EMPTY-INVENTORY",
+        "status": "paid",
+        "paymentMethod": "cash",
+        "subtotalBeforeDiscount": 20,
+        "discountAmount": 0,
+        "payableAmount": 20,
+        "promotionSnapshot": {
+          "enabled": false,
+          "addonDiscount": {
+            "enabled": false,
+            "discountSpu": "",
+            "discountPrice": 3,
+            "maxDiscountQty": 3
+          },
+          "giftTiers": []
+        },
+        "giftStockWarning": false,
+        "createdAt": "2026-06-17T09:00:00.000Z",
+        "paidAt": "2026-06-17T09:01:00.000Z"
+      }
+    ],
+    "orderItems": [
+      {
+        "id": "manual-empty-inventory-order-item",
+        "orderId": "manual-empty-inventory-order",
+        "productId": "manual-empty-inventory-product",
+        "productNameSnapshot": "空流水验收商品",
+        "spuSnapshot": "验收SPU",
+        "productCodeSnapshot": "TEST-EMPTY-INV",
+        "quantity": 1,
+        "originalUnitPrice": 20,
+        "finalUnitPrice": 20,
+        "lineType": "normal",
+        "lineTotal": 20
+      }
+    ],
+    "inventoryLogs": [],
+    "images": []
+  }
+}

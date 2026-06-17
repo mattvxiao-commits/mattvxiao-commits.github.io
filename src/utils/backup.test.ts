@@ -1,4 +1,6 @@
 import "fake-indexeddb/auto";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, test, vi } from "vitest";
 import { db } from "../db/db";
 import { exportJsonBackup, importJsonBackupFromText, replaceAllDataInTransaction } from "./backup";
@@ -460,6 +462,18 @@ describe("backup utilities", () => {
       ),
       { importData }
     );
+
+    expect(importData).toHaveBeenCalledOnce();
+  });
+
+  test("imports the manual empty inventory order acceptance backup", async () => {
+    const importData = vi.fn();
+    const backupText = readFileSync(
+      resolve(process.cwd(), "docs/manual-test-data/ecrm-empty-inventory-order-backup.json"),
+      "utf8"
+    );
+
+    await importJsonBackupFromText(backupText, { importData });
 
     expect(importData).toHaveBeenCalledOnce();
   });
