@@ -330,13 +330,13 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
   );
   const rangePaidOrderIds = new Set(rangePaidOrders.map((order) => order.id));
   const rangeRefunds = input.refunds.filter((refund) => isInDateRange(refund.createdAt, input.dateRange));
-  const refundTotalsByOrder = sumRefundsByOrder(rangeRefunds);
+  const allRefundTotalsByOrder = sumRefundsByOrder(input.refunds);
   const paidAmount = rangePaidOrders.reduce((sum, order) => roundMoney(sum + order.payableAmount), 0);
   const refundAmount = rangeRefunds.reduce((sum, refund) => roundMoney(sum + refund.amount), 0);
   const rangeCancelledOrders = input.orders.filter((order) => isRangeCancelledOrder(order, input.dateRange));
   const afterSalesRefundStates = [...rangePaidOrders, ...rangeCancelledOrders].map((order) => ({
     order,
-    refundedAmount: refundTotalsByOrder.get(order.id) ?? 0
+    refundedAmount: allRefundTotalsByOrder.get(order.id) ?? 0
   }));
 
   return {
@@ -357,6 +357,6 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
     topSellingSkuRows: buildTopSellingSkuRows(rangePaidOrderIds, input.orderItems),
     giftConsumptionRows: buildGiftConsumptionRows(rangePaidOrderIds, input.orderItems),
     lowStockRows: buildLowStockRows(input.products),
-    exceptionRows: buildExceptionRows(input.orders, refundTotalsByOrder, rangePaidOrderIds, input.dateRange)
+    exceptionRows: buildExceptionRows(input.orders, allRefundTotalsByOrder, rangePaidOrderIds, input.dateRange)
   };
 }

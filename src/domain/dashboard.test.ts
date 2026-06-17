@@ -305,6 +305,72 @@ describe("buildDashboardModel", () => {
     expect(model.summary.netAmount).toBe(32);
   });
 
+  test("昨天订单今天补录退款时，金额按退款日期统计，状态按订单累计退款统计", () => {
+    const yesterdayOrder = order({
+      id: "yesterday-paid",
+      orderNo: "ECRM-YESTERDAY-PAID",
+      payableAmount: 40,
+      createdAt: "2026-06-14T08:00:00.000Z",
+      paidAt: "2026-06-14T09:00:00.000Z"
+    });
+    const todayRefund = refund({
+      id: "today-refund-for-yesterday-order",
+      orderId: "yesterday-paid",
+      amount: 10,
+      createdAt: "2026-06-15T10:00:00.000Z"
+    });
+
+    const yesterdayModel = buildDashboardModel({
+      dateRange: buildDashboardDateRange("yesterday", now),
+      orders: [yesterdayOrder],
+      orderItems: [],
+      refunds: [todayRefund],
+      products: []
+    });
+    const todayModel = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [yesterdayOrder],
+      orderItems: [],
+      refunds: [todayRefund],
+      products: []
+    });
+
+    expect(yesterdayModel.summary.refundAmount).toBe(0);
+    expect(yesterdayModel.summary.partialRefundOrderCount).toBe(1);
+    expect(yesterdayModel.exceptionRows.map((row) => row.orderNo)).toEqual(["ECRM-YESTERDAY-PAID"]);
+    expect(yesterdayModel.exceptionRows[0].badges).toContain("部分退款");
+    expect(todayModel.summary.refundAmount).toBe(10);
+    expect(todayModel.summary.partialRefundOrderCount).toBe(0);
+    expect(todayModel.exceptionRows).toEqual([]);
+  });
+
+  test("近 7 天范围按模型口径过滤订单、排行和退款", () => {
+    const model = buildDashboardModel({
+      dateRange: buildDashboardDateRange("last7days", now),
+      orders: [
+        order({ id: "range-a", payableAmount: 30, paidAt: "2026-06-15T08:00:00.000Z" }),
+        order({ id: "range-b", payableAmount: 20, paidAt: "2026-06-09T16:00:00.000Z" }),
+        order({ id: "outside", payableAmount: 99, paidAt: "2026-06-08T15:59:59.999Z" })
+      ],
+      orderItems: [
+        item({ id: "range-a-item", orderId: "range-a", productId: "sku-a", quantity: 2, lineTotal: 30 }),
+        item({ id: "range-b-item", orderId: "range-b", productId: "sku-b", quantity: 4, lineTotal: 20 }),
+        item({ id: "outside-item", orderId: "outside", productId: "sku-outside", quantity: 9, lineTotal: 99 })
+      ],
+      refunds: [
+        refund({ id: "range-refund", orderId: "range-a", amount: 6, createdAt: "2026-06-10T08:00:00.000Z" }),
+        refund({ id: "outside-refund", orderId: "range-b", amount: 5, createdAt: "2026-06-08T15:59:59.999Z" })
+      ],
+      products: []
+    });
+
+    expect(model.summary.paidAmount).toBe(50);
+    expect(model.summary.refundAmount).toBe(6);
+    expect(model.summary.netAmount).toBe(44);
+    expect(model.summary.paidOrderCount).toBe(2);
+    expect(model.topSellingSkuRows.map((row) => row.productId)).toEqual(["sku-b", "sku-a"]);
+  });
+
   test("按订单累计退款区分部分退款和已退款", () => {
     const model = buildDashboardModel({
       dateRange: todayRange,
