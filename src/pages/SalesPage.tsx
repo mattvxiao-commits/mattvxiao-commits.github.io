@@ -16,7 +16,6 @@ import { getSettings, listOrders, listProducts, savePaidOrder } from "../db/repo
 import { resolveGiftLines, type GiftSelections } from "../domain/giftSelection";
 import { formatMoney } from "../domain/money";
 import { buildPaidOrder } from "../domain/order";
-import { displayProductCode } from "../domain/productCode";
 import { calculateCart } from "../domain/promotions";
 import type { AppSettings, Order, PaymentMethod, Product } from "../domain/types";
 import { useCartStore } from "../state/cartStore";
@@ -368,15 +367,59 @@ export default function SalesPage() {
   return (
     <section className="salesPage" aria-labelledby="sales-title">
       <div className="salesHeader">
-        <div>
+        <div className="salesTitleBlock">
           <p className="eyebrow">Checkout</p>
           <h1 id="sales-title">售卖</h1>
           <p>选择商品、确认收款，订单只在手动确认已支付后保存并扣减库存。</p>
         </div>
-        <button type="button" className="secondaryButton" disabled={isLoading} onClick={() => void refreshSalesData()}>
-          <RefreshCw size={17} aria-hidden="true" />
-          刷新
-        </button>
+        {mode !== "checkout" ? (
+          <div className="salesHeaderControls">
+            <div className="spuFilter" role="group" aria-label="按 SPU 筛选商品">
+              {spuList.map((spu) => (
+                <button
+                  type="button"
+                  aria-pressed={selectedSpu === spu}
+                  className={selectedSpu === spu ? "isSelected" : ""}
+                  key={spu}
+                  onClick={() => setSelectedSpu(spu)}
+                >
+                  {spu}
+                </button>
+              ))}
+            </div>
+            <div className="salesHeaderActions">
+              <div className="viewSwitch" role="group" aria-label="切换商品展示方式">
+                <button
+                  type="button"
+                  aria-pressed={salesViewMode === "list"}
+                  className={salesViewMode === "list" ? "isSelected" : ""}
+                  onClick={() => setSalesViewMode("list")}
+                >
+                  <List size={16} aria-hidden="true" />
+                  紧凑列表
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={salesViewMode === "grid"}
+                  className={salesViewMode === "grid" ? "isSelected" : ""}
+                  onClick={() => setSalesViewMode("grid")}
+                >
+                  <LayoutGrid size={16} aria-hidden="true" />
+                  图片网格
+                </button>
+              </div>
+              <button type="button" className="secondaryButton" disabled={isLoading} onClick={() => void refreshSalesData()}>
+                <RefreshCw size={17} aria-hidden="true" />
+                刷新
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" className="secondaryButton" disabled={isLoading} onClick={() => void refreshSalesData()}>
+            <RefreshCw size={17} aria-hidden="true" />
+            刷新
+          </button>
+        )}
       </div>
 
       {status ? (
@@ -391,42 +434,6 @@ export default function SalesPage() {
             <CheckoutOrderReview calculated={calculated} products={products} />
           ) : (
             <>
-              <div className="salesControls">
-                <div className="spuFilter" role="group" aria-label="按 SPU 筛选商品">
-                  {spuList.map((spu) => (
-                    <button
-                      type="button"
-                      aria-pressed={selectedSpu === spu}
-                      className={selectedSpu === spu ? "isSelected" : ""}
-                      key={spu}
-                      onClick={() => setSelectedSpu(spu)}
-                    >
-                      {spu}
-                    </button>
-                  ))}
-                </div>
-                <div className="viewSwitch" role="group" aria-label="切换商品展示方式">
-                  <button
-                    type="button"
-                    aria-pressed={salesViewMode === "list"}
-                    className={salesViewMode === "list" ? "isSelected" : ""}
-                    onClick={() => setSalesViewMode("list")}
-                  >
-                    <List size={16} aria-hidden="true" />
-                    紧凑列表
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={salesViewMode === "grid"}
-                    className={salesViewMode === "grid" ? "isSelected" : ""}
-                    onClick={() => setSalesViewMode("grid")}
-                  >
-                    <LayoutGrid size={16} aria-hidden="true" />
-                    图片网格
-                  </button>
-                </div>
-              </div>
-
               {isLoading ? <p className="emptyState">正在加载售卖商品...</p> : null}
               {!isLoading && visibleProducts.length === 0 ? (
                 <div className="salesEmpty">
@@ -449,7 +456,6 @@ export default function SalesPage() {
                           <div>
                             <h2>{product.name}</h2>
                             <p>{product.spu}</p>
-                            <p className="productCodeText">{displayProductCode(product.productCode)}</p>
                           </div>
                           <div className="salesProductRowMeta">
                             <span>{formatMoney(product.salePrice)}</span>
@@ -485,7 +491,6 @@ export default function SalesPage() {
                           <div>
                             <h2>{product.name}</h2>
                             <p>{product.spu}</p>
-                            <p className="productCodeText">{displayProductCode(product.productCode)}</p>
                           </div>
                           <div className="salesProductFacts">
                             <span>{formatMoney(product.salePrice)}</span>

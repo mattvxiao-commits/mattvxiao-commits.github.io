@@ -289,10 +289,23 @@ p {
 
 .productsToolbar {
   display: flex;
-  gap: 10px;
-  align-items: center;
+  gap: 14px;
+  align-items: flex-end;
   justify-content: space-between;
-  padding: 8px 0;
+  padding: 6px 0;
+}
+
+.productsTitleBlock {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.productsTitleLine {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .productsToolbar h1 {
@@ -360,24 +373,23 @@ p {
 
 .metricStrip {
   display: flex;
-  gap: 8px;
+  gap: 0;
   align-items: center;
   flex-wrap: wrap;
   width: fit-content;
   max-width: 100%;
-  margin-top: 2px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 253, 250, 0.82);
-  padding: 5px;
+  padding: 2px;
 }
 
 .metricStrip div {
-  min-height: 32px;
+  min-height: 28px;
   display: inline-flex;
   gap: 6px;
   align-items: baseline;
-  padding: 0 9px;
+  padding: 0 8px;
   border-right: 1px solid var(--line);
 }
 
@@ -387,13 +399,13 @@ p {
 
 .metricStrip span {
   color: var(--ink);
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 900;
   line-height: 1;
 }
 
 .metricStrip p {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 750;
   line-height: 1.2;
   white-space: nowrap;
@@ -603,16 +615,16 @@ p {
 
 .productList {
   display: grid;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .productCard {
   display: grid;
-  grid-template-columns: 84px minmax(0, 1fr) minmax(244px, auto);
-  gap: 12px;
+  grid-template-columns: 66px minmax(0, 1fr) minmax(228px, auto);
+  gap: 10px;
   align-items: center;
-  padding: 10px;
+  padding: 7px 8px;
   border: 1px solid rgba(222, 214, 201, 0.94);
   border-radius: 8px;
   background: rgba(255, 253, 250, 0.9);
@@ -626,13 +638,13 @@ p {
 
 .productThumb span {
   color: var(--accent-strong);
-  font-size: 30px;
+  font-size: 25px;
   font-weight: 900;
 }
 
 .productInfo {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -650,24 +662,17 @@ p {
 .productTitleRow h2 {
   margin: 0;
   color: var(--ink);
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.15;
-  overflow-wrap: anywhere;
-}
-
-.productTitleRow p {
-  margin-top: 3px;
-  font-size: 13px;
-  font-weight: 800;
   overflow-wrap: anywhere;
 }
 
 .statusBadge {
   display: inline-flex;
-  min-height: 28px;
+  min-height: 24px;
   align-items: center;
   justify-content: center;
-  padding: 0 10px;
+  padding: 0 8px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 900;
@@ -686,27 +691,34 @@ p {
 
 .productFacts {
   display: flex;
-  gap: 7px;
+  gap: 5px;
   flex-wrap: wrap;
 }
 
 .productFacts span {
-  min-height: 28px;
+  min-height: 23px;
   display: inline-flex;
   align-items: center;
-  padding: 0 8px;
+  padding: 0 7px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.72);
   color: var(--muted-strong);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 750;
+}
+
+.productFacts .productSpuChip {
+  border-color: rgba(47, 111, 94, 0.28);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 900;
 }
 
 .cardActions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(66px, auto));
-  gap: 7px;
+  grid-template-columns: repeat(3, minmax(58px, auto));
+  gap: 5px;
   align-items: center;
   justify-content: end;
 }
@@ -717,8 +729,9 @@ p {
 }
 
 .cardActions button {
-  min-height: 38px;
-  padding: 0 12px;
+  min-height: 34px;
+  padding: 0 9px;
+  font-size: 12px;
 }
 
 .settingsPage {
@@ -871,11 +884,15 @@ p {
 }
 
 .salesHeader {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 0;
+  display: grid;
+  grid-template-columns: minmax(150px, auto) minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+  padding: 6px 0;
+}
+
+.salesTitleBlock {
+  min-width: 0;
 }
 
 .salesHeader h1 {
@@ -890,12 +907,27 @@ p {
   line-height: 1.35;
 }
 
+.salesHeaderControls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  min-width: 0;
+}
+
+.salesHeaderActions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .salesLayout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   align-items: start;
-  margin-top: 10px;
+  margin-top: 6px;
 }
 
 .salesLayout.hasCheckout {
@@ -906,20 +938,13 @@ p {
   min-width: 0;
 }
 
-.salesControls {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
 .spuFilter {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex: 1 1 auto;
+  justify-content: center;
   overflow-x: auto;
-  padding-bottom: 8px;
+  padding-bottom: 0;
   scrollbar-width: none;
 }
 
@@ -940,7 +965,9 @@ p {
 }
 
 .spuFilter button {
-  padding: 0 14px;
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 
 .viewSwitch {
@@ -954,9 +981,10 @@ p {
 }
 
 .viewSwitch button {
-  min-height: 36px;
-  padding: 0 10px;
+  min-height: 34px;
+  padding: 0 9px;
   border-color: transparent;
+  font-size: 12px;
 }
 
 .spuFilter button.isSelected,
@@ -970,25 +998,25 @@ p {
 .salesProductList {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr));
-  gap: 8px;
+  gap: 7px;
 }
 
 .salesProductRow {
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr) 42px;
+  grid-template-columns: 50px minmax(0, 1fr) 42px;
   gap: 8px;
   align-items: center;
-  min-height: 76px;
-  padding: 7px;
+  min-height: 66px;
+  padding: 6px;
   border: 1px solid rgba(222, 214, 201, 0.94);
   border-radius: 8px;
   background: rgba(255, 253, 250, 0.92);
 }
 
 .salesProductRow .salesProductImage {
-  width: 54px;
-  height: 54px;
-  padding: 5px;
+  width: 50px;
+  height: 50px;
+  padding: 4px;
   border: 1px solid var(--line);
   border-radius: 8px;
 }
@@ -999,14 +1027,14 @@ p {
 
 .salesProductRowMain {
   display: grid;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
 }
 
 .salesProductRowMain h2 {
   margin: 0;
   color: var(--ink);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.18;
   overflow-wrap: anywhere;
 }
@@ -1018,8 +1046,6 @@ p {
   overflow-wrap: anywhere;
 }
 
-.salesProductRowMain .productCodeText,
-.salesProductBody .productCodeText,
 .lineMain .productCodeText {
   color: var(--muted);
   font-size: 11px;
@@ -1035,10 +1061,10 @@ p {
 }
 
 .salesProductRowMeta span {
-  min-height: 24px;
+  min-height: 22px;
   display: inline-flex;
   align-items: center;
-  padding: 0 7px;
+  padding: 0 6px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.74);
@@ -1049,14 +1075,14 @@ p {
 
 .salesProductGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
 }
 
 .salesProductCard {
   position: relative;
   display: grid;
-  grid-template-rows: 156px minmax(116px, auto);
+  grid-template-rows: 136px minmax(98px, auto);
   overflow: hidden;
   border: 1px solid rgba(222, 214, 201, 0.94);
   border-radius: 8px;
@@ -1088,24 +1114,24 @@ p {
 
 .salesProductBody {
   display: grid;
-  gap: 13px;
+  gap: 9px;
   align-content: space-between;
   min-width: 0;
-  padding: 14px 58px 14px 14px;
+  padding: 11px 56px 11px 11px;
 }
 
 .salesProductBody h2 {
   margin: 0;
   color: var(--ink);
-  font-size: 19px;
+  font-size: 17px;
   line-height: 1.16;
   overflow-wrap: anywhere;
 }
 
 .salesProductBody p {
-  margin-top: 5px;
+  margin-top: 3px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
@@ -1117,15 +1143,15 @@ p {
 }
 
 .salesProductFacts span {
-  min-height: 32px;
+  min-height: 27px;
   display: inline-flex;
   align-items: center;
-  padding: 0 9px;
+  padding: 0 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.74);
   color: var(--muted-strong);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -1145,9 +1171,9 @@ p {
 
 .salesProductRow .addSaleButton {
   position: static;
-  width: 40px;
-  height: 40px;
-  min-height: 40px;
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
 }
 
 .orderHistorySection {
@@ -1967,6 +1993,12 @@ p {
     flex-direction: column;
   }
 
+  .productsTitleLine {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
   .settingsPage {
     width: min(100% - 20px, 1180px);
     padding-top: 14px;
@@ -1994,10 +2026,15 @@ p {
 
   .salesHeader {
     align-items: stretch;
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
-  .salesControls {
+  .salesHeaderControls {
+    grid-template-columns: 1fr;
+  }
+
+  .salesHeaderActions {
+    align-items: stretch;
     flex-direction: column;
   }
 

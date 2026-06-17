@@ -105,14 +105,14 @@ test("shows compact sales list by default and can switch to image grid", async (
 
   const list = await screen.findByRole("list", { name: "售卖商品紧凑列表" });
   expect(within(list).getByRole("heading", { level: 2, name: "普通商品" })).toBeVisible();
-  expect(within(list).getByText("NORMAL-BASE")).toBeVisible();
+  expect(within(list).queryByText("NORMAL-BASE")).not.toBeInTheDocument();
   expect(screen.queryByRole("list", { name: "售卖商品图片网格" })).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("button", { name: "图片网格" }));
 
   const grid = await screen.findByRole("list", { name: "售卖商品图片网格" });
   expect(within(grid).getByRole("heading", { level: 2, name: "普通商品" })).toBeVisible();
-  expect(within(grid).getByText("NORMAL-BASE")).toBeVisible();
+  expect(within(grid).queryByText("NORMAL-BASE")).not.toBeInTheDocument();
   expect(screen.queryByRole("list", { name: "售卖商品紧凑列表" })).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("button", { name: "紧凑列表" }));

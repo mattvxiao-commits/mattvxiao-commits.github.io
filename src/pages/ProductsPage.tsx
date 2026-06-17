@@ -192,9 +192,29 @@ export default function ProductsPage() {
   return (
     <section className="productsPage" aria-labelledby="products-title">
       <div className="productsToolbar">
-        <div>
+        <div className="productsTitleBlock">
           <p className="eyebrow">Catalog</p>
-          <h1 id="products-title">商品</h1>
+          <div className="productsTitleLine">
+            <h1 id="products-title">商品</h1>
+            <div className="metricStrip" aria-label="商品概览">
+              <div>
+                <span>{products.length}</span>
+                <p>全部商品</p>
+              </div>
+              <div>
+                <span>{activeCount}</span>
+                <p>启用中</p>
+              </div>
+              <div>
+                <span>{sellableCount}</span>
+                <p>可售卖</p>
+              </div>
+              <div>
+                <span>{totalStock}</span>
+                <p>总库存</p>
+              </div>
+            </div>
+          </div>
         </div>
         <div className="toolbarActions">
           <label className="sortControl">
@@ -215,25 +235,6 @@ export default function ProductsPage() {
             <PackagePlus size={19} aria-hidden="true" />
             新增商品
           </button>
-        </div>
-      </div>
-
-      <div className="metricStrip" aria-label="商品概览">
-        <div>
-          <span>{products.length}</span>
-          <p>全部商品</p>
-        </div>
-        <div>
-          <span>{activeCount}</span>
-          <p>启用中</p>
-        </div>
-        <div>
-          <span>{sellableCount}</span>
-          <p>可售卖</p>
-        </div>
-        <div>
-          <span>{totalStock}</span>
-          <p>总库存</p>
         </div>
       </div>
 
@@ -284,10 +285,10 @@ export default function ProductsPage() {
               <div className="productTitleRow">
                 <div>
                   <h2>{product.name}</h2>
-                  <p>{product.spu}</p>
                 </div>
               </div>
               <div className="productFacts">
+                <span className="productSpuChip">SPU {product.spu}</span>
                 <span>售价 {formatMoney(product.salePrice)}</span>
                 <span>编码 {displayProductCode(product.productCode)}</span>
                 <span>成本 {formatMoney(product.costPrice)}</span>
