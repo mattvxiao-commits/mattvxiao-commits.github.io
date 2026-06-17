@@ -267,11 +267,64 @@ describe("voidPaidOrder", () => {
     await expect(voidPaidOrder("order-1")).rejects.toThrow("只有已支付订单可以作废。");
   });
 
+  test("rejects voiding a pending payment order", async () => {
+    await db.orders.put({ ...paidOrder(), status: "pending_payment", paidAt: undefined, paymentMethod: undefined });
+
+    await expect(voidPaidOrder("order-1")).rejects.toThrow("只有已支付订单可以作废。");
+  });
+
+  test("rejects voiding the same order twice without writing duplicate rollback logs", async () => {
+    await db.products.put(product({ id: "normal", stockQty: 5 }));
+    await db.orders.put(paidOrder());
+    await db.inventoryLogs.bulkPut(inventoryLogs());
+
+    await voidPaidOrder("order-1", new Date("2026-06-17T10:00:00.000Z"));
+    await expect(voidPaidOrder("order-1", new Date("2026-06-17T10:05:00.000Z"))).rejects.toThrow("只有已支付订单可以作废。");
+
+    const logs = await db.inventoryLogs.where("orderId").equals("order-1").toArray();
+    expect(logs.filter((log) => log.reason === "order_cancelled_rollback")).toHaveLength(1);
+    await expect(db.products.get("normal")).resolves.toEqual(expect.objectContaining({ stockQty: 6 }));
+  });
+
   test("rejects voiding a paid order without rollback inventory logs", async () => {
     await db.orders.put(paidOrder());
 
     await expect(voidPaidOrder("order-1")).rejects.toThrow("订单缺少可回滚的库存流水。");
     await expect(db.orders.get("order-1")).resolves.toEqual(expect.objectContaining({ status: "paid" }));
+  });
+
+  test("rejects voiding a paid order with invalid positive deduction logs", async () => {
+    await db.products.put(product({ id: "product-1", stockQty: 5 }));
+    await db.orders.put(paidOrder());
+    await db.inventoryLogs.bulkPut([
+      {
+        id: "valid-deduct",
+        productId: "product-1",
+        orderId: "order-1",
+        changeQty: -1,
+        reason: "order_paid",
+        beforeQty: 10,
+        afterQty: 9,
+        createdAt: "2026-06-17T09:00:00.000Z"
+      },
+      {
+        id: "invalid-deduct",
+        productId: "product-1",
+        orderId: "order-1",
+        changeQty: 1,
+        reason: "order_paid",
+        beforeQty: 9,
+        afterQty: 10,
+        createdAt: "2026-06-17T09:01:00.000Z"
+      }
+    ]);
+
+    await expect(voidPaidOrder("order-1")).rejects.toThrow("订单库存扣减流水异常，无法回滚库存。");
+
+    await expect(db.orders.get("order-1")).resolves.toEqual(expect.objectContaining({ status: "paid" }));
+    await expect(db.products.get("product-1")).resolves.toEqual(expect.objectContaining({ stockQty: 5 }));
+    const logs = await db.inventoryLogs.where("orderId").equals("order-1").toArray();
+    expect(logs.some((log) => log.reason === "order_cancelled_rollback")).toBe(false);
   });
 
   test("keeps order and product unchanged when rollback product is missing", async () => {

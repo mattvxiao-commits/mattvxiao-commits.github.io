@@ -187,8 +187,14 @@ export async function voidPaidOrder(orderId: string, now = new Date()): Promise<
       throw new Error("只有已支付订单可以作废。");
     }
 
-    const originalLogs = (await db.inventoryLogs.where("orderId").equals(orderId).toArray())
-      .filter((log) => log.changeQty < 0 && (log.reason === "order_paid" || log.reason === "gift_order_paid"));
+    const deductionLogs = (await db.inventoryLogs.where("orderId").equals(orderId).toArray())
+      .filter((log) => log.reason === "order_paid" || log.reason === "gift_order_paid");
+
+    if (deductionLogs.some((log) => log.changeQty >= 0)) {
+      throw new Error("订单库存扣减流水异常，无法回滚库存。");
+    }
+
+    const originalLogs = deductionLogs.filter((log) => log.changeQty < 0);
 
     if (originalLogs.length === 0) {
       throw new Error("订单缺少可回滚的库存流水。");

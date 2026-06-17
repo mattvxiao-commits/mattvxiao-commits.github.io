@@ -195,3 +195,18 @@ test("does not show void action for cancelled orders", () => {
   expect(screen.queryByRole("button", { name: "作废订单" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "退款" })).not.toBeInTheDocument();
 });
+
+test("does not show void action for pending payment orders", () => {
+  render(
+    <OrderDetailDialog
+      order={{ ...order, status: "pending_payment", paidAt: undefined, paymentMethod: undefined }}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      onClose={() => undefined}
+      onVoidOrder={() => undefined}
+    />
+  );
+
+  expect(screen.queryByRole("button", { name: "作废订单" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "退款" })).not.toBeInTheDocument();
+});
