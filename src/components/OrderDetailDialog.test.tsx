@@ -78,6 +78,16 @@ const inventoryLogs: InventoryLog[] = [
     createdAt: "2026-06-17T09:35:02.000Z"
   }
 ];
+const rollbackLog: InventoryLog = {
+  id: "log-rollback",
+  productId: "sku-normal",
+  orderId: "order-1",
+  changeQty: 1,
+  reason: "order_cancelled_rollback",
+  beforeQty: 9,
+  afterQty: 10,
+  createdAt: "2026-06-17T10:00:00.000Z"
+};
 
 function expectedDateTime(value: string): string {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -142,4 +152,46 @@ test("shows a read-only order detail dialog with order, item snapshot, and inven
   fireEvent.click(within(dialog).getByRole("button", { name: "关闭订单详情" }));
 
   expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+test("shows void action for paid orders and confirms before calling handler", () => {
+  const onVoidOrder = vi.fn();
+
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={orderItems}
+      inventoryLogs={[...inventoryLogs, rollbackLog]}
+      onClose={() => undefined}
+      onVoidOrder={onVoidOrder}
+    />
+  );
+
+  const dialog = screen.getByRole("dialog", { name: "订单详情 ECRM-20260617-001" });
+  expect(within(dialog).getByText("作废回滚")).toBeVisible();
+
+  fireEvent.click(within(dialog).getByRole("button", { name: "作废订单" }));
+
+  const confirmDialog = screen.getByRole("dialog", { name: "确认作废订单" });
+  expect(within(confirmDialog).getByText("ECRM-20260617-001")).toBeVisible();
+  expect(within(confirmDialog).getByText("作废后订单会标记为已取消，并自动回滚本订单扣减的库存。此操作不可撤销。")).toBeVisible();
+
+  fireEvent.click(within(confirmDialog).getByRole("button", { name: "确认作废" }));
+
+  expect(onVoidOrder).toHaveBeenCalledTimes(1);
+});
+
+test("does not show void action for cancelled orders", () => {
+  render(
+    <OrderDetailDialog
+      order={{ ...order, status: "cancelled", cancelledAt: "2026-06-17T10:00:00.000Z" }}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      onClose={() => undefined}
+      onVoidOrder={() => undefined}
+    />
+  );
+
+  expect(screen.queryByRole("button", { name: "作废订单" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "退款" })).not.toBeInTheDocument();
 });

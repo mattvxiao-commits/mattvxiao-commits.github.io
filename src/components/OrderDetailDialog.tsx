@@ -1,4 +1,5 @@
 import { ClipboardList, PackageCheck, ReceiptText, X } from "lucide-react";
+import { useState } from "react";
 import { formatMoney } from "../domain/money";
 import { orderStatusLabels, paymentMethodLabels } from "../domain/orderHistory";
 import type { InventoryLog, Order, OrderItem, OrderLineType } from "../domain/types";
@@ -8,6 +9,8 @@ type OrderDetailDialogProps = {
   orderItems: OrderItem[];
   inventoryLogs: InventoryLog[];
   onClose: () => void;
+  onVoidOrder?: () => Promise<void> | void;
+  isVoiding?: boolean;
 };
 
 const orderLineTypeLabels: Record<OrderLineType, string> = {
@@ -19,6 +22,7 @@ const orderLineTypeLabels: Record<OrderLineType, string> = {
 const inventoryReasonLabels: Record<InventoryLog["reason"], string> = {
   order_paid: "订单扣减",
   gift_order_paid: "赠品扣减",
+  order_cancelled_rollback: "作废回滚",
   manual_adjust: "手动调整"
 };
 
@@ -50,8 +54,26 @@ function formatInventoryChange(changeQty: number): string {
   return `增加 ${changeQty}`;
 }
 
-export default function OrderDetailDialog({ order, orderItems, inventoryLogs, onClose }: OrderDetailDialogProps) {
+export default function OrderDetailDialog({
+  order,
+  orderItems,
+  inventoryLogs,
+  onClose,
+  onVoidOrder,
+  isVoiding = false
+}: OrderDetailDialogProps) {
+  const [isVoidConfirmOpen, setIsVoidConfirmOpen] = useState(false);
   const paymentLabel = order.paymentMethod ? paymentMethodLabels[order.paymentMethod] : "未记录";
+  const canVoidOrder = order.status === "paid" && onVoidOrder;
+
+  async function confirmVoidOrder() {
+    if (!onVoidOrder) {
+      return;
+    }
+
+    await onVoidOrder();
+    setIsVoidConfirmOpen(false);
+  }
 
   return (
     <div className="modalBackdrop" role="presentation">
@@ -188,8 +210,52 @@ export default function OrderDetailDialog({ order, orderItems, inventoryLogs, on
               ))}
             </div>
           </section>
+
+          {canVoidOrder ? (
+            <section className="orderDetailActions" aria-label="订单操作">
+              <button
+                type="button"
+                className="dangerButton"
+                disabled={isVoiding}
+                onClick={() => setIsVoidConfirmOpen(true)}
+              >
+                作废订单
+              </button>
+            </section>
+          ) : null}
         </div>
       </section>
+
+      {isVoidConfirmOpen ? (
+        <div className="modalBackdrop nestedModalBackdrop" role="presentation">
+          <section className="confirmDialog" role="dialog" aria-modal="true" aria-label="确认作废订单">
+            <div>
+              <p className="eyebrow">Void Order</p>
+              <h2>确认作废订单</h2>
+            </div>
+            <p className="warningText">作废后订单会标记为已取消，并自动回滚本订单扣减的库存。此操作不可撤销。</p>
+            <p className="fieldHint">{order.orderNo}</p>
+            <div className="dialogActions">
+              <button
+                type="button"
+                className="secondaryButton"
+                disabled={isVoiding}
+                onClick={() => setIsVoidConfirmOpen(false)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="dangerButton"
+                disabled={isVoiding}
+                onClick={() => void confirmVoidOrder()}
+              >
+                {isVoiding ? "作废中..." : "确认作废"}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
