@@ -144,7 +144,7 @@ export type InventoryLog = {
   productId: string;
   orderId: string;
   changeQty: number;
-  reason: "order_paid" | "gift_order_paid" | "manual_adjust";
+  reason: "order_paid" | "gift_order_paid" | "order_cancelled_rollback" | "manual_adjust";
   beforeQty: number;
   afterQty: number;
   createdAt: string;

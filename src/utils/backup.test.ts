@@ -367,6 +367,32 @@ describe("backup utilities", () => {
     expect(importData).not.toHaveBeenCalled();
   });
 
+  test("imports order cancelled rollback inventory logs", async () => {
+    const importData = vi.fn();
+
+    await importJsonBackupFromText(
+      JSON.stringify(
+        validPayload({
+          inventoryLogs: [
+            {
+              id: "rollback-log-1",
+              productId: "product-1",
+              orderId: "order-1",
+              changeQty: 2,
+              reason: "order_cancelled_rollback",
+              beforeQty: 3,
+              afterQty: 5,
+              createdAt: "2026-06-17T10:00:00.000Z"
+            }
+          ]
+        })
+      ),
+      { importData }
+    );
+
+    expect(importData).toHaveBeenCalledOnce();
+  });
+
   test("default import replacement keeps old data when transaction fails", async () => {
     const tableStubs = [
       db.products,

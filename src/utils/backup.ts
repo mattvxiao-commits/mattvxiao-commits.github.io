@@ -50,7 +50,7 @@ type ImportDeps = {
 const ORDER_STATUSES = new Set(["pending_payment", "paid", "cancelled"]);
 const PAYMENT_METHODS = new Set(["wechat", "alipay", "cash", "other"]);
 const ORDER_LINE_TYPES = new Set(["normal", "discount_addon", "gift"]);
-const INVENTORY_REASONS = new Set(["order_paid", "gift_order_paid", "manual_adjust"]);
+const INVENTORY_REASONS = new Set(["order_paid", "gift_order_paid", "order_cancelled_rollback", "manual_adjust"]);
 const PRODUCT_STATUSES = new Set(["active", "inactive"]);
 
 function assertRecord(value: unknown, message: string): asserts value is Record<string, unknown> {
