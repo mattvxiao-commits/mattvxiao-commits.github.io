@@ -84,7 +84,7 @@ function validPayload(overrides: Record<string, unknown> = {}) {
 }
 
 describe("backup utilities", () => {
-  test("exports images in version 2 JSON backup", async () => {
+  test("exports images and refunds in version 3 JSON backup", async () => {
     const saveAsModule = await import("file-saver");
     const saveAsMock = vi.mocked(saveAsModule.saveAs);
     const tableSpies = [
@@ -93,6 +93,17 @@ describe("backup utilities", () => {
       vi.spyOn(db.orders, "toArray").mockResolvedValue([]),
       vi.spyOn(db.orderItems, "toArray").mockResolvedValue([]),
       vi.spyOn(db.inventoryLogs, "toArray").mockResolvedValue([]),
+      vi.spyOn(db.orderRefunds, "toArray").mockResolvedValue([
+        {
+          id: "refund-1",
+          orderId: "order-1",
+          amount: 5,
+          method: "wechat",
+          reason: "customer_return",
+          note: "客户退单。",
+          createdAt: "2026-06-17T10:00:00.000Z"
+        }
+      ]),
       vi.spyOn(db.images, "toArray").mockResolvedValue([
         {
           id: "image-1",
@@ -110,8 +121,18 @@ describe("backup utilities", () => {
     const blob = saveAsMock.mock.calls[0][0] as Blob;
     const payload = JSON.parse(await blob.text());
 
-    expect(payload.version).toBe(2);
+    expect(payload.version).toBe(3);
     expect(payload.note).toBe("图片已包含在 JSON 备份中");
+    expect(payload.data.orderRefunds).toEqual([
+      expect.objectContaining({
+        id: "refund-1",
+        orderId: "order-1",
+        amount: 5,
+        method: "wechat",
+        reason: "customer_return",
+        note: "客户退单。"
+      })
+    ]);
     expect(payload.data.images).toEqual([
       expect.objectContaining({
         id: "image-1",
@@ -151,6 +172,7 @@ describe("backup utilities", () => {
       orders: [],
       orderItems: [],
       inventoryLogs: [],
+      orderRefunds: [],
       images: [
         {
           id: "image-1",
@@ -182,7 +204,7 @@ describe("backup utilities", () => {
     await expect(
       importJsonBackupFromText(
         JSON.stringify({
-          version: 3,
+          version: 4,
           exportedAt: "2026-06-15T00:00:00.000Z",
           note: "图片暂不包含在 JSON 备份中",
           data: {
@@ -196,6 +218,175 @@ describe("backup utilities", () => {
         { importData }
       )
     ).rejects.toThrow("不支持的备份版本");
+
+    expect(importData).not.toHaveBeenCalled();
+  });
+
+  test("imports version 3 order refunds into the refund table", async () => {
+    const refundBulkPut = vi.spyOn(db.orderRefunds, "bulkPut").mockResolvedValue(["refund-1"] as never);
+
+    await replaceAllDataInTransaction({
+      products: [],
+      settings: [
+        {
+          id: "settings",
+          shopName: "ECRM 摊位",
+          orderPrefix: "ECRM",
+          promotion: {
+            enabled: false,
+            addonDiscount: {
+              enabled: false,
+              discountSpu: "",
+              discountPrice: 3,
+              maxDiscountQty: 3
+            },
+            giftTiers: []
+          }
+        }
+      ],
+      orders: [],
+      orderItems: [],
+      inventoryLogs: [],
+      images: [],
+      orderRefunds: [
+        {
+          id: "refund-1",
+          orderId: "order-1",
+          amount: 5,
+          method: "cash",
+          reason: "customer_return",
+          createdAt: "2026-06-17T10:00:00.000Z"
+        }
+      ]
+    });
+
+    expect(refundBulkPut).toHaveBeenCalledWith([expect.objectContaining({ id: "refund-1", amount: 5 })]);
+    refundBulkPut.mockRestore();
+  });
+
+  test.each([
+    ["version 1", validPayload()],
+    [
+      "version 2",
+      {
+        ...validPayload(),
+        version: 2,
+        note: "图片已包含在 JSON 备份中",
+        data: {
+          ...validPayload().data,
+          images: []
+        }
+      }
+    ]
+  ])("imports old %s backups without order refunds", async (_label, payload) => {
+    const importData = vi.fn();
+
+    await importJsonBackupFromText(JSON.stringify(payload), { importData });
+
+    expect(importData).toHaveBeenCalledWith(expect.objectContaining({ orderRefunds: [] }));
+  });
+
+  test("rejects malformed order refund amount before replacing data", async () => {
+    const importData = vi.fn();
+
+    await expect(
+      importJsonBackupFromText(
+        JSON.stringify({
+          version: 3,
+          exportedAt: "2026-06-17T10:00:00.000Z",
+          note: "图片已包含在 JSON 备份中",
+          data: {
+            products: [],
+            settings: validPayload().data.settings,
+            orders: [],
+            orderItems: [],
+            inventoryLogs: [],
+            images: [],
+            orderRefunds: [
+              {
+                id: "refund-1",
+                orderId: "order-1",
+                amount: 0,
+                method: "cash",
+                reason: "customer_return",
+                createdAt: "2026-06-17T10:00:00.000Z"
+              }
+            ]
+          }
+        }),
+        { importData }
+      )
+    ).rejects.toThrow("备份文件格式不正确");
+
+    expect(importData).not.toHaveBeenCalled();
+  });
+
+  test("rejects malformed order refund method before replacing data", async () => {
+    const importData = vi.fn();
+
+    await expect(
+      importJsonBackupFromText(
+        JSON.stringify({
+          version: 3,
+          exportedAt: "2026-06-17T10:00:00.000Z",
+          note: "图片已包含在 JSON 备份中",
+          data: {
+            products: [],
+            settings: validPayload().data.settings,
+            orders: [],
+            orderItems: [],
+            inventoryLogs: [],
+            images: [],
+            orderRefunds: [
+              {
+                id: "refund-1",
+                orderId: "order-1",
+                amount: 5,
+                method: "card",
+                reason: "customer_return",
+                createdAt: "2026-06-17T10:00:00.000Z"
+              }
+            ]
+          }
+        }),
+        { importData }
+      )
+    ).rejects.toThrow("备份文件格式不正确");
+
+    expect(importData).not.toHaveBeenCalled();
+  });
+
+  test("rejects malformed order refund reason before replacing data", async () => {
+    const importData = vi.fn();
+
+    await expect(
+      importJsonBackupFromText(
+        JSON.stringify({
+          version: 3,
+          exportedAt: "2026-06-17T10:00:00.000Z",
+          note: "图片已包含在 JSON 备份中",
+          data: {
+            products: [],
+            settings: validPayload().data.settings,
+            orders: [],
+            orderItems: [],
+            inventoryLogs: [],
+            images: [],
+            orderRefunds: [
+              {
+                id: "refund-1",
+                orderId: "order-1",
+                amount: 5,
+                method: "cash",
+                reason: "wrong_reason",
+                createdAt: "2026-06-17T10:00:00.000Z"
+              }
+            ]
+          }
+        }),
+        { importData }
+      )
+    ).rejects.toThrow("备份文件格式不正确");
 
     expect(importData).not.toHaveBeenCalled();
   });
@@ -506,6 +697,7 @@ describe("backup utilities", () => {
       orders: [],
       orderItems: [],
       inventoryLogs: [],
+      orderRefunds: [],
       images: []
     });
 
@@ -578,6 +770,7 @@ describe("backup utilities", () => {
         orders: [],
         orderItems: [],
         inventoryLogs: [],
+        orderRefunds: [],
         images: []
       })
     ).rejects.toThrow("transaction failed");

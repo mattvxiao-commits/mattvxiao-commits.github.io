@@ -1,8 +1,8 @@
 import { saveAs } from "file-saver";
 import { db, type StoredImage } from "../db/db";
-import type { AppSettings, InventoryLog, Order, OrderItem, Product } from "../domain/types";
+import type { AppSettings, InventoryLog, Order, OrderItem, OrderRefund, Product } from "../domain/types";
 
-const BACKUP_VERSION = 2;
+const BACKUP_VERSION = 3;
 const IMAGE_BACKUP_NOTE = "图片已包含在 JSON 备份中";
 const LEGACY_IMAGE_BACKUP_NOTE = "图片暂不包含在 JSON 备份中";
 
@@ -20,25 +20,26 @@ type BackupData = {
   orders: Order[];
   orderItems: OrderItem[];
   inventoryLogs: InventoryLog[];
+  orderRefunds: OrderRefund[];
   images: BackupImage[];
 };
 
-type BackupPayloadV2 = {
-  version: 2;
+type BackupPayloadV3 = {
+  version: 3;
   exportedAt: string;
   note: typeof IMAGE_BACKUP_NOTE;
   data: BackupData;
 };
 
 type ParsedBackupPayload = {
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   exportedAt: string;
   note: typeof IMAGE_BACKUP_NOTE | typeof LEGACY_IMAGE_BACKUP_NOTE;
   data: BackupData;
 };
 
 export type BackupImportResult = {
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   includedImages: boolean;
   imageCount: number;
 };
@@ -53,6 +54,7 @@ const ORDER_LINE_TYPES = new Set(["normal", "discount_addon", "gift"]);
 const ORDER_CANCEL_REASONS = new Set(["mistake", "customer_cancelled", "duplicate_order", "inventory_issue", "payment_issue", "other"]);
 const INVENTORY_REASONS = new Set(["order_paid", "gift_order_paid", "order_cancelled_rollback", "manual_adjust"]);
 const PRODUCT_STATUSES = new Set(["active", "inactive"]);
+const REFUND_REASONS = new Set(["customer_return", "overcharge", "product_issue", "manual_adjustment", "other"]);
 
 function assertRecord(value: unknown, message: string): asserts value is Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -314,6 +316,24 @@ function validateInventoryLogs(inventoryLogs: unknown[]): asserts inventoryLogs 
   }
 }
 
+function validateOrderRefunds(orderRefunds: unknown[]): asserts orderRefunds is OrderRefund[] {
+  for (const refund of orderRefunds) {
+    assertRecord(refund, "备份文件格式不正确。");
+    assertString(refund, "id");
+    assertString(refund, "orderId");
+    assertFiniteNumber(refund, "amount");
+
+    if (refund.amount <= 0) {
+      throw new Error("备份文件格式不正确。");
+    }
+
+    assertEnum(refund, "method", PAYMENT_METHODS);
+    assertEnum(refund, "reason", REFUND_REASONS);
+    assertOptionalString(refund, "note");
+    assertString(refund, "createdAt");
+  }
+}
+
 function validateImages(images: unknown[]): asserts images is BackupImage[] {
   for (const image of images) {
     assertRecord(image, "备份文件格式不正确。");
@@ -331,6 +351,7 @@ function validateBackupData(data: {
   orders: unknown[];
   orderItems: unknown[];
   inventoryLogs: unknown[];
+  orderRefunds: unknown[];
   images: unknown[];
 }): asserts data is BackupData {
   validateSettings(data.settings);
@@ -338,6 +359,7 @@ function validateBackupData(data: {
   validateOrders(data.orders);
   validateOrderItems(data.orderItems);
   validateInventoryLogs(data.inventoryLogs);
+  validateOrderRefunds(data.orderRefunds);
   validateImages(data.images);
 }
 
@@ -352,7 +374,7 @@ function parseBackupPayload(text: string): ParsedBackupPayload {
 
   assertRecord(parsed, "备份文件格式不正确。");
 
-  if (parsed.version !== 1 && parsed.version !== BACKUP_VERSION) {
+  if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== BACKUP_VERSION) {
     throw new Error("不支持的备份版本。");
   }
 
@@ -364,6 +386,7 @@ function parseBackupPayload(text: string): ParsedBackupPayload {
     orders: readArray(parsed.data, "orders"),
     orderItems: readArray(parsed.data, "orderItems"),
     inventoryLogs: readArray(parsed.data, "inventoryLogs"),
+    orderRefunds: parsed.version === 3 ? readArray(parsed.data, "orderRefunds") : [],
     images: parsed.version === 1 ? [] : readArray(parsed.data, "images")
   };
 
@@ -482,6 +505,10 @@ export async function replaceAllDataInTransaction(data: BackupData): Promise<voi
         await db.inventoryLogs.bulkPut(data.inventoryLogs);
       }
 
+      if (data.orderRefunds.length > 0) {
+        await db.orderRefunds.bulkPut(data.orderRefunds);
+      }
+
       if (data.images.length > 0) {
         await db.images.bulkPut(data.images.map(backupImageToStoredImage));
       }
@@ -491,7 +518,7 @@ export async function replaceAllDataInTransaction(data: BackupData): Promise<voi
 
 export async function exportJsonBackup(): Promise<void> {
   const images = await db.images.toArray();
-  const payload: BackupPayloadV2 = {
+  const payload: BackupPayloadV3 = {
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     note: IMAGE_BACKUP_NOTE,
@@ -501,6 +528,7 @@ export async function exportJsonBackup(): Promise<void> {
       orders: await db.orders.toArray(),
       orderItems: await db.orderItems.toArray(),
       inventoryLogs: await db.inventoryLogs.toArray(),
+      orderRefunds: await db.orderRefunds.toArray(),
       images: await Promise.all(images.map(imageToBackupImage))
     }
   };
@@ -524,7 +552,7 @@ export async function importJsonBackupFromText(text: string, deps: ImportDeps = 
 
   return {
     version: payload.version,
-    includedImages: payload.version === BACKUP_VERSION,
+    includedImages: payload.version !== 1,
     imageCount: payload.data.images.length
   };
 }
