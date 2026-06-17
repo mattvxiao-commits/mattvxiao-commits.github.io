@@ -181,6 +181,27 @@ describe("buildDashboardModel", () => {
     expect(model.topSellingSkuRows.map((row) => row.productId)).toEqual(["sku-a", "sku-b"]);
   });
 
+  test("热销 SKU 超过 5 个时只返回前 5 个", () => {
+    const model = buildDashboardModel({
+      day,
+      orders: [order({ id: "order-1" })],
+      orderItems: Array.from({ length: 6 }, (_, index) => {
+        const rank = index + 1;
+        return item({
+          id: `normal-${rank}`,
+          productId: `sku-${rank}`,
+          productNameSnapshot: `商品 ${rank}`,
+          quantity: 7 - rank,
+          lineTotal: (7 - rank) * 10
+        });
+      }),
+      refunds: [],
+      products: []
+    });
+
+    expect(model.topSellingSkuRows.map((row) => row.productId)).toEqual(["sku-1", "sku-2", "sku-3", "sku-4", "sku-5"]);
+  });
+
   test("赠品消耗只统计今日已支付订单的 gift 明细", () => {
     const model = buildDashboardModel({
       day,
@@ -206,6 +227,28 @@ describe("buildDashboardModel", () => {
         quantity: 3
       }
     ]);
+  });
+
+  test("赠品消耗超过 5 个时只返回前 5 个", () => {
+    const model = buildDashboardModel({
+      day,
+      orders: [order({ id: "order-1" })],
+      orderItems: Array.from({ length: 6 }, (_, index) => {
+        const rank = index + 1;
+        return item({
+          id: `gift-${rank}`,
+          productId: `gift-${rank}`,
+          productNameSnapshot: `赠品 ${rank}`,
+          quantity: 7 - rank,
+          lineType: "gift",
+          lineTotal: 0
+        });
+      }),
+      refunds: [],
+      products: []
+    });
+
+    expect(model.giftConsumptionRows.map((row) => row.productId)).toEqual(["gift-1", "gift-2", "gift-3", "gift-4", "gift-5"]);
   });
 
   test("低库存按 stockQty 从低到高排序，包含仅赠品商品，排除 inactive 和安全库存", () => {

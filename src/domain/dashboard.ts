@@ -122,7 +122,7 @@ function buildTopSellingSkuRows(todayPaidOrderIds: Set<string>, orderItems: Orde
     });
   }
 
-  return sortByQuantityThenName([...rowsByProduct.values()]);
+  return sortByQuantityThenName([...rowsByProduct.values()]).slice(0, 5);
 }
 
 function buildGiftConsumptionRows(todayPaidOrderIds: Set<string>, orderItems: OrderItem[]): DashboardGiftRow[] {
@@ -143,7 +143,7 @@ function buildGiftConsumptionRows(todayPaidOrderIds: Set<string>, orderItems: Or
     });
   }
 
-  return sortByQuantityThenName([...rowsByProduct.values()]);
+  return sortByQuantityThenName([...rowsByProduct.values()]).slice(0, 5);
 }
 
 function buildLowStockRows(products: Product[]): DashboardLowStockRow[] {
