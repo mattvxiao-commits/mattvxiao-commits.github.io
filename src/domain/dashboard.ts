@@ -1,7 +1,22 @@
 import type { Order, OrderItem, OrderRefund, PaymentMethod, Product } from "./types";
 
+export type DashboardRangePreset = "today" | "yesterday" | "last3days" | "last7days" | "custom";
+
+export type DashboardDateRange = {
+  preset: DashboardRangePreset;
+  startAt: string;
+  endAt: string;
+  label: string;
+  isCurrentRange: boolean;
+};
+
+export type DashboardCustomRangeInput = {
+  startDate: string;
+  endDate: string;
+};
+
 export type DashboardInput = {
-  day: Date;
+  dateRange: DashboardDateRange;
   orders: Order[];
   orderItems: OrderItem[];
   refunds: OrderRefund[];
@@ -65,17 +80,102 @@ export type DashboardModel = {
   exceptionRows: DashboardExceptionRow[];
 };
 
-function isSameLocalDay(value: string | undefined, day: Date): boolean {
+function startOfLocalDay(value: Date): Date {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function endOfLocalDay(value: Date): Date {
+  const date = new Date(value);
+  date.setHours(23, 59, 59, 999);
+  return date;
+}
+
+function addLocalDays(value: Date, days: number): Date {
+  const date = new Date(value);
+  date.setDate(date.getDate() + days);
+  return date;
+}
+
+function parseLocalDate(dateText: string): Date {
+  const [year, month, day] = dateText.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+export function buildDashboardDateRange(
+  preset: DashboardRangePreset,
+  now = new Date(),
+  custom?: DashboardCustomRangeInput
+): DashboardDateRange {
+  if (preset === "today") {
+    return {
+      preset,
+      startAt: startOfLocalDay(now).toISOString(),
+      endAt: now.toISOString(),
+      label: "今日",
+      isCurrentRange: true
+    };
+  }
+
+  if (preset === "yesterday") {
+    const yesterday = addLocalDays(now, -1);
+    return {
+      preset,
+      startAt: startOfLocalDay(yesterday).toISOString(),
+      endAt: endOfLocalDay(yesterday).toISOString(),
+      label: "昨天",
+      isCurrentRange: false
+    };
+  }
+
+  if (preset === "last3days") {
+    return {
+      preset,
+      startAt: startOfLocalDay(addLocalDays(now, -2)).toISOString(),
+      endAt: now.toISOString(),
+      label: "近 3 天",
+      isCurrentRange: true
+    };
+  }
+
+  if (preset === "last7days") {
+    return {
+      preset,
+      startAt: startOfLocalDay(addLocalDays(now, -6)).toISOString(),
+      endAt: now.toISOString(),
+      label: "近 7 天",
+      isCurrentRange: true
+    };
+  }
+
+  if (!custom?.startDate || !custom.endDate) {
+    throw new Error("自定义日期范围不完整。");
+  }
+
+  const startDate = parseLocalDate(custom.startDate);
+  const endDate = parseLocalDate(custom.endDate);
+
+  if (endDate.getTime() < startDate.getTime()) {
+    throw new Error("结束日期不能早于开始日期。");
+  }
+
+  return {
+    preset,
+    startAt: startOfLocalDay(startDate).toISOString(),
+    endAt: endOfLocalDay(endDate).toISOString(),
+    label: `${custom.startDate} 至 ${custom.endDate}`,
+    isCurrentRange: false
+  };
+}
+
+function isInDateRange(value: string | undefined, range: DashboardDateRange): boolean {
   if (!value) {
     return false;
   }
 
-  const date = new Date(value);
-  return (
-    date.getFullYear() === day.getFullYear() &&
-    date.getMonth() === day.getMonth() &&
-    date.getDate() === day.getDate()
-  );
+  const time = new Date(value).getTime();
+  return time >= new Date(range.startAt).getTime() && time <= new Date(range.endAt).getTime();
 }
 
 function orderBusinessTime(order: Order): string {
@@ -103,11 +203,11 @@ function sortByQuantityThenName<T extends { quantity: number; productName: strin
   });
 }
 
-function buildTopSellingSkuRows(todayPaidOrderIds: Set<string>, orderItems: OrderItem[]): DashboardSkuRow[] {
+function buildTopSellingSkuRows(rangePaidOrderIds: Set<string>, orderItems: OrderItem[]): DashboardSkuRow[] {
   const rowsByProduct = new Map<string, DashboardSkuRow>();
 
   for (const item of orderItems) {
-    if (!todayPaidOrderIds.has(item.orderId) || item.lineType === "gift") {
+    if (!rangePaidOrderIds.has(item.orderId) || item.lineType === "gift") {
       continue;
     }
 
@@ -125,11 +225,11 @@ function buildTopSellingSkuRows(todayPaidOrderIds: Set<string>, orderItems: Orde
   return sortByQuantityThenName([...rowsByProduct.values()]).slice(0, 5);
 }
 
-function buildGiftConsumptionRows(todayPaidOrderIds: Set<string>, orderItems: OrderItem[]): DashboardGiftRow[] {
+function buildGiftConsumptionRows(rangePaidOrderIds: Set<string>, orderItems: OrderItem[]): DashboardGiftRow[] {
   const rowsByProduct = new Map<string, DashboardGiftRow>();
 
   for (const item of orderItems) {
-    if (!todayPaidOrderIds.has(item.orderId) || item.lineType !== "gift") {
+    if (!rangePaidOrderIds.has(item.orderId) || item.lineType !== "gift") {
       continue;
     }
 
@@ -167,8 +267,8 @@ function buildLowStockRows(products: Product[]): DashboardLowStockRow[] {
     }));
 }
 
-function isTodayCancelledOrder(order: Order, day: Date): boolean {
-  return order.status === "cancelled" && isSameLocalDay(order.cancelledAt, day);
+function isRangeCancelledOrder(order: Order, range: DashboardDateRange): boolean {
+  return order.status === "cancelled" && isInDateRange(order.cancelledAt, range);
 }
 
 function getExceptionTime(order: Order): string {
@@ -178,13 +278,13 @@ function getExceptionTime(order: Order): string {
 function buildExceptionRows(
   orders: Order[],
   refundTotalsByOrder: Map<string, number>,
-  todayPaidOrderIds: Set<string>,
-  day: Date
+  rangePaidOrderIds: Set<string>,
+  range: DashboardDateRange
 ): DashboardExceptionRow[] {
   return orders
     .filter((order) => {
       const refundedAmount = refundTotalsByOrder.get(order.id) ?? 0;
-      return isTodayCancelledOrder(order, day) || (todayPaidOrderIds.has(order.id) && (refundedAmount > 0 || order.giftStockWarning));
+      return isRangeCancelledOrder(order, range) || (rangePaidOrderIds.has(order.id) && (refundedAmount > 0 || order.giftStockWarning));
     })
     .map((order) => {
       const refundedAmount = refundTotalsByOrder.get(order.id) ?? 0;
@@ -225,17 +325,16 @@ function buildExceptionRows(
 }
 
 export function buildDashboardModel(input: DashboardInput): DashboardModel {
-  const todayPaidOrders = input.orders.filter(
-    (order) => order.status === "paid" && isSameLocalDay(orderBusinessTime(order), input.day)
+  const rangePaidOrders = input.orders.filter(
+    (order) => order.status === "paid" && isInDateRange(orderBusinessTime(order), input.dateRange)
   );
-  const todayPaidOrderIds = new Set(todayPaidOrders.map((order) => order.id));
-  const refundTotalsByOrder = sumRefundsByOrder(input.refunds);
-  const paidAmount = todayPaidOrders.reduce((sum, order) => roundMoney(sum + order.payableAmount), 0);
-  const refundAmount = input.refunds
-    .filter((refund) => isSameLocalDay(refund.createdAt, input.day))
-    .reduce((sum, refund) => roundMoney(sum + refund.amount), 0);
-  const todayCancelledOrders = input.orders.filter((order) => isTodayCancelledOrder(order, input.day));
-  const afterSalesRefundStates = [...todayPaidOrders, ...todayCancelledOrders].map((order) => ({
+  const rangePaidOrderIds = new Set(rangePaidOrders.map((order) => order.id));
+  const rangeRefunds = input.refunds.filter((refund) => isInDateRange(refund.createdAt, input.dateRange));
+  const refundTotalsByOrder = sumRefundsByOrder(rangeRefunds);
+  const paidAmount = rangePaidOrders.reduce((sum, order) => roundMoney(sum + order.payableAmount), 0);
+  const refundAmount = rangeRefunds.reduce((sum, refund) => roundMoney(sum + refund.amount), 0);
+  const rangeCancelledOrders = input.orders.filter((order) => isRangeCancelledOrder(order, input.dateRange));
+  const afterSalesRefundStates = [...rangePaidOrders, ...rangeCancelledOrders].map((order) => ({
     order,
     refundedAmount: refundTotalsByOrder.get(order.id) ?? 0
   }));
@@ -245,19 +344,19 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
       paidAmount,
       refundAmount,
       netAmount: roundMoney(paidAmount - refundAmount),
-      paidOrderCount: todayPaidOrders.length,
-      cancelledOrderCount: todayCancelledOrders.length,
+      paidOrderCount: rangePaidOrders.length,
+      cancelledOrderCount: rangeCancelledOrders.length,
       partialRefundOrderCount: afterSalesRefundStates.filter(
         ({ order, refundedAmount }) => refundedAmount > 0 && refundedAmount < order.payableAmount
       ).length,
       fullyRefundedOrderCount: afterSalesRefundStates.filter(
         ({ order, refundedAmount }) => order.payableAmount > 0 && refundedAmount >= order.payableAmount
       ).length,
-      notedCancelledOrderCount: todayCancelledOrders.filter((order) => Boolean(order.cancelNote?.trim())).length
+      notedCancelledOrderCount: rangeCancelledOrders.filter((order) => Boolean(order.cancelNote?.trim())).length
     },
-    topSellingSkuRows: buildTopSellingSkuRows(todayPaidOrderIds, input.orderItems),
-    giftConsumptionRows: buildGiftConsumptionRows(todayPaidOrderIds, input.orderItems),
+    topSellingSkuRows: buildTopSellingSkuRows(rangePaidOrderIds, input.orderItems),
+    giftConsumptionRows: buildGiftConsumptionRows(rangePaidOrderIds, input.orderItems),
     lowStockRows: buildLowStockRows(input.products),
-    exceptionRows: buildExceptionRows(input.orders, refundTotalsByOrder, todayPaidOrderIds, input.day)
+    exceptionRows: buildExceptionRows(input.orders, refundTotalsByOrder, rangePaidOrderIds, input.dateRange)
   };
 }
