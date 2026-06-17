@@ -36,12 +36,16 @@ import {
   type OrderHistoryStatusFilter
 } from "../domain/orderHistory";
 import { calculateCart } from "../domain/promotions";
-import type { AppSettings, InventoryLog, Order, OrderItem, PaymentMethod, Product } from "../domain/types";
+import type { AppSettings, InventoryLog, Order, OrderCancelReason, OrderItem, PaymentMethod, Product } from "../domain/types";
 import { useCartStore } from "../state/cartStore";
 import { getImageUrl } from "../utils/image";
 
 type SalesMode = "cart" | "checkout";
 type SalesViewMode = "list" | "grid";
+type VoidOrderInput = {
+  cancelReason: OrderCancelReason;
+  cancelNote?: string;
+};
 type StatusMessage = {
   kind: "success" | "error";
   text: string;
@@ -370,7 +374,7 @@ export default function SalesPage() {
     setSelectedOrderInventoryLogs([]);
   }
 
-  async function handleVoidSelectedOrder() {
+  async function handleVoidSelectedOrder(input: VoidOrderInput) {
     if (!selectedOrder) {
       return;
     }
@@ -379,7 +383,7 @@ export default function SalesPage() {
     setStatus(undefined);
 
     try {
-      const voidedOrder = await voidPaidOrder(selectedOrder.id);
+      const voidedOrder = await voidPaidOrder(selectedOrder.id, input);
       setSelectedOrder(voidedOrder);
 
       try {

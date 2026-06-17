@@ -447,7 +447,9 @@ test("voids an order from the detail dialog and refreshes the order detail", asy
   const cancelledOrder = {
     ...paidOrder,
     status: "cancelled" as const,
-    cancelledAt: localIsoDateTime(0, 10, 0)
+    cancelledAt: localIsoDateTime(0, 10, 0),
+    cancelReason: "customer_cancelled" as const,
+    cancelNote: "客户取消。"
   };
 
   repositories.listOrders
@@ -474,13 +476,27 @@ test("voids an order from the detail dialog and refreshes the order detail", asy
   fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
   fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
   fireEvent.click(await screen.findByRole("button", { name: "作废订单" }));
-  fireEvent.click(await screen.findByRole("button", { name: "确认作废" }));
+  const confirmDialog = await screen.findByRole("dialog", { name: "确认作废订单" });
+  fireEvent.change(within(confirmDialog).getByLabelText("作废原因"), {
+    target: { value: "customer_cancelled" }
+  });
+  fireEvent.change(within(confirmDialog).getByLabelText("作废备注"), {
+    target: { value: "客户取消。" }
+  });
+  fireEvent.click(within(confirmDialog).getByRole("button", { name: "确认作废" }));
 
-  await waitFor(() => expect(repositories.voidPaidOrder).toHaveBeenCalledWith("order-detail"));
+  await waitFor(() =>
+    expect(repositories.voidPaidOrder).toHaveBeenCalledWith("order-detail", {
+      cancelReason: "customer_cancelled",
+      cancelNote: "客户取消。"
+    })
+  );
   expect(await screen.findByText("订单 ECRM-DETAIL 已作废，库存已回滚。")).toBeVisible();
 
   const dialog = await screen.findByRole("dialog", { name: "订单详情 ECRM-DETAIL" });
   expect(within(dialog).getByText("已取消")).toBeVisible();
+  expect(within(dialog).getByText("客户取消")).toBeVisible();
+  expect(within(dialog).getByText("客户取消。")).toBeVisible();
   expect(within(dialog).getByText("作废回滚")).toBeVisible();
   expect(within(dialog).queryByRole("button", { name: "作废订单" })).not.toBeInTheDocument();
   expect(repositories.listProducts.mock.calls.length).toBeGreaterThanOrEqual(2);
@@ -542,7 +558,12 @@ test("keeps a voided order visible when detail refresh fails after voiding", asy
   fireEvent.click(await screen.findByRole("button", { name: "作废订单" }));
   fireEvent.click(await screen.findByRole("button", { name: "确认作废" }));
 
-  await waitFor(() => expect(repositories.voidPaidOrder).toHaveBeenCalledWith("order-detail"));
+  await waitFor(() =>
+    expect(repositories.voidPaidOrder).toHaveBeenCalledWith("order-detail", {
+      cancelReason: "mistake",
+      cancelNote: undefined
+    })
+  );
   expect(await screen.findByText("订单 ECRM-DETAIL 已作废，但详情刷新失败，请刷新页面查看最新库存流水。")).toBeVisible();
   expect(screen.queryByText("订单作废失败，请刷新后重试。")).not.toBeInTheDocument();
   expect(screen.queryByText("raw detail refresh failure")).not.toBeInTheDocument();
