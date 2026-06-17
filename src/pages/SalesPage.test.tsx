@@ -27,7 +27,8 @@ const repositories = vi.hoisted(() => ({
   listOrderItems: vi.fn(),
   listOrders: vi.fn(),
   listProducts: vi.fn(),
-  savePaidOrder: vi.fn()
+  savePaidOrder: vi.fn(),
+  voidPaidOrder: vi.fn()
 }));
 
 vi.mock("../db/repositories", () => repositories);
@@ -44,13 +45,14 @@ function localIsoDateTime(dayOffset: number, hours: number, minutes: number): st
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   repositories.getSettings.mockResolvedValue(settings);
   repositories.listInventoryLogsForOrder.mockResolvedValue([]);
   repositories.listOrderItems.mockResolvedValue([]);
   repositories.listOrders.mockResolvedValue([]);
   repositories.listProducts.mockResolvedValue([sellableProduct]);
   repositories.savePaidOrder.mockResolvedValue(undefined);
+  repositories.voidPaidOrder.mockResolvedValue(undefined);
   useCartStore.getState().replace([]);
 });
 
@@ -424,8 +426,83 @@ test("opens order detail dialog with order items and inventory logs", async () =
   expect(within(dialog).getByText("HIS-BASE")).toBeVisible();
   expect(within(dialog).getByText("加购优惠")).toBeVisible();
   expect(within(dialog).getByText("库存 10 -> 8")).toBeVisible();
-  expect(within(dialog).queryByRole("button", { name: "作废订单" })).not.toBeInTheDocument();
   expect(within(dialog).queryByRole("button", { name: "退款" })).not.toBeInTheDocument();
+});
+
+test("voids an order from the detail dialog and refreshes the order detail", async () => {
+  const paidOrder = order({
+    id: "order-detail",
+    orderNo: "ECRM-DETAIL",
+    paymentMethod: "alipay",
+    payableAmount: 42.5,
+    createdAt: localIsoDateTime(0, 9, 20),
+    paidAt: localIsoDateTime(0, 9, 25)
+  });
+  const cancelledOrder = {
+    ...paidOrder,
+    status: "cancelled" as const,
+    cancelledAt: localIsoDateTime(0, 10, 0)
+  };
+
+  repositories.listOrders
+    .mockResolvedValueOnce([paidOrder])
+    .mockResolvedValueOnce([cancelledOrder]);
+  repositories.listOrderItems.mockResolvedValue([orderItem({ orderId: "order-detail" })]);
+  repositories.listInventoryLogsForOrder
+    .mockResolvedValueOnce([inventoryLog({ orderId: "order-detail", beforeQty: 10, afterQty: 9 })])
+    .mockResolvedValueOnce([
+      inventoryLog({ orderId: "order-detail", beforeQty: 10, afterQty: 9 }),
+      inventoryLog({
+        id: "rollback-log",
+        orderId: "order-detail",
+        changeQty: 1,
+        reason: "order_cancelled_rollback",
+        beforeQty: 9,
+        afterQty: 10
+      })
+    ]);
+  repositories.voidPaidOrder.mockResolvedValue(cancelledOrder);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
+  fireEvent.click(await screen.findByRole("button", { name: "作废订单" }));
+  fireEvent.click(await screen.findByRole("button", { name: "确认作废" }));
+
+  await waitFor(() => expect(repositories.voidPaidOrder).toHaveBeenCalledWith("order-detail"));
+  expect(await screen.findByText("订单 ECRM-DETAIL 已作废，库存已回滚。")).toBeVisible();
+
+  const dialog = await screen.findByRole("dialog", { name: "订单详情 ECRM-DETAIL" });
+  expect(within(dialog).getByText("已取消")).toBeVisible();
+  expect(within(dialog).getByText("作废回滚")).toBeVisible();
+  expect(within(dialog).queryByRole("button", { name: "作废订单" })).not.toBeInTheDocument();
+  expect(repositories.listProducts.mock.calls.length).toBeGreaterThanOrEqual(2);
+  expect(repositories.listOrders.mock.calls.length).toBeGreaterThanOrEqual(2);
+});
+
+test("shows sanitized error when order void fails", async () => {
+  repositories.listOrders.mockResolvedValue([
+    order({
+      id: "order-detail",
+      orderNo: "ECRM-DETAIL",
+      createdAt: localIsoDateTime(0, 9, 20),
+      paidAt: localIsoDateTime(0, 9, 25)
+    })
+  ]);
+  repositories.listOrderItems.mockResolvedValue([orderItem({ orderId: "order-detail" })]);
+  repositories.listInventoryLogsForOrder.mockResolvedValue([inventoryLog({ orderId: "order-detail" })]);
+  repositories.voidPaidOrder.mockRejectedValue(new Error("raw internal rollback failure"));
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
+  fireEvent.click(await screen.findByRole("button", { name: "作废订单" }));
+  fireEvent.click(await screen.findByRole("button", { name: "确认作废" }));
+
+  expect(await screen.findByText("订单作废失败，请刷新后重试。")).toBeVisible();
+  expect(screen.queryByText("raw internal rollback failure")).not.toBeInTheDocument();
 });
 
 test("shows recent paid order history behind a toggle", async () => {

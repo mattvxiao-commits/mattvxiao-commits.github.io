@@ -13,7 +13,15 @@ import { useEffect, useMemo, useState } from "react";
 import CartPanel from "../components/CartPanel";
 import CheckoutPanel from "../components/CheckoutPanel";
 import OrderDetailDialog from "../components/OrderDetailDialog";
-import { getSettings, listInventoryLogsForOrder, listOrderItems, listOrders, listProducts, savePaidOrder } from "../db/repositories";
+import {
+  getSettings,
+  listInventoryLogsForOrder,
+  listOrderItems,
+  listOrders,
+  listProducts,
+  savePaidOrder,
+  voidPaidOrder
+} from "../db/repositories";
 import { resolveGiftLines, type GiftSelections } from "../domain/giftSelection";
 import { formatMoney } from "../domain/money";
 import { buildPaidOrder } from "../domain/order";
@@ -215,6 +223,7 @@ export default function SalesPage() {
   const [selectedOrderItems, setSelectedOrderItems] = useState<OrderItem[]>([]);
   const [selectedOrderInventoryLogs, setSelectedOrderInventoryLogs] = useState<InventoryLog[]>([]);
   const [isOrderDetailLoading, setIsOrderDetailLoading] = useState(false);
+  const [isVoidingOrder, setIsVoidingOrder] = useState(false);
   const [giftSelections, setGiftSelections] = useState<GiftSelections>({});
   const [qrImageUrls, setQrImageUrls] = useState<{ wechat?: string; alipay?: string }>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -359,6 +368,33 @@ export default function SalesPage() {
     setSelectedOrder(undefined);
     setSelectedOrderItems([]);
     setSelectedOrderInventoryLogs([]);
+  }
+
+  async function handleVoidSelectedOrder() {
+    if (!selectedOrder) {
+      return;
+    }
+
+    setIsVoidingOrder(true);
+    setStatus(undefined);
+
+    try {
+      const voidedOrder = await voidPaidOrder(selectedOrder.id);
+      const [items, inventoryLogs] = await Promise.all([
+        listOrderItems(voidedOrder.id),
+        listInventoryLogsForOrder(voidedOrder.id)
+      ]);
+
+      setSelectedOrder(voidedOrder);
+      setSelectedOrderItems(items);
+      setSelectedOrderInventoryLogs(inventoryLogs);
+      setStatus({ kind: "success", text: `订单 ${voidedOrder.orderNo} 已作废，库存已回滚。` });
+      await refreshSalesData({ preserveStatus: true });
+    } catch {
+      setStatus({ kind: "error", text: "订单作废失败，请刷新后重试。" });
+    } finally {
+      setIsVoidingOrder(false);
+    }
   }
 
   async function handleConfirmPaid() {
@@ -723,6 +759,8 @@ export default function SalesPage() {
           orderItems={selectedOrderItems}
           inventoryLogs={selectedOrderInventoryLogs}
           onClose={closeOrderDetail}
+          onVoidOrder={handleVoidSelectedOrder}
+          isVoiding={isVoidingOrder}
         />
       ) : null}
     </section>
