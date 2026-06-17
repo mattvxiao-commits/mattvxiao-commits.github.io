@@ -313,7 +313,35 @@ test("supports custom date range and shows an error when end date is before star
   fireEvent.change(endDate, { target: { value: "2026-06-11" } });
 
   expect(screen.getByText("结束日期不能早于开始日期。")).toBeVisible();
-  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥25.00");
+  expect(screen.getByText("统计范围：自定义日期无效")).toBeVisible();
+  expect(screen.queryByLabelText("经营概览")).not.toBeInTheDocument();
+  expect(repositories.listOrders).toHaveBeenCalledTimes(1);
+});
+
+test("initializes custom range to today instead of keeping the previous range", async () => {
+  repositories.listOrders.mockResolvedValue([
+    paidOrder({ id: "today", orderNo: "ECRM-TODAY", payableAmount: 10, paidAt: "2026-06-15T09:00:00.000Z" }),
+    paidOrder({ id: "yesterday", orderNo: "ECRM-YESTERDAY", payableAmount: 20, paidAt: "2026-06-14T09:00:00.000Z" })
+  ]);
+  repositories.listOrderItems.mockResolvedValue([]);
+
+  render(<DashboardPage />);
+
+  expect(await screen.findByText("统计范围：今日")).toBeVisible();
+
+  fireEvent.click(screen.getByRole("button", { name: "昨天" }));
+
+  expect(screen.getByText("统计范围：昨天")).toBeVisible();
+  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥20.00");
+
+  fireEvent.click(screen.getByRole("button", { name: "自定义" }));
+
+  const startDate = screen.getByLabelText("开始日期");
+  const endDate = screen.getByLabelText("结束日期");
+  expect(startDate).toHaveValue("2026-06-15");
+  expect(endDate).toHaveValue("2026-06-15");
+  expect(screen.getByText("统计范围：2026-06-15 至 2026-06-15")).toBeVisible();
+  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥10.00");
   expect(repositories.listOrders).toHaveBeenCalledTimes(1);
 });
 

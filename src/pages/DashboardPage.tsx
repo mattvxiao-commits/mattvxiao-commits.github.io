@@ -5,6 +5,7 @@ import {
   buildDashboardDateRange,
   buildDashboardModel,
   type DashboardCustomRangeInput,
+  type DashboardDateRange,
   type DashboardRangePreset
 } from "../domain/dashboard";
 import { formatMoney } from "../domain/money";
@@ -17,14 +18,26 @@ type DashboardState = {
   refunds: OrderRefund[];
 };
 
+function formatLocalDateInput(value: Date): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function todayCustomRange(): DashboardCustomRangeInput {
+  const today = formatLocalDateInput(new Date());
+  return { startDate: today, endDate: today };
+}
+
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardState>({ orders: [], orderItems: [], products: [], refunds: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadedData, setHasLoadedData] = useState(false);
   const [error, setError] = useState<string>();
-  const [dateRange, setDateRange] = useState(() => buildDashboardDateRange("today"));
+  const [dateRange, setDateRange] = useState<DashboardDateRange | undefined>(() => buildDashboardDateRange("today"));
   const [rangePreset, setRangePreset] = useState<DashboardRangePreset>("today");
-  const [customRange, setCustomRange] = useState<DashboardCustomRangeInput>({ startDate: "", endDate: "" });
+  const [customRange, setCustomRange] = useState<DashboardCustomRangeInput>(() => todayCustomRange());
   const [rangeError, setRangeError] = useState<string>();
 
   async function refreshDashboard() {
@@ -48,14 +61,19 @@ export default function DashboardPage() {
   }, []);
 
   const dashboard = useMemo(
-    () =>
-      buildDashboardModel({
+    () => {
+      if (!dateRange) {
+        return undefined;
+      }
+
+      return buildDashboardModel({
         dateRange,
         orders: data.orders,
         orderItems: data.orderItems,
         products: data.products,
         refunds: data.refunds
-      }),
+      });
+    },
     [data, dateRange]
   );
 
@@ -63,6 +81,9 @@ export default function DashboardPage() {
     setRangePreset(nextPreset);
 
     if (nextPreset === "custom") {
+      const nextCustomRange = customRange.startDate && customRange.endDate ? customRange : todayCustomRange();
+      setCustomRange(nextCustomRange);
+      setDateRange(buildDashboardDateRange("custom", new Date(), nextCustomRange));
       setRangeError(undefined);
       return;
     }
@@ -75,7 +96,8 @@ export default function DashboardPage() {
     setCustomRange(nextCustomRange);
 
     if (!nextCustomRange.startDate || !nextCustomRange.endDate) {
-      setRangeError(undefined);
+      setDateRange(undefined);
+      setRangeError("自定义日期范围不完整。");
       return;
     }
 
@@ -83,6 +105,7 @@ export default function DashboardPage() {
       setDateRange(buildDashboardDateRange("custom", new Date(), nextCustomRange));
       setRangeError(undefined);
     } catch (customRangeError) {
+      setDateRange(undefined);
       setRangeError(customRangeError instanceof Error ? customRangeError.message : "自定义日期范围无效。");
     }
   }
@@ -101,7 +124,7 @@ export default function DashboardPage() {
         <div>
           <p className="eyebrow">经营看板</p>
           <h1 id="dashboard-title">仪表盘</h1>
-          <p>统计范围：{dateRange.label}</p>
+          <p>统计范围：{dateRange?.label ?? "自定义日期无效"}</p>
         </div>
         <button type="button" className="secondaryButton" disabled={isLoading} onClick={() => void refreshDashboard()}>
           <RefreshCw size={17} aria-hidden="true" />
@@ -157,7 +180,7 @@ export default function DashboardPage() {
 
       {isLoading ? <p className="emptyState">正在加载仪表盘...</p> : null}
 
-      {hasLoadedData ? (
+      {hasLoadedData && dashboard ? (
         <>
           <div className="dashboardGrid">
             <div className="dashboardMetricStrip" aria-label="经营概览">
