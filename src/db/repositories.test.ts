@@ -309,6 +309,24 @@ describe("voidPaidOrder", () => {
     );
   });
 
+  test("stores blank cancel notes as undefined", async () => {
+    await db.products.put(product({ id: "normal", stockQty: 5 }));
+    await db.orders.put(paidOrder());
+    await db.inventoryLogs.bulkPut(inventoryLogs());
+
+    await voidPaidOrder("order-1", {
+      cancelReason: "other",
+      cancelNote: "   "
+    });
+
+    await expect(db.orders.get("order-1")).resolves.toEqual(
+      expect.objectContaining({
+        cancelReason: "other",
+        cancelNote: undefined
+      })
+    );
+  });
+
   test("rejects voiding an order that is not paid", async () => {
     await db.orders.put({ ...paidOrder(), status: "cancelled", cancelledAt: now });
 
