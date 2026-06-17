@@ -12,12 +12,23 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import CartPanel from "../components/CartPanel";
 import CheckoutPanel from "../components/CheckoutPanel";
-import { getSettings, listOrders, listProducts, savePaidOrder } from "../db/repositories";
+import OrderDetailDialog from "../components/OrderDetailDialog";
+import { getSettings, listInventoryLogsForOrder, listOrderItems, listOrders, listProducts, savePaidOrder } from "../db/repositories";
 import { resolveGiftLines, type GiftSelections } from "../domain/giftSelection";
 import { formatMoney } from "../domain/money";
 import { buildPaidOrder } from "../domain/order";
+import {
+  dateRangeLabels,
+  filterAndSortOrders,
+  orderBusinessTime,
+  orderStatusLabels,
+  paymentMethodLabels,
+  type OrderDateRange,
+  type OrderHistoryPaymentFilter,
+  type OrderHistoryStatusFilter
+} from "../domain/orderHistory";
 import { calculateCart } from "../domain/promotions";
-import type { AppSettings, Order, PaymentMethod, Product } from "../domain/types";
+import type { AppSettings, InventoryLog, Order, OrderItem, PaymentMethod, Product } from "../domain/types";
 import { useCartStore } from "../state/cartStore";
 import { getImageUrl } from "../utils/image";
 
@@ -28,26 +39,11 @@ type StatusMessage = {
   text: string;
 };
 
-const paymentMethodLabels: Record<PaymentMethod, string> = {
-  wechat: "微信",
-  alipay: "支付宝",
-  cash: "现金",
-  other: "其他"
-};
-
 const lineTypeLabels = {
   normal: "正常",
   discount_addon: "加购优惠",
   gift: "赠品"
 } as const;
-
-function orderPaidTime(order: Order): string {
-  return order.paidAt ?? order.createdAt;
-}
-
-function compareRecentPaidOrders(left: Order, right: Order): number {
-  return orderPaidTime(right).localeCompare(orderPaidTime(left));
-}
 
 function formatPaidTime(value: string): string {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -211,6 +207,14 @@ export default function SalesPage() {
   const [salesViewMode, setSalesViewMode] = useState<SalesViewMode>("list");
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isOrderHistoryOpen, setIsOrderHistoryOpen] = useState(false);
+  const [orderQuery, setOrderQuery] = useState("");
+  const [orderDateRange, setOrderDateRange] = useState<OrderDateRange>("today");
+  const [orderStatusFilter, setOrderStatusFilter] = useState<OrderHistoryStatusFilter>("paid");
+  const [orderPaymentFilter, setOrderPaymentFilter] = useState<OrderHistoryPaymentFilter>("all");
+  const [selectedOrder, setSelectedOrder] = useState<Order>();
+  const [selectedOrderItems, setSelectedOrderItems] = useState<OrderItem[]>([]);
+  const [selectedOrderInventoryLogs, setSelectedOrderInventoryLogs] = useState<InventoryLog[]>([]);
+  const [isOrderDetailLoading, setIsOrderDetailLoading] = useState(false);
   const [giftSelections, setGiftSelections] = useState<GiftSelections>({});
   const [qrImageUrls, setQrImageUrls] = useState<{ wechat?: string; alipay?: string }>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -321,10 +325,41 @@ export default function SalesPage() {
     setGiftSelections({});
   }, [cartItems, products, settings?.promotion]);
 
-  const recentPaidOrders = useMemo(
-    () => orders.filter((order) => order.status === "paid").sort(compareRecentPaidOrders).slice(0, 10),
-    [orders]
+  const filteredOrders = useMemo(
+    () =>
+      filterAndSortOrders(orders, {
+        query: orderQuery,
+        dateRange: orderDateRange,
+        status: orderStatusFilter,
+        paymentMethod: orderPaymentFilter
+      }),
+    [orders, orderDateRange, orderPaymentFilter, orderQuery, orderStatusFilter]
   );
+
+  async function openOrderDetail(order: Order) {
+    setIsOrderDetailLoading(true);
+    setStatus(undefined);
+
+    try {
+      const [items, inventoryLogs] = await Promise.all([
+        listOrderItems(order.id),
+        listInventoryLogsForOrder(order.id)
+      ]);
+      setSelectedOrder(order);
+      setSelectedOrderItems(items);
+      setSelectedOrderInventoryLogs(inventoryLogs);
+    } catch {
+      setStatus({ kind: "error", text: "订单详情加载失败，请稍后重试。" });
+    } finally {
+      setIsOrderDetailLoading(false);
+    }
+  }
+
+  function closeOrderDetail() {
+    setSelectedOrder(undefined);
+    setSelectedOrderItems([]);
+    setSelectedOrderInventoryLogs([]);
+  }
 
   async function handleConfirmPaid() {
     if (!settings || calculated.lines.length === 0) {
@@ -593,30 +628,103 @@ export default function SalesPage() {
           <span>
             <ReceiptText size={18} aria-hidden="true" />
             <strong id="order-history-title">订单记录</strong>
-            <em>{recentPaidOrders.length} 笔已支付</em>
+            <em>{filteredOrders.length} 笔</em>
           </span>
           {isOrderHistoryOpen ? <ChevronUp size={18} aria-hidden="true" /> : <ChevronDown size={18} aria-hidden="true" />}
         </button>
 
         {isOrderHistoryOpen ? (
-          <div id="recent-order-history" className="orderHistoryPanel" role="region" aria-label="最近订单记录">
+          <div id="recent-order-history" className="orderHistoryPanel" role="region" aria-label="订单记录列表">
+            <div className="orderHistoryFilters">
+              <label>
+                <span>搜索</span>
+                <input
+                  aria-label="搜索订单号"
+                  value={orderQuery}
+                  onChange={(event) => setOrderQuery(event.target.value)}
+                  placeholder="订单号"
+                />
+              </label>
+              <label>
+                <span>日期</span>
+                <select
+                  aria-label="订单日期范围"
+                  value={orderDateRange}
+                  onChange={(event) => setOrderDateRange(event.target.value as OrderDateRange)}
+                >
+                  {(Object.keys(dateRangeLabels) as OrderDateRange[]).map((key) => (
+                    <option key={key} value={key}>
+                      {dateRangeLabels[key]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>状态</span>
+                <select
+                  aria-label="订单状态"
+                  value={orderStatusFilter}
+                  onChange={(event) => setOrderStatusFilter(event.target.value as OrderHistoryStatusFilter)}
+                >
+                  <option value="all">全部状态</option>
+                  {(Object.keys(orderStatusLabels) as Array<keyof typeof orderStatusLabels>).map((key) => (
+                    <option key={key} value={key}>
+                      {orderStatusLabels[key]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>支付</span>
+                <select
+                  aria-label="支付方式"
+                  value={orderPaymentFilter}
+                  onChange={(event) => setOrderPaymentFilter(event.target.value as OrderHistoryPaymentFilter)}
+                >
+                  <option value="all">全部方式</option>
+                  {(Object.keys(paymentMethodLabels) as PaymentMethod[]).map((key) => (
+                    <option key={key} value={key}>
+                      {paymentMethodLabels[key]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
             {isLoading ? <p className="emptyState">正在加载订单记录...</p> : null}
-            {!isLoading && recentPaidOrders.length === 0 ? <p className="emptyState">暂无已支付订单。</p> : null}
-            {recentPaidOrders.map((order) => (
+            {!isLoading && filteredOrders.length === 0 ? <p className="emptyState">当前筛选下暂无订单。</p> : null}
+            {filteredOrders.map((order) => (
               <article className="orderHistoryRow" key={order.id}>
-                <div>
-                  <h3>{order.orderNo}</h3>
-                  <p>{formatPaidTime(orderPaidTime(order))}</p>
-                </div>
-                <div className="orderHistoryMeta">
-                  <span>{paymentMethodLabels[order.paymentMethod ?? "other"]}</span>
-                  <strong>{formatMoney(order.payableAmount)}</strong>
-                </div>
+                <button
+                  type="button"
+                  className="orderHistoryOpenButton"
+                  aria-label={`查看订单 ${order.orderNo}`}
+                  disabled={isOrderDetailLoading}
+                  onClick={() => void openOrderDetail(order)}
+                >
+                  <span>
+                    <strong>{order.orderNo}</strong>
+                    <em>{formatPaidTime(orderBusinessTime(order))}</em>
+                  </span>
+                  <span className="orderHistoryMeta">
+                    <span>{orderStatusLabels[order.status]}</span>
+                    <span>{order.paymentMethod ? paymentMethodLabels[order.paymentMethod] : "未记录"}</span>
+                    <strong>{formatMoney(order.payableAmount)}</strong>
+                  </span>
+                </button>
               </article>
             ))}
           </div>
         ) : null}
       </section>
+
+      {selectedOrder ? (
+        <OrderDetailDialog
+          order={selectedOrder}
+          orderItems={selectedOrderItems}
+          inventoryLogs={selectedOrderInventoryLogs}
+          onClose={closeOrderDetail}
+        />
+      ) : null}
     </section>
   );
 }

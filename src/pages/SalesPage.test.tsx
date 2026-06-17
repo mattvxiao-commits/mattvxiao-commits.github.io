@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, expect, test, vi } from "vitest";
-import type { AppSettings, Order } from "../domain/types";
+import type { AppSettings, InventoryLog, Order, OrderItem } from "../domain/types";
 import { useCartStore } from "../state/cartStore";
 import { defaultPromotion, product } from "../test/fixtures";
 import SalesPage from "./SalesPage";
@@ -23,6 +23,8 @@ const settings: AppSettings = {
 
 const repositories = vi.hoisted(() => ({
   getSettings: vi.fn(),
+  listInventoryLogsForOrder: vi.fn(),
+  listOrderItems: vi.fn(),
   listOrders: vi.fn(),
   listProducts: vi.fn(),
   savePaidOrder: vi.fn()
@@ -34,9 +36,18 @@ vi.mock("../utils/image", () => ({
   getImageUrl: vi.fn(() => Promise.resolve(undefined))
 }));
 
+function localIsoDateTime(dayOffset: number, hours: number, minutes: number): string {
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+  date.setDate(date.getDate() + dayOffset);
+  return date.toISOString();
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   repositories.getSettings.mockResolvedValue(settings);
+  repositories.listInventoryLogsForOrder.mockResolvedValue([]);
+  repositories.listOrderItems.mockResolvedValue([]);
   repositories.listOrders.mockResolvedValue([]);
   repositories.listProducts.mockResolvedValue([sellableProduct]);
   repositories.savePaidOrder.mockResolvedValue(undefined);
@@ -56,6 +67,37 @@ function order(overrides: Partial<Order> = {}): Order {
     giftStockWarning: false,
     createdAt: "2026-06-15T09:20:00.000Z",
     paidAt: "2026-06-15T09:25:00.000Z",
+    ...overrides
+  };
+}
+
+function orderItem(overrides: Partial<OrderItem> = {}): OrderItem {
+  return {
+    id: "item-1",
+    orderId: "order-1",
+    productId: "normal",
+    productNameSnapshot: "普通商品",
+    spuSnapshot: "普通SPU",
+    productCodeSnapshot: "NORMAL-BASE",
+    quantity: 1,
+    originalUnitPrice: 20,
+    finalUnitPrice: 20,
+    lineType: "normal",
+    lineTotal: 20,
+    ...overrides
+  };
+}
+
+function inventoryLog(overrides: Partial<InventoryLog> = {}): InventoryLog {
+  return {
+    id: "log-1",
+    productId: "normal",
+    orderId: "order-1",
+    changeQty: -1,
+    reason: "order_paid",
+    beforeQty: 10,
+    afterQty: 9,
+    createdAt: "2026-06-15T09:25:01.000Z",
     ...overrides
   };
 }
@@ -195,7 +237,15 @@ test("saves paid order, clears cart, refreshes products, and includes gift inven
     .mockResolvedValueOnce([{ ...sellableProduct, stockQty: 9 }, { ...giftProduct, stockQty: 2 }]);
   repositories.listOrders
     .mockResolvedValueOnce([])
-    .mockResolvedValueOnce([order({ orderNo: "ECRM-SAVED", payableAmount: 20, paymentMethod: "cash" })]);
+    .mockResolvedValueOnce([
+      order({
+        orderNo: "ECRM-SAVED",
+        payableAmount: 20,
+        paymentMethod: "cash",
+        createdAt: localIsoDateTime(0, 9, 20),
+        paidAt: localIsoDateTime(0, 9, 25)
+      })
+    ]);
   repositories.getSettings.mockResolvedValue({
     ...settings,
     promotion: {
@@ -291,10 +341,111 @@ test("keeps cart items when paid order save fails", async () => {
   expect(within(cartPanel).getByRole("heading", { level: 3, name: "普通商品" })).toBeVisible();
 });
 
+test("filters order history by order number, status, date range, and payment method", async () => {
+  repositories.listOrders.mockResolvedValue([
+    order({ id: "wechat-today", orderNo: "ECRM-TODAY-WECHAT", paymentMethod: "wechat", paidAt: localIsoDateTime(0, 9, 25) }),
+    order({ id: "cash-today", orderNo: "ECRM-TODAY-CASH", paymentMethod: "cash", paidAt: localIsoDateTime(0, 10, 25) }),
+    order({ id: "pending", orderNo: "ECRM-PENDING", status: "pending_payment", paymentMethod: "cash", paidAt: undefined, createdAt: localIsoDateTime(0, 11, 20) }),
+    order({ id: "old", orderNo: "ECRM-OLD-WECHAT", paymentMethod: "wechat", paidAt: "2026-06-01T09:25:00.000Z", createdAt: "2026-06-01T09:20:00.000Z" })
+  ]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+
+  const history = await screen.findByRole("region", { name: "订单记录列表" });
+  expect(within(history).getByText("ECRM-TODAY-WECHAT")).toBeVisible();
+  expect(within(history).getByText("ECRM-TODAY-CASH")).toBeVisible();
+  expect(within(history).queryByText("ECRM-PENDING")).not.toBeInTheDocument();
+  expect(within(history).queryByText("ECRM-OLD-WECHAT")).not.toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText("搜索订单号"), { target: { value: "cash" } });
+  expect(within(history).queryByText("ECRM-TODAY-WECHAT")).not.toBeInTheDocument();
+  expect(within(history).getByText("ECRM-TODAY-CASH")).toBeVisible();
+
+  fireEvent.change(screen.getByLabelText("搜索订单号"), { target: { value: "" } });
+  fireEvent.change(screen.getByLabelText("订单状态"), { target: { value: "pending_payment" } });
+  expect(within(history).getByText("ECRM-PENDING")).toBeVisible();
+  expect(within(history).queryByText("ECRM-TODAY-CASH")).not.toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText("订单状态"), { target: { value: "all" } });
+  fireEvent.change(screen.getByLabelText("支付方式"), { target: { value: "wechat" } });
+  expect(within(history).getByText("ECRM-TODAY-WECHAT")).toBeVisible();
+  expect(within(history).queryByText("ECRM-OLD-WECHAT")).not.toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText("订单日期范围"), { target: { value: "all" } });
+  expect(within(history).getByText("ECRM-OLD-WECHAT")).toBeVisible();
+});
+
+test("opens order detail dialog with order items and inventory logs", async () => {
+  repositories.listOrders.mockResolvedValue([
+    order({
+      id: "order-detail",
+      orderNo: "ECRM-DETAIL",
+      paymentMethod: "alipay",
+      payableAmount: 42.5,
+      createdAt: localIsoDateTime(0, 9, 20),
+      paidAt: localIsoDateTime(0, 9, 25)
+    })
+  ]);
+  repositories.listOrderItems.mockResolvedValue([
+    orderItem({
+      id: "item-detail",
+      orderId: "order-detail",
+      productNameSnapshot: "历史普通商品",
+      spuSnapshot: "历史SPU",
+      productCodeSnapshot: "HIS-BASE",
+      quantity: 2,
+      originalUnitPrice: 25,
+      finalUnitPrice: 20,
+      lineType: "discount_addon",
+      lineTotal: 40
+    })
+  ]);
+  repositories.listInventoryLogsForOrder.mockResolvedValue([
+    inventoryLog({
+      id: "log-detail",
+      orderId: "order-detail",
+      changeQty: -2,
+      beforeQty: 10,
+      afterQty: 8
+    })
+  ]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
+
+  const dialog = await screen.findByRole("dialog", { name: "订单详情 ECRM-DETAIL" });
+  expect(repositories.listOrderItems).toHaveBeenCalledWith("order-detail");
+  expect(repositories.listInventoryLogsForOrder).toHaveBeenCalledWith("order-detail");
+  expect(within(dialog).getByText("历史普通商品")).toBeVisible();
+  expect(within(dialog).getByText("HIS-BASE")).toBeVisible();
+  expect(within(dialog).getByText("加购优惠")).toBeVisible();
+  expect(within(dialog).getByText("库存 10 -> 8")).toBeVisible();
+  expect(within(dialog).queryByRole("button", { name: "作废订单" })).not.toBeInTheDocument();
+  expect(within(dialog).queryByRole("button", { name: "退款" })).not.toBeInTheDocument();
+});
+
 test("shows recent paid order history behind a toggle", async () => {
   repositories.listOrders.mockResolvedValue([
-    order({ orderNo: "ECRM-PAID", paymentMethod: "alipay", payableAmount: 42.5 }),
-    order({ id: "pending", orderNo: "ECRM-PENDING", status: "pending_payment", paymentMethod: "cash", payableAmount: 18 })
+    order({
+      orderNo: "ECRM-PAID",
+      paymentMethod: "alipay",
+      payableAmount: 42.5,
+      createdAt: localIsoDateTime(0, 9, 20),
+      paidAt: localIsoDateTime(0, 9, 25)
+    }),
+    order({
+      id: "pending",
+      orderNo: "ECRM-PENDING",
+      status: "pending_payment",
+      paymentMethod: "cash",
+      payableAmount: 18,
+      createdAt: localIsoDateTime(0, 10, 20),
+      paidAt: undefined
+    })
   ]);
 
   render(<SalesPage />);
@@ -305,11 +456,13 @@ test("shows recent paid order history behind a toggle", async () => {
 
   fireEvent.click(toggle);
 
-  const history = await screen.findByRole("region", { name: "最近订单记录" });
+  const history = await screen.findByRole("region", { name: "订单记录列表" });
+  const paidOrderButton = within(history).getByRole("button", { name: "查看订单 ECRM-PAID" });
 
-  expect(within(history).getByText("ECRM-PAID")).toBeVisible();
-  expect(within(history).getByText("支付宝")).toBeVisible();
-  expect(within(history).getByText("¥42.50")).toBeVisible();
+  expect(within(paidOrderButton).getByText("ECRM-PAID")).toBeVisible();
+  expect(within(paidOrderButton).getByText("支付宝")).toBeVisible();
+  expect(within(paidOrderButton).getByText("已支付")).toBeVisible();
+  expect(within(paidOrderButton).getByText("¥42.50")).toBeVisible();
   expect(within(history).queryByText("ECRM-PENDING")).not.toBeInTheDocument();
 });
 
@@ -318,19 +471,19 @@ test("sorts recent paid order history by paid time with created time fallback", 
     order({
       id: "created-newer",
       orderNo: "ECRM-CREATED-NEWER",
-      createdAt: "2026-06-15T12:00:00.000Z",
-      paidAt: "2026-06-15T12:05:00.000Z"
+      createdAt: localIsoDateTime(0, 12, 0),
+      paidAt: localIsoDateTime(0, 12, 5)
     }),
     order({
       id: "paid-newest",
       orderNo: "ECRM-PAID-NEWEST",
-      createdAt: "2026-06-15T08:00:00.000Z",
-      paidAt: "2026-06-15T12:30:00.000Z"
+      createdAt: localIsoDateTime(0, 8, 0),
+      paidAt: localIsoDateTime(0, 12, 30)
     }),
     order({
       id: "fallback-middle",
       orderNo: "ECRM-FALLBACK-MIDDLE",
-      createdAt: "2026-06-15T12:10:00.000Z",
+      createdAt: localIsoDateTime(0, 12, 10),
       paidAt: undefined
     })
   ]);
@@ -339,7 +492,7 @@ test("sorts recent paid order history by paid time with created time fallback", 
 
   fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
 
-  const orderNumbers = within(await screen.findByRole("region", { name: "最近订单记录" }))
+  const orderNumbers = within(await screen.findByRole("region", { name: "订单记录列表" }))
     .getAllByText(/ECRM-/)
     .map((item) => item.textContent);
 

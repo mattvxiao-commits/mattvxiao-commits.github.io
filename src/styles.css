@@ -1224,28 +1224,61 @@ p {
   padding: 0 12px 12px;
 }
 
-.orderHistoryRow {
+.orderHistoryFilters {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
+  grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(126px, 1fr));
+  gap: 8px;
+}
+
+.orderHistoryFilters label {
+  display: grid;
+  gap: 5px;
+}
+
+.orderHistoryFilters span {
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.orderHistoryRow {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
 }
 
-.orderHistoryRow h3 {
-  margin: 0;
+.orderHistoryOpenButton {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+}
+
+.orderHistoryOpenButton > span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.orderHistoryOpenButton strong {
   color: var(--ink);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.18;
   overflow-wrap: anywhere;
 }
 
-.orderHistoryRow p {
-  margin-top: 4px;
+.orderHistoryOpenButton em {
+  color: var(--muted);
   font-size: 13px;
+  font-style: normal;
   font-weight: 800;
 }
 
@@ -2178,6 +2211,15 @@ p {
     grid-template-columns: 1fr;
   }
 
+  .orderHistoryFilters {
+    grid-template-columns: 1fr;
+  }
+
+  .orderHistoryOpenButton {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .salesDock {
     display: inline-flex;
   }
@@ -2265,8 +2307,7 @@ p {
     border-bottom: 0;
   }
 
-  .lowStockRow,
-  .orderHistoryRow {
+  .lowStockRow {
     align-items: stretch;
     grid-template-columns: 1fr;
   }

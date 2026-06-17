@@ -79,6 +79,18 @@ const inventoryLogs: InventoryLog[] = [
   }
 ];
 
+function expectedDateTime(value: string): string {
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  }).format(new Date(value));
+}
+
 test("shows a read-only order detail dialog with order, item snapshot, and inventory summary", () => {
   const onClose = vi.fn();
 
@@ -95,7 +107,12 @@ test("shows a read-only order detail dialog with order, item snapshot, and inven
 
   expect(within(dialog).getByText("已支付")).toBeVisible();
   expect(within(dialog).getByText("微信")).toBeVisible();
+  expect(within(dialog).getByText("创建时间")).toBeVisible();
+  expect(within(dialog).getByText("支付时间")).toBeVisible();
+  expect(within(dialog).getByText(expectedDateTime(order.createdAt))).toBeVisible();
+  expect(within(dialog).getByText(expectedDateTime(order.paidAt ?? ""))).toBeVisible();
   expect(within(dialog).getByText("¥100.00")).toBeVisible();
+  expect(within(dialog).getByText("¥120.00")).toBeVisible();
   expect(within(dialog).getByText("¥20.00")).toBeVisible();
   expect(within(dialog).getByText("满 100")).toBeVisible();
 
@@ -103,6 +120,10 @@ test("shows a read-only order detail dialog with order, item snapshot, and inven
   expect(within(itemList).getByText("玫瑰香氛蜡烛")).toBeVisible();
   expect(within(itemList).getByText("香氛系列")).toBeVisible();
   expect(within(itemList).getByText("CANDLE-ROSE")).toBeVisible();
+  expect(within(itemList).getByText("单价 ¥100.00")).toBeVisible();
+  expect(within(itemList).getByText("原价 ¥120.00")).toBeVisible();
+  expect(within(itemList).getByText("小计 ¥100.00")).toBeVisible();
+  expect(within(itemList).getAllByText("x1")).toHaveLength(2);
   expect(within(itemList).getByText("迷你香片赠品")).toBeVisible();
   expect(within(itemList).getByText("赠品")).toBeVisible();
   expect(within(itemList).getByText("普通商品")).toBeVisible();
@@ -110,6 +131,7 @@ test("shows a read-only order detail dialog with order, item snapshot, and inven
   const inventoryList = within(dialog).getByRole("list", { name: "库存流水摘要" });
   const [normalInventoryRow, giftInventoryRow] = within(inventoryList).getAllByRole("listitem");
   expect(within(normalInventoryRow).getByText("sku-normal")).toBeVisible();
+  expect(within(normalInventoryRow).getByText("订单扣减")).toBeVisible();
   expect(within(normalInventoryRow).getByText("库存 10 -> 9")).toBeVisible();
   expect(within(normalInventoryRow).getByText("扣减 1")).toBeVisible();
   expect(within(giftInventoryRow).getByText("赠品扣减")).toBeVisible();

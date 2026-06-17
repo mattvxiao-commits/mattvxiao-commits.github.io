@@ -140,6 +140,18 @@ export default function OrderDetailDialog({ order, orderItems, inventoryLogs, on
                     <span>数量</span>
                     <strong>x{item.quantity}</strong>
                   </div>
+                  <div>
+                    <span>单价</span>
+                    <strong>{`单价 ${formatMoney(item.finalUnitPrice)}`}</strong>
+                  </div>
+                  <div>
+                    <span>原价</span>
+                    <strong>{`原价 ${formatMoney(item.originalUnitPrice)}`}</strong>
+                  </div>
+                  <div>
+                    <span>小计</span>
+                    <strong>{`小计 ${formatMoney(item.lineTotal)}`}</strong>
+                  </div>
                 </article>
               ))}
             </div>
