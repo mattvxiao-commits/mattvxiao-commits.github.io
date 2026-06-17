@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { defaultPromotion } from "../test/fixtures";
-import type { Order } from "./types";
+import type { Order, OrderRefund } from "./types";
 import {
   dateRangeLabels,
   filterAndSortOrders,
@@ -25,6 +25,18 @@ function order(overrides: Partial<Order> = {}): Order {
     giftStockWarning: false,
     createdAt: "2026-06-17T09:00:00.000Z",
     paidAt: "2026-06-17T09:05:00.000Z",
+    ...overrides
+  };
+}
+
+function refund(overrides: Partial<OrderRefund> = {}): OrderRefund {
+  return {
+    id: "refund-1",
+    orderId: "order-1",
+    amount: 5,
+    method: "cash",
+    reason: "customer_return",
+    createdAt: "2026-06-17T10:00:00.000Z",
     ...overrides
   };
 }
@@ -128,11 +140,11 @@ describe("order history filters", () => {
   });
 
   test("returns no after-sales badges for paid orders", () => {
-    expect(getOrderAfterSalesBadges(order({ status: "paid" }))).toEqual([]);
+    expect(getOrderAfterSalesBadges(order({ status: "paid" }), [])).toEqual([]);
   });
 
   test("returns default void badges for cancelled orders without a reason", () => {
-    expect(getOrderAfterSalesBadges(order({ status: "cancelled", cancelledAt: "2026-06-17T10:00:00.000Z" }))).toEqual([
+    expect(getOrderAfterSalesBadges(order({ status: "cancelled", cancelledAt: "2026-06-17T10:00:00.000Z" }), [])).toEqual([
       { label: "已作废", tone: "danger" },
       { label: "误操作", tone: "neutral" }
     ]);
@@ -146,12 +158,46 @@ describe("order history filters", () => {
           cancelledAt: "2026-06-17T10:00:00.000Z",
           cancelReason: "customer_cancelled",
           cancelNote: " 客户临时取消。 "
-        })
+        }),
+        []
       )
     ).toEqual([
       { label: "已作废", tone: "danger" },
       { label: "客户取消", tone: "neutral" },
       { label: "有备注", tone: "neutral" }
+    ]);
+  });
+
+  test("returns partial refund badge when refunds are below payable amount", () => {
+    expect(getOrderAfterSalesBadges(order({ id: "order-1", payableAmount: 20 }), [refund({ amount: 5 })])).toEqual([
+      { label: "部分退款", tone: "neutral" }
+    ]);
+  });
+
+  test("returns refunded badge when refunds reach payable amount", () => {
+    expect(
+      getOrderAfterSalesBadges(order({ id: "order-1", payableAmount: 20 }), [
+        refund({ amount: 10 }),
+        refund({ id: "refund-2", amount: 10 })
+      ])
+    ).toEqual([{ label: "已退款", tone: "danger" }]);
+  });
+
+  test("combines void and refund badges for cancelled refunded orders", () => {
+    expect(
+      getOrderAfterSalesBadges(
+        order({
+          id: "order-1",
+          status: "cancelled",
+          payableAmount: 20,
+          cancelReason: "other"
+        }),
+        [refund({ amount: 20 })]
+      )
+    ).toEqual([
+      { label: "已作废", tone: "danger" },
+      { label: "其他", tone: "neutral" },
+      { label: "已退款", tone: "danger" }
     ]);
   });
 

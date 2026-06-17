@@ -1,4 +1,4 @@
-import type { Order, OrderCancelReason, OrderStatus, PaymentMethod } from "./types";
+import type { Order, OrderCancelReason, OrderRefund, OrderStatus, PaymentMethod } from "./types";
 
 export type OrderDateRange = "today" | "yesterday" | "last7" | "last30" | "all";
 export type OrderHistoryStatusFilter = OrderStatus | "all";
@@ -48,18 +48,30 @@ export type OrderAfterSalesBadge = {
   tone: OrderAfterSalesBadgeTone;
 };
 
-export function getOrderAfterSalesBadges(order: Order): OrderAfterSalesBadge[] {
-  if (order.status !== "cancelled") {
-    return [];
+export function getOrderAfterSalesBadges(order: Order, refunds: OrderRefund[] = []): OrderAfterSalesBadge[] {
+  const badges: OrderAfterSalesBadge[] = [];
+
+  if (order.status === "cancelled") {
+    badges.push(
+      { label: "已作废", tone: "danger" },
+      { label: orderCancelReasonLabels[order.cancelReason ?? "mistake"], tone: "neutral" }
+    );
+
+    if (order.cancelNote?.trim()) {
+      badges.push({ label: "有备注", tone: "neutral" });
+    }
   }
 
-  const badges: OrderAfterSalesBadge[] = [
-    { label: "已作废", tone: "danger" },
-    { label: orderCancelReasonLabels[order.cancelReason ?? "mistake"], tone: "neutral" }
-  ];
+  const refundedAmount = refunds
+    .filter((refund) => refund.orderId === order.id)
+    .reduce((sum, refund) => sum + refund.amount, 0);
 
-  if (order.cancelNote?.trim()) {
-    badges.push({ label: "有备注", tone: "neutral" });
+  if (refundedAmount > 0) {
+    const isFullyRefunded = refundedAmount >= order.payableAmount;
+    badges.push({
+      label: isFullyRefunded ? "已退款" : "部分退款",
+      tone: isFullyRefunded ? "danger" : "neutral"
+    });
   }
 
   return badges;
