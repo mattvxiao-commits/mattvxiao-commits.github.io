@@ -1,5 +1,5 @@
 import { ClipboardList, PackageCheck, ReceiptText, X } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { formatMoney } from "../domain/money";
 import { orderStatusLabels, paymentMethodLabels } from "../domain/orderHistory";
 import type { InventoryLog, Order, OrderItem, OrderLineType } from "../domain/types";
@@ -54,6 +54,14 @@ function formatInventoryChange(changeQty: number): string {
   return `增加 ${changeQty}`;
 }
 
+function productSnapshotLabel(item?: OrderItem): string {
+  if (!item) {
+    return "未知商品";
+  }
+
+  return item.productCodeSnapshot ? `${item.productCodeSnapshot} / ${item.spuSnapshot}` : item.spuSnapshot;
+}
+
 export default function OrderDetailDialog({
   order,
   orderItems,
@@ -65,6 +73,14 @@ export default function OrderDetailDialog({
   const [isVoidConfirmOpen, setIsVoidConfirmOpen] = useState(false);
   const paymentLabel = order.paymentMethod ? paymentMethodLabels[order.paymentMethod] : "未记录";
   const canVoidOrder = order.status === "paid" && onVoidOrder;
+  const orderItemByProductId = useMemo(
+    () => new Map(orderItems.map((item) => [item.productId, item])),
+    [orderItems]
+  );
+  const rollbackProductCount = useMemo(
+    () => new Set(inventoryLogs.filter((log) => log.reason === "order_cancelled_rollback").map((log) => log.productId)).size,
+    [inventoryLogs]
+  );
 
   async function confirmVoidOrder() {
     if (!onVoidOrder) {
@@ -187,27 +203,35 @@ export default function OrderDetailDialog({
                 <p>支付入账后产生的库存扣减摘要</p>
               </div>
             </div>
+            {rollbackProductCount > 0 ? (
+              <p className="inventoryRollbackSummary">{`已作废：${rollbackProductCount} 个商品库存已回滚。`}</p>
+            ) : null}
             <div className="orderDetailList" role="list" aria-label="库存流水摘要">
-              {inventoryLogs.map((log) => (
-                <article className="inventoryLogRow" role="listitem" key={log.id}>
-                  <div>
-                    <span>productId</span>
-                    <strong>{log.productId}</strong>
-                  </div>
-                  <div>
-                    <span>库存原因</span>
-                    <strong>{inventoryReasonLabels[log.reason]}</strong>
-                  </div>
-                  <div>
-                    <span>数量</span>
-                    <strong>{formatInventoryChange(log.changeQty)}</strong>
-                  </div>
-                  <div>
-                    <span>库存</span>
-                    <strong>{`库存 ${log.beforeQty} -> ${log.afterQty}`}</strong>
-                  </div>
-                </article>
-              ))}
+              {inventoryLogs.map((log) => {
+                const item = orderItemByProductId.get(log.productId);
+
+                return (
+                  <article className="inventoryLogRow" role="listitem" key={log.id}>
+                    <div className="inventoryProductCell">
+                      <span>商品</span>
+                      <strong>{item?.productNameSnapshot ?? log.productId}</strong>
+                      {item ? <em>{productSnapshotLabel(item)}</em> : null}
+                    </div>
+                    <div>
+                      <span>库存原因</span>
+                      <strong>{inventoryReasonLabels[log.reason]}</strong>
+                    </div>
+                    <div>
+                      <span>数量</span>
+                      <strong>{formatInventoryChange(log.changeQty)}</strong>
+                    </div>
+                    <div>
+                      <span>库存</span>
+                      <strong>{`库存 ${log.beforeQty} -> ${log.afterQty}`}</strong>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </section>
 

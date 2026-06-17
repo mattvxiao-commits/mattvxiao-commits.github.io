@@ -140,10 +140,12 @@ test("shows a read-only order detail dialog with order, item snapshot, and inven
 
   const inventoryList = within(dialog).getByRole("list", { name: "库存流水摘要" });
   const [normalInventoryRow, giftInventoryRow] = within(inventoryList).getAllByRole("listitem");
-  expect(within(normalInventoryRow).getByText("sku-normal")).toBeVisible();
+  expect(within(normalInventoryRow).getByText("玫瑰香氛蜡烛")).toBeVisible();
+  expect(within(normalInventoryRow).getByText("CANDLE-ROSE / 香氛系列")).toBeVisible();
   expect(within(normalInventoryRow).getByText("订单扣减")).toBeVisible();
   expect(within(normalInventoryRow).getByText("库存 10 -> 9")).toBeVisible();
   expect(within(normalInventoryRow).getByText("扣减 1")).toBeVisible();
+  expect(within(giftInventoryRow).getByText("迷你香片赠品")).toBeVisible();
   expect(within(giftInventoryRow).getByText("赠品扣减")).toBeVisible();
 
   expect(within(dialog).queryByRole("button", { name: "作废订单" })).not.toBeInTheDocument();
@@ -179,6 +181,29 @@ test("shows void action for paid orders and confirms before calling handler", ()
   fireEvent.click(within(confirmDialog).getByRole("button", { name: "确认作废" }));
 
   expect(onVoidOrder).toHaveBeenCalledTimes(1);
+});
+
+test("shows readable inventory product snapshots and rollback summary", () => {
+  render(
+    <OrderDetailDialog
+      order={{ ...order, status: "cancelled", cancelledAt: "2026-06-17T10:00:00.000Z" }}
+      orderItems={orderItems}
+      inventoryLogs={[...inventoryLogs, rollbackLog]}
+      onClose={() => undefined}
+    />
+  );
+
+  const inventoryList = screen.getByRole("list", { name: "库存流水摘要" });
+  const [normalInventoryRow, , rollbackInventoryRow] = within(inventoryList).getAllByRole("listitem");
+
+  expect(screen.getByText("已作废：1 个商品库存已回滚。")).toBeVisible();
+  expect(within(normalInventoryRow).getByText("玫瑰香氛蜡烛")).toBeVisible();
+  expect(within(normalInventoryRow).getByText("CANDLE-ROSE / 香氛系列")).toBeVisible();
+  expect(within(rollbackInventoryRow).getByText("玫瑰香氛蜡烛")).toBeVisible();
+  expect(within(rollbackInventoryRow).getByText("作废回滚")).toBeVisible();
+  expect(within(rollbackInventoryRow).getByText("增加 1")).toBeVisible();
+  expect(within(rollbackInventoryRow).getByText("库存 9 -> 10")).toBeVisible();
+  expect(within(inventoryList).queryByText("sku-normal")).not.toBeInTheDocument();
 });
 
 test("does not show void action for cancelled orders", () => {

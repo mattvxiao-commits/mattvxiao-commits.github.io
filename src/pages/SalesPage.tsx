@@ -443,7 +443,7 @@ export default function SalesPage() {
 
   return (
     <section className="salesPage" aria-labelledby="sales-title">
-      <div className="salesHeader">
+      <div className={mode === "checkout" ? "salesHeader isCheckout" : "salesHeader"}>
         <div className="salesTitleBlock">
           <p className="eyebrow">Checkout</p>
           <h1 id="sales-title">售卖</h1>
@@ -492,7 +492,7 @@ export default function SalesPage() {
             </div>
           </div>
         ) : (
-          <button type="button" className="secondaryButton" disabled={isLoading} onClick={() => void refreshSalesData()}>
+          <button type="button" className="secondaryButton checkoutRefreshButton" disabled={isLoading} onClick={() => void refreshSalesData()}>
             <RefreshCw size={17} aria-hidden="true" />
             刷新
           </button>

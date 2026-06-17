@@ -135,6 +135,8 @@ test("shows order review instead of sellable products while checking out", async
   expect(within(review).queryByText("NORMAL-BASE")).not.toBeInTheDocument();
   expect(within(review).getByText("正常")).toBeVisible();
   expect(within(review).getByText("单价 ¥20.00")).toBeVisible();
+  expect(screen.getByRole("heading", { level: 1, name: "售卖" }).closest(".salesHeader")).toHaveClass("isCheckout");
+  expect(screen.getByRole("button", { name: "刷新" })).toHaveClass("checkoutRefreshButton");
   const payableRow = within(review).getByText("应收").closest("div");
   expect(payableRow).not.toBeNull();
   expect(within(payableRow as HTMLElement).getByText("¥20.00")).toBeVisible();
@@ -420,12 +422,16 @@ test("opens order detail dialog with order items and inventory logs", async () =
   fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
 
   const dialog = await screen.findByRole("dialog", { name: "订单详情 ECRM-DETAIL" });
+  const itemList = within(dialog).getByRole("list", { name: "订单商品明细" });
+  const inventoryList = within(dialog).getByRole("list", { name: "库存流水摘要" });
   expect(repositories.listOrderItems).toHaveBeenCalledWith("order-detail");
   expect(repositories.listInventoryLogsForOrder).toHaveBeenCalledWith("order-detail");
-  expect(within(dialog).getByText("历史普通商品")).toBeVisible();
-  expect(within(dialog).getByText("HIS-BASE")).toBeVisible();
-  expect(within(dialog).getByText("加购优惠")).toBeVisible();
-  expect(within(dialog).getByText("库存 10 -> 8")).toBeVisible();
+  expect(within(itemList).getByText("历史普通商品")).toBeVisible();
+  expect(within(itemList).getByText("HIS-BASE")).toBeVisible();
+  expect(within(itemList).getByText("加购优惠")).toBeVisible();
+  expect(within(inventoryList).getByText("历史普通商品")).toBeVisible();
+  expect(within(inventoryList).getByText("HIS-BASE / 历史SPU")).toBeVisible();
+  expect(within(inventoryList).getByText("库存 10 -> 8")).toBeVisible();
   expect(within(dialog).queryByRole("button", { name: "退款" })).not.toBeInTheDocument();
 });
 
