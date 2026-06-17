@@ -261,25 +261,32 @@ export default function SalesPage() {
   const decrement = useCartStore((state) => state.decrement);
   const clearCart = useCartStore((state) => state.clear);
 
-  async function refreshSalesData(options: { preserveStatus?: boolean } = {}) {
+  async function refreshSalesData(options: { failureStatus?: StatusMessage; preserveStatus?: boolean } = {}) {
     setIsLoading(true);
     if (!options.preserveStatus) {
       setStatus(undefined);
     }
 
     try {
-      const [loadedProducts, loadedSettings, loadedOrders, loadedRefunds] = await Promise.all([
+      const [loadedProducts, loadedSettings, loadedOrders] = await Promise.all([
         listProducts(),
         getSettings(),
-        listOrders(),
-        listRefunds()
+        listOrders()
       ]);
       setProducts(loadedProducts);
       setSettings(loadedSettings);
       setOrders(loadedOrders);
-      setRefunds(loadedRefunds);
+
+      try {
+        setRefunds(await listRefunds());
+      } catch {
+        setRefunds([]);
+        if (!options.preserveStatus) {
+          setStatus({ kind: "error", text: "退款记录加载失败，订单售后标识可能不完整。" });
+        }
+      }
     } catch {
-      setStatus({ kind: "error", text: "售卖数据加载失败，请刷新后重试。" });
+      setStatus(options.failureStatus ?? { kind: "error", text: "售卖数据加载失败，请刷新后重试。" });
     } finally {
       setIsLoading(false);
     }
@@ -448,19 +455,37 @@ export default function SalesPage() {
     setStatus(undefined);
 
     try {
-      await saveOrderRefund({
-        orderId: selectedOrder.id,
-        amount: input.amount,
-        method: input.method,
-        reason: input.reason,
-        note: input.note
+      try {
+        await saveOrderRefund({
+          orderId: selectedOrder.id,
+          amount: input.amount,
+          method: input.method,
+          reason: input.reason,
+          note: input.note
+        });
+      } catch {
+        setStatus({ kind: "error", text: "退款记录保存失败，请刷新后重试。" });
+        throw new Error("refund-save-failed");
+      }
+
+      try {
+        const updatedRefunds = await listOrderRefunds(selectedOrder.id);
+        setSelectedOrderRefunds(updatedRefunds);
+        setStatus({ kind: "success", text: `订单 ${selectedOrder.orderNo} 已记录退款 ${formatMoney(input.amount)}。` });
+      } catch {
+        setStatus({
+          kind: "error",
+          text: `订单 ${selectedOrder.orderNo} 已记录退款，但退款记录刷新失败，请刷新页面查看最新退款记录。`
+        });
+      }
+
+      await refreshSalesData({
+        preserveStatus: true,
+        failureStatus: {
+          kind: "error",
+          text: `订单 ${selectedOrder.orderNo} 已记录退款，但售卖数据刷新失败，请刷新页面查看最新订单列表。`
+        }
       });
-      const updatedRefunds = await listOrderRefunds(selectedOrder.id);
-      setSelectedOrderRefunds(updatedRefunds);
-      setStatus({ kind: "success", text: `订单 ${selectedOrder.orderNo} 已记录退款 ${formatMoney(input.amount)}。` });
-      await refreshSalesData({ preserveStatus: true });
-    } catch {
-      setStatus({ kind: "error", text: "退款记录保存失败，请刷新后重试。" });
     } finally {
       setIsSavingRefund(false);
     }

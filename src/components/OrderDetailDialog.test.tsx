@@ -444,6 +444,34 @@ test("submits a manual refund from the refund dialog", () => {
   });
 });
 
+test("keeps refund dialog open with a sanitized error when save handler rejects", async () => {
+  const onSaveRefund = vi.fn().mockRejectedValue(new Error("raw refund save failure"));
+
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
+      onClose={() => undefined}
+      onSaveRefund={onSaveRefund}
+    />
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "记录退款" }));
+
+  const refundDialog = screen.getByRole("dialog", { name: "记录人工退款" });
+  fireEvent.change(within(refundDialog).getByLabelText("退款金额"), { target: { value: "12" } });
+  fireEvent.change(within(refundDialog).getByLabelText("退款备注"), { target: { value: "保留输入" } });
+  fireEvent.click(within(refundDialog).getByRole("button", { name: "保存退款记录" }));
+
+  expect(await screen.findByText("退款记录保存失败，请刷新后重试。")).toBeVisible();
+  expect(screen.queryByText("raw refund save failure")).not.toBeInTheDocument();
+  expect(screen.getByRole("dialog", { name: "记录人工退款" })).toBeVisible();
+  expect(screen.getByLabelText("退款金额")).toHaveValue(12);
+  expect(screen.getByLabelText("退款备注")).toHaveValue("保留输入");
+});
+
 test("defaults refund method to cash when order has no payment method", () => {
   render(
     <OrderDetailDialog

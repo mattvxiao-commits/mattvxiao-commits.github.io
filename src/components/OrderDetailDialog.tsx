@@ -201,13 +201,17 @@ export default function OrderDetailDialog({
       return;
     }
 
-    await onSaveRefund({
-      amount,
-      method: refundMethod,
-      reason: refundReason,
-      note: refundNote.trim() || undefined
-    });
-    setIsRefundDialogOpen(false);
+    try {
+      await onSaveRefund({
+        amount,
+        method: refundMethod,
+        reason: refundReason,
+        note: refundNote.trim() || undefined
+      });
+      setIsRefundDialogOpen(false);
+    } catch {
+      setRefundError("退款记录保存失败，请刷新后重试。");
+    }
   }
 
   return (

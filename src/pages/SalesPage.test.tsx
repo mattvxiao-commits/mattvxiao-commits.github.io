@@ -553,11 +553,98 @@ test("shows sanitized error when refund save fails", async () => {
   fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
   fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
   fireEvent.click(await screen.findByRole("button", { name: "记录退款" }));
-  fireEvent.change(await screen.findByLabelText("退款金额"), { target: { value: "1" } });
-  fireEvent.click(screen.getByRole("button", { name: "保存退款记录" }));
+  const refundDialog = await screen.findByRole("dialog", { name: "记录人工退款" });
+  fireEvent.change(within(refundDialog).getByLabelText("退款金额"), { target: { value: "1" } });
+  fireEvent.change(within(refundDialog).getByLabelText("退款备注"), { target: { value: "保留输入" } });
+  fireEvent.click(within(refundDialog).getByRole("button", { name: "保存退款记录" }));
 
-  expect(await screen.findByText("退款记录保存失败，请刷新后重试。")).toBeVisible();
+  const saveErrorMessages = await screen.findAllByText("退款记录保存失败，请刷新后重试。");
+  expect(saveErrorMessages.length).toBeGreaterThan(0);
   expect(screen.queryByText("raw refund failure")).not.toBeInTheDocument();
+  const stillOpenRefundDialog = screen.getByRole("dialog", { name: "记录人工退款" });
+  expect(stillOpenRefundDialog).toBeVisible();
+  expect(screen.getByLabelText("退款金额")).toHaveValue(1);
+  expect(screen.getByLabelText("退款备注")).toHaveValue("保留输入");
+  expect(within(stillOpenRefundDialog).getByRole("button", { name: "保存退款记录" })).toBeEnabled();
+});
+
+test("keeps refund save success when refund detail refresh fails", async () => {
+  repositories.listOrders.mockResolvedValue([
+    order({
+      id: "order-detail",
+      orderNo: "ECRM-DETAIL",
+      payableAmount: 20,
+      createdAt: localIsoDateTime(0, 9, 20),
+      paidAt: localIsoDateTime(0, 9, 25)
+    })
+  ]);
+  repositories.listOrderItems.mockResolvedValue([orderItem({ orderId: "order-detail" })]);
+  repositories.listInventoryLogsForOrder.mockResolvedValue([inventoryLog({ orderId: "order-detail" })]);
+  repositories.listOrderRefunds
+    .mockResolvedValueOnce([])
+    .mockRejectedValueOnce(new Error("raw refund refresh failure"));
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
+  fireEvent.click(await screen.findByRole("button", { name: "记录退款" }));
+
+  const refundDialog = await screen.findByRole("dialog", { name: "记录人工退款" });
+  fireEvent.change(within(refundDialog).getByLabelText("退款金额"), { target: { value: "10" } });
+  fireEvent.click(within(refundDialog).getByRole("button", { name: "保存退款记录" }));
+
+  await waitFor(() => expect(repositories.saveOrderRefund).toHaveBeenCalledTimes(1));
+  expect(await screen.findByText("订单 ECRM-DETAIL 已记录退款，但退款记录刷新失败，请刷新页面查看最新退款记录。")).toBeVisible();
+  expect(screen.queryByText("退款记录保存失败，请刷新后重试。")).not.toBeInTheDocument();
+  expect(screen.queryByText("raw refund refresh failure")).not.toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "记录人工退款" })).not.toBeInTheDocument();
+});
+
+test("keeps refund save success when main sales refresh fails after refund", async () => {
+  repositories.listProducts
+    .mockResolvedValueOnce([sellableProduct])
+    .mockRejectedValueOnce(new Error("raw main refresh failure"));
+  repositories.listOrders.mockResolvedValue([
+    order({
+      id: "order-detail",
+      orderNo: "ECRM-DETAIL",
+      payableAmount: 20,
+      createdAt: localIsoDateTime(0, 9, 20),
+      paidAt: localIsoDateTime(0, 9, 25)
+    })
+  ]);
+  repositories.listOrderItems.mockResolvedValue([orderItem({ orderId: "order-detail" })]);
+  repositories.listInventoryLogsForOrder.mockResolvedValue([inventoryLog({ orderId: "order-detail" })]);
+  repositories.listOrderRefunds
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([
+      {
+        id: "refund-1",
+        orderId: "order-detail",
+        amount: 10,
+        method: "cash",
+        reason: "customer_return",
+        createdAt: localIsoDateTime(0, 10, 0)
+      }
+    ]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
+  fireEvent.click(await screen.findByRole("button", { name: "记录退款" }));
+
+  const refundDialog = await screen.findByRole("dialog", { name: "记录人工退款" });
+  fireEvent.change(within(refundDialog).getByLabelText("退款金额"), { target: { value: "10" } });
+  fireEvent.click(within(refundDialog).getByRole("button", { name: "保存退款记录" }));
+
+  await waitFor(() => expect(repositories.saveOrderRefund).toHaveBeenCalledTimes(1));
+  expect(await screen.findByText("订单 ECRM-DETAIL 已记录退款，但售卖数据刷新失败，请刷新页面查看最新订单列表。")).toBeVisible();
+  expect(screen.queryByText("售卖数据加载失败，请刷新后重试。")).not.toBeInTheDocument();
+  expect(screen.queryByText("退款记录保存失败，请刷新后重试。")).not.toBeInTheDocument();
+  expect(screen.queryByText("raw main refresh failure")).not.toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "记录人工退款" })).not.toBeInTheDocument();
 });
 
 test("voids an order from the detail dialog and refreshes the order detail", async () => {
@@ -816,6 +903,28 @@ test("shows refund badges in order history", async () => {
 
   expect(within(partialOrderButton).getByText("部分退款")).toBeVisible();
   expect(within(refundedOrderButton).getByText("已退款")).toBeVisible();
+});
+
+test("keeps core sales data visible when refund badge loading fails", async () => {
+  repositories.listOrders.mockResolvedValue([
+    order({
+      id: "paid-order",
+      orderNo: "ECRM-PAID",
+      paidAt: localIsoDateTime(0, 9, 25)
+    })
+  ]);
+  repositories.listRefunds.mockRejectedValue(new Error("raw refund badge failure"));
+
+  render(<SalesPage />);
+
+  expect(await screen.findByRole("button", { name: "加入 普通商品" })).toBeVisible();
+  expect(await screen.findByText("退款记录加载失败，订单售后标识可能不完整。")).toBeVisible();
+  expect(screen.queryByText("售卖数据加载失败，请刷新后重试。")).not.toBeInTheDocument();
+  expect(screen.queryByText("raw refund badge failure")).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: /订单记录/ }));
+
+  expect(await screen.findByText("ECRM-PAID")).toBeVisible();
 });
 
 test("sorts recent paid order history by paid time with created time fallback", async () => {
