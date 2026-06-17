@@ -235,7 +235,7 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
     .filter((refund) => isSameLocalDay(refund.createdAt, input.day))
     .reduce((sum, refund) => roundMoney(sum + refund.amount), 0);
   const todayCancelledOrders = input.orders.filter((order) => isTodayCancelledOrder(order, input.day));
-  const paidRefundStates = todayPaidOrders.map((order) => ({
+  const afterSalesRefundStates = [...todayPaidOrders, ...todayCancelledOrders].map((order) => ({
     order,
     refundedAmount: refundTotalsByOrder.get(order.id) ?? 0
   }));
@@ -247,10 +247,10 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
       netAmount: roundMoney(paidAmount - refundAmount),
       paidOrderCount: todayPaidOrders.length,
       cancelledOrderCount: todayCancelledOrders.length,
-      partialRefundOrderCount: paidRefundStates.filter(
+      partialRefundOrderCount: afterSalesRefundStates.filter(
         ({ order, refundedAmount }) => refundedAmount > 0 && refundedAmount < order.payableAmount
       ).length,
-      fullyRefundedOrderCount: paidRefundStates.filter(
+      fullyRefundedOrderCount: afterSalesRefundStates.filter(
         ({ order, refundedAmount }) => order.payableAmount > 0 && refundedAmount >= order.payableAmount
       ).length,
       notedCancelledOrderCount: todayCancelledOrders.filter((order) => Boolean(order.cancelNote?.trim())).length

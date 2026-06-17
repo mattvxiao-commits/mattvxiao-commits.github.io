@@ -156,6 +156,29 @@ describe("buildDashboardModel", () => {
     expect(model.summary.fullyRefundedOrderCount).toBe(1);
   });
 
+  test("今日作废订单存在退款时售后概览与异常订单退款标签保持一致", () => {
+    const model = buildDashboardModel({
+      day,
+      orders: [
+        order({
+          id: "voided-partial",
+          orderNo: "ECRM-VOID-PARTIAL",
+          status: "cancelled",
+          payableAmount: 60,
+          paidAt: undefined,
+          cancelledAt: "2026-06-15T10:00:00.000Z"
+        })
+      ],
+      orderItems: [],
+      refunds: [refund({ orderId: "voided-partial", amount: 20 })],
+      products: []
+    });
+
+    expect(model.summary.partialRefundOrderCount).toBe(1);
+    expect(model.summary.fullyRefundedOrderCount).toBe(0);
+    expect(model.exceptionRows[0].badges).toContain("部分退款");
+  });
+
   test("热销 SKU 排名合并同 productId 的 normal 和 discount_addon，不含 gift", () => {
     const model = buildDashboardModel({
       day,
