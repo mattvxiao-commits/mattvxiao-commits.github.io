@@ -611,6 +611,42 @@ test("shows recent paid order history behind a toggle", async () => {
   expect(within(history).queryByText("ECRM-PENDING")).not.toBeInTheDocument();
 });
 
+test("shows after-sales badges for cancelled orders in order history", async () => {
+  repositories.listOrders.mockResolvedValue([
+    order({
+      id: "paid-order",
+      orderNo: "ECRM-PAID",
+      status: "paid",
+      paidAt: localIsoDateTime(0, 9, 25)
+    }),
+    order({
+      id: "cancelled-order",
+      orderNo: "ECRM-CANCELLED",
+      status: "cancelled",
+      paymentMethod: "cash",
+      createdAt: localIsoDateTime(0, 9, 20),
+      paidAt: localIsoDateTime(0, 9, 25),
+      cancelledAt: localIsoDateTime(0, 10, 0),
+      cancelReason: "customer_cancelled",
+      cancelNote: "客户取消。"
+    })
+  ]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+  fireEvent.change(await screen.findByLabelText("订单状态"), { target: { value: "all" } });
+
+  const history = await screen.findByRole("region", { name: "订单记录列表" });
+  const paidOrderButton = within(history).getByRole("button", { name: "查看订单 ECRM-PAID" });
+  const cancelledOrderButton = within(history).getByRole("button", { name: "查看订单 ECRM-CANCELLED" });
+
+  expect(within(cancelledOrderButton).getByText("已作废")).toBeVisible();
+  expect(within(cancelledOrderButton).getByText("客户取消")).toBeVisible();
+  expect(within(cancelledOrderButton).getByText("有备注")).toBeVisible();
+  expect(within(paidOrderButton).queryByText("已作废")).not.toBeInTheDocument();
+});
+
 test("sorts recent paid order history by paid time with created time fallback", async () => {
   repositories.listOrders.mockResolvedValue([
     order({

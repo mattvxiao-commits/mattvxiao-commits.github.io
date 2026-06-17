@@ -28,6 +28,7 @@ import { buildPaidOrder } from "../domain/order";
 import {
   dateRangeLabels,
   filterAndSortOrders,
+  getOrderAfterSalesBadges,
   orderBusinessTime,
   orderStatusLabels,
   paymentMethodLabels,
@@ -738,27 +739,45 @@ export default function SalesPage() {
             </div>
             {isLoading ? <p className="emptyState">正在加载订单记录...</p> : null}
             {!isLoading && filteredOrders.length === 0 ? <p className="emptyState">当前筛选下暂无订单。</p> : null}
-            {filteredOrders.map((order) => (
-              <article className="orderHistoryRow" key={order.id}>
-                <button
-                  type="button"
-                  className="orderHistoryOpenButton"
-                  aria-label={`查看订单 ${order.orderNo}`}
-                  disabled={isOrderDetailLoading}
-                  onClick={() => void openOrderDetail(order)}
-                >
-                  <span>
-                    <strong>{order.orderNo}</strong>
-                    <em>{formatPaidTime(orderBusinessTime(order))}</em>
-                  </span>
-                  <span className="orderHistoryMeta">
-                    <span>{orderStatusLabels[order.status]}</span>
-                    <span>{order.paymentMethod ? paymentMethodLabels[order.paymentMethod] : "未记录"}</span>
-                    <strong>{formatMoney(order.payableAmount)}</strong>
-                  </span>
-                </button>
-              </article>
-            ))}
+            {filteredOrders.map((order) => {
+              const afterSalesBadges = getOrderAfterSalesBadges(order);
+
+              return (
+                <article className="orderHistoryRow" key={order.id}>
+                  <button
+                    type="button"
+                    className="orderHistoryOpenButton"
+                    aria-label={`查看订单 ${order.orderNo}`}
+                    disabled={isOrderDetailLoading}
+                    onClick={() => void openOrderDetail(order)}
+                  >
+                    <span>
+                      <strong>{order.orderNo}</strong>
+                      <em>{formatPaidTime(orderBusinessTime(order))}</em>
+                    </span>
+                    <span className="orderHistoryMeta">
+                      <span>{orderStatusLabels[order.status]}</span>
+                      <span>{order.paymentMethod ? paymentMethodLabels[order.paymentMethod] : "未记录"}</span>
+                      <strong>{formatMoney(order.payableAmount)}</strong>
+                      {afterSalesBadges.length > 0 ? (
+                        <span className="orderAfterSalesBadges" aria-label="订单售后标识">
+                          {afterSalesBadges.map((badge) => (
+                            <span
+                              className={
+                                badge.tone === "danger" ? "orderAfterSalesBadge isDanger" : "orderAfterSalesBadge"
+                              }
+                              key={`${order.id}-${badge.label}`}
+                            >
+                              {badge.label}
+                            </span>
+                          ))}
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                </article>
+              );
+            })}
           </div>
         ) : null}
       </section>

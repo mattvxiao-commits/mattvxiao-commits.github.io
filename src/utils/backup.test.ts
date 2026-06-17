@@ -1,9 +1,8 @@
 import "fake-indexeddb/auto";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, test, vi } from "vitest";
 import { db } from "../db/db";
 import { exportJsonBackup, importJsonBackupFromText, replaceAllDataInTransaction } from "./backup";
+import emptyInventoryOrderBackup from "../../docs/manual-test-data/ecrm-empty-inventory-order-backup.json";
 
 vi.mock("file-saver", () => ({
   saveAs: vi.fn()
@@ -468,10 +467,7 @@ describe("backup utilities", () => {
 
   test("imports the manual empty inventory order acceptance backup", async () => {
     const importData = vi.fn();
-    const backupText = readFileSync(
-      resolve(process.cwd(), "docs/manual-test-data/ecrm-empty-inventory-order-backup.json"),
-      "utf8"
-    );
+    const backupText = JSON.stringify(emptyInventoryOrderBackup);
 
     await importJsonBackupFromText(backupText, { importData });
 
