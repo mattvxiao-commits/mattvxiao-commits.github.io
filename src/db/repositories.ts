@@ -1,4 +1,4 @@
-import type { AppSettings, InventoryLog, Order, OrderItem, Product } from "../domain/types";
+import type { AppSettings, InventoryLog, Order, OrderCancelReason, OrderItem, Product } from "../domain/types";
 import { createDefaultSettings, db, type StoredImage } from "./db";
 
 export function makeId(prefix: string): string {
@@ -177,7 +177,28 @@ export async function listInventoryLogsForOrder(orderId: string): Promise<Invent
     .sortBy("createdAt");
 }
 
-export async function voidPaidOrder(orderId: string, now = new Date()): Promise<Order> {
+export type VoidPaidOrderOptions = {
+  cancelReason?: OrderCancelReason;
+  cancelNote?: string;
+};
+
+function normalizeVoidPaidOrderArgs(
+  optionsOrNow?: VoidPaidOrderOptions | Date,
+  maybeNow?: Date
+): { options: VoidPaidOrderOptions; now: Date } {
+  if (optionsOrNow instanceof Date) {
+    return { options: {}, now: optionsOrNow };
+  }
+
+  return { options: optionsOrNow ?? {}, now: maybeNow ?? new Date() };
+}
+
+export async function voidPaidOrder(
+  orderId: string,
+  optionsOrNow?: VoidPaidOrderOptions | Date,
+  maybeNow?: Date
+): Promise<Order> {
+  const { options, now } = normalizeVoidPaidOrderArgs(optionsOrNow, maybeNow);
   const voidedAt = now.toISOString();
 
   return db.transaction("rw", db.orders, db.inventoryLogs, db.products, async () => {
@@ -235,7 +256,9 @@ export async function voidPaidOrder(orderId: string, now = new Date()): Promise<
     const nextOrder: Order = {
       ...order,
       status: "cancelled",
-      cancelledAt: voidedAt
+      cancelledAt: voidedAt,
+      cancelReason: options.cancelReason ?? "mistake",
+      cancelNote: options.cancelNote?.trim() || undefined
     };
 
     await db.orders.put(nextOrder);

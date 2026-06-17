@@ -50,6 +50,7 @@ type ImportDeps = {
 const ORDER_STATUSES = new Set(["pending_payment", "paid", "cancelled"]);
 const PAYMENT_METHODS = new Set(["wechat", "alipay", "cash", "other"]);
 const ORDER_LINE_TYPES = new Set(["normal", "discount_addon", "gift"]);
+const ORDER_CANCEL_REASONS = new Set(["mistake", "customer_cancelled", "duplicate_order", "inventory_issue", "payment_issue", "other"]);
 const INVENTORY_REASONS = new Set(["order_paid", "gift_order_paid", "order_cancelled_rollback", "manual_adjust"]);
 const PRODUCT_STATUSES = new Set(["active", "inactive"]);
 
@@ -252,6 +253,14 @@ function validateOrders(orders: unknown[]): asserts orders is Order[] {
     }
 
     if (order.cancelledAt !== undefined && !isString(order.cancelledAt)) {
+      throw new Error("备份文件格式不正确。");
+    }
+
+    if (order.cancelReason !== undefined && !ORDER_CANCEL_REASONS.has(String(order.cancelReason))) {
+      throw new Error("备份文件格式不正确。");
+    }
+
+    if (order.cancelNote !== undefined && !isString(order.cancelNote)) {
       throw new Error("备份文件格式不正确。");
     }
   }

@@ -24,6 +24,32 @@ function validProduct(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function validOrder(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "order-1",
+    orderNo: "ECRM-20260615-001",
+    status: "paid",
+    paymentMethod: "wechat",
+    subtotalBeforeDiscount: 20,
+    discountAmount: 0,
+    payableAmount: 20,
+    promotionSnapshot: {
+      enabled: false,
+      addonDiscount: {
+        enabled: false,
+        discountSpu: "",
+        discountPrice: 3,
+        maxDiscountQty: 3
+      },
+      giftTiers: []
+    },
+    giftStockWarning: false,
+    createdAt: "2026-06-15T00:00:00.000Z",
+    paidAt: "2026-06-15T00:01:00.000Z",
+    ...overrides
+  };
+}
+
 function validPayload(overrides: Record<string, unknown> = {}) {
   return {
     version: 1,
@@ -338,6 +364,51 @@ describe("backup utilities", () => {
       expect(importData).not.toHaveBeenCalled();
     }
   );
+
+  test("imports cancelled orders with cancel reason and note", async () => {
+    const importData = vi.fn();
+
+    await importJsonBackupFromText(
+      JSON.stringify(
+        validPayload({
+          orders: [
+            validOrder({
+              status: "cancelled",
+              cancelledAt: "2026-06-17T10:00:00.000Z",
+              cancelReason: "customer_cancelled",
+              cancelNote: "客户取消购买。"
+            })
+          ]
+        })
+      ),
+      { importData }
+    );
+
+    expect(importData).toHaveBeenCalledOnce();
+  });
+
+  test("rejects invalid order cancel reasons", async () => {
+    const importData = vi.fn();
+
+    await expect(
+      importJsonBackupFromText(
+        JSON.stringify(
+          validPayload({
+            orders: [
+              validOrder({
+                status: "cancelled",
+                cancelledAt: "2026-06-17T10:00:00.000Z",
+                cancelReason: "bad_reason"
+              })
+            ]
+          })
+        ),
+        { importData }
+      )
+    ).rejects.toThrow("备份文件格式不正确。");
+
+    expect(importData).not.toHaveBeenCalled();
+  });
 
   test("rejects malformed inventory log quantity mismatch before replacing data", async () => {
     const importData = vi.fn();

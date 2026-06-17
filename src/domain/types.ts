@@ -30,6 +30,14 @@ export type OrderStatus = "pending_payment" | "paid" | "cancelled";
 
 export type OrderLineType = "normal" | "discount_addon" | "gift";
 
+export type OrderCancelReason =
+  | "mistake"
+  | "customer_cancelled"
+  | "duplicate_order"
+  | "inventory_issue"
+  | "payment_issue"
+  | "other";
+
 export type PromotionConfig = {
   enabled: boolean;
   addonDiscount: {
@@ -123,6 +131,8 @@ export type Order = {
   createdAt: string;
   paidAt?: string;
   cancelledAt?: string;
+  cancelReason?: OrderCancelReason;
+  cancelNote?: string;
 };
 
 export type OrderItem = {

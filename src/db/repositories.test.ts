@@ -261,6 +261,54 @@ describe("voidPaidOrder", () => {
     ]);
   });
 
+  test("stores cancel reason and note when voiding a paid order", async () => {
+    const voidedAt = "2026-06-17T10:30:00.000Z";
+
+    await db.products.put(product({ id: "normal", stockQty: 5 }));
+    await db.orders.put(paidOrder());
+    await db.inventoryLogs.bulkPut(inventoryLogs());
+
+    await expect(
+      voidPaidOrder(
+        "order-1",
+        {
+          cancelReason: "customer_cancelled",
+          cancelNote: "客户临时改为不购买。"
+        },
+        new Date(voidedAt)
+      )
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: "order-1",
+        status: "cancelled",
+        cancelledAt: voidedAt,
+        cancelReason: "customer_cancelled",
+        cancelNote: "客户临时改为不购买。"
+      })
+    );
+
+    await expect(db.orders.get("order-1")).resolves.toEqual(
+      expect.objectContaining({
+        cancelReason: "customer_cancelled",
+        cancelNote: "客户临时改为不购买。"
+      })
+    );
+  });
+
+  test("uses mistake as the default cancel reason for legacy void calls", async () => {
+    await db.products.put(product({ id: "normal", stockQty: 5 }));
+    await db.orders.put(paidOrder());
+    await db.inventoryLogs.bulkPut(inventoryLogs());
+
+    await voidPaidOrder("order-1", new Date("2026-06-17T10:35:00.000Z"));
+
+    await expect(db.orders.get("order-1")).resolves.toEqual(
+      expect.objectContaining({
+        cancelReason: "mistake"
+      })
+    );
+  });
+
   test("rejects voiding an order that is not paid", async () => {
     await db.orders.put({ ...paidOrder(), status: "cancelled", cancelledAt: now });
 
