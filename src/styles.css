@@ -1908,15 +1908,64 @@ p {
   grid-template-columns: minmax(220px, 1.35fr) minmax(110px, 0.7fr) minmax(92px, 0.5fr) minmax(120px, 0.65fr);
 }
 
-.inventoryRollbackSummary {
-  margin: 0 0 8px;
-  padding: 9px 11px;
-  border: 1px solid rgba(47, 111, 94, 0.22);
+.inventorySummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.inventorySummaryGrid div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(47, 111, 94, 0.2);
   border-radius: 8px;
   background: var(--accent-soft);
+}
+
+.inventorySummaryGrid span,
+.inventoryDetails summary {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.inventorySummaryGrid strong {
   color: var(--accent-strong);
+  font-size: 14px;
+  font-weight: 950;
+  overflow-wrap: anywhere;
+}
+
+.inventoryDetails {
+  display: grid;
+  gap: 8px;
+}
+
+.inventoryDetails summary {
+  cursor: pointer;
+  width: fit-content;
+  padding: 7px 10px;
+  border: 1px solid rgba(222, 214, 201, 0.92);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink);
+}
+
+.inventoryDetails[open] summary {
+  margin-bottom: 8px;
+}
+
+.emptyStateText {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px dashed rgba(122, 112, 98, 0.34);
+  border-radius: 8px;
+  color: var(--muted-strong);
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .inventoryProductCell em {
@@ -2302,6 +2351,7 @@ p {
   }
 
   .orderDetailMetrics,
+  .inventorySummaryGrid,
   .orderDetailLine,
   .inventoryLogRow {
     grid-template-columns: 1fr;

@@ -423,7 +423,7 @@ test("opens order detail dialog with order items and inventory logs", async () =
 
   const dialog = await screen.findByRole("dialog", { name: "订单详情 ECRM-DETAIL" });
   const itemList = within(dialog).getByRole("list", { name: "订单商品明细" });
-  const inventoryList = within(dialog).getByRole("list", { name: "库存流水摘要" });
+  const inventoryList = within(dialog).getByRole("list", { name: "完整库存流水" });
   expect(repositories.listOrderItems).toHaveBeenCalledWith("order-detail");
   expect(repositories.listInventoryLogsForOrder).toHaveBeenCalledWith("order-detail");
   expect(within(itemList).getByText("历史普通商品")).toBeVisible();
@@ -497,7 +497,7 @@ test("voids an order from the detail dialog and refreshes the order detail", asy
   expect(within(dialog).getByText("已取消")).toBeVisible();
   expect(within(dialog).getByText("客户取消")).toBeVisible();
   expect(within(dialog).getByText("客户取消。")).toBeVisible();
-  expect(within(dialog).getByText("作废回滚")).toBeVisible();
+  expect(within(dialog).getAllByText("作废回滚").length).toBeGreaterThan(0);
   expect(within(dialog).queryByRole("button", { name: "作废订单" })).not.toBeInTheDocument();
   expect(repositories.listProducts.mock.calls.length).toBeGreaterThanOrEqual(2);
   expect(repositories.listOrders.mock.calls.length).toBeGreaterThanOrEqual(2);

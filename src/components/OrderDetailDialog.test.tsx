@@ -138,7 +138,18 @@ test("shows a read-only order detail dialog with order, item snapshot, and inven
   expect(within(itemList).getByText("赠品")).toBeVisible();
   expect(within(itemList).getByText("普通商品")).toBeVisible();
 
-  const inventoryList = within(dialog).getByRole("list", { name: "库存流水摘要" });
+  expect(within(dialog).getByText("库存摘要")).toBeVisible();
+  const inventorySummary = within(dialog).getByLabelText("库存摘要指标");
+  expect(within(inventorySummary).getByText("售卖扣减")).toBeVisible();
+  expect(within(inventorySummary).getByText("赠品扣减")).toBeVisible();
+  expect(within(inventorySummary).getByText("作废回滚")).toBeVisible();
+  expect(within(inventorySummary).getAllByText("1 个SKU / 1 件")).toHaveLength(2);
+  expect(within(inventorySummary).getByText("0 个SKU / 0 件")).toBeVisible();
+
+  const inventoryDisclosure = within(dialog).getByText("完整库存流水（2 条）").closest("details");
+  expect(inventoryDisclosure).toHaveAttribute("open");
+
+  const inventoryList = within(dialog).getByRole("list", { name: "完整库存流水" });
   const [normalInventoryRow, giftInventoryRow] = within(inventoryList).getAllByRole("listitem");
   expect(within(normalInventoryRow).getByText("玫瑰香氛蜡烛")).toBeVisible();
   expect(within(normalInventoryRow).getByText("CANDLE-ROSE / 香氛系列")).toBeVisible();
@@ -170,7 +181,7 @@ test("shows void action for paid orders and confirms before calling handler", ()
   );
 
   const dialog = screen.getByRole("dialog", { name: "订单详情 ECRM-20260617-001" });
-  expect(within(dialog).getByText("作废回滚")).toBeVisible();
+  expect(within(dialog).getAllByText("作废回滚").length).toBeGreaterThan(0);
 
   fireEvent.click(within(dialog).getByRole("button", { name: "作废订单" }));
 
@@ -225,10 +236,21 @@ test("shows readable inventory product snapshots and rollback summary", () => {
     />
   );
 
-  const inventoryList = screen.getByRole("list", { name: "库存流水摘要" });
+  expect(screen.getByText("库存摘要")).toBeVisible();
+  const inventorySummary = screen.getByLabelText("库存摘要指标");
+  expect(within(inventorySummary).getByText("售卖扣减")).toBeVisible();
+  expect(within(inventorySummary).getByText("赠品扣减")).toBeVisible();
+  expect(within(inventorySummary).getByText("作废回滚")).toBeVisible();
+  expect(within(inventorySummary).getAllByText("1 个SKU / 1 件")).toHaveLength(3);
+
+  const inventoryDisclosure = screen.getByText("完整库存流水（3 条）").closest("details");
+  expect(inventoryDisclosure).not.toHaveAttribute("open");
+
+  fireEvent.click(screen.getByText("完整库存流水（3 条）"));
+
+  const inventoryList = screen.getByRole("list", { name: "完整库存流水" });
   const [normalInventoryRow, , rollbackInventoryRow] = within(inventoryList).getAllByRole("listitem");
 
-  expect(screen.getByText("已作废：1 个商品库存已回滚。")).toBeVisible();
   expect(within(normalInventoryRow).getByText("玫瑰香氛蜡烛")).toBeVisible();
   expect(within(normalInventoryRow).getByText("CANDLE-ROSE / 香氛系列")).toBeVisible();
   expect(within(rollbackInventoryRow).getByText("玫瑰香氛蜡烛")).toBeVisible();
@@ -236,6 +258,22 @@ test("shows readable inventory product snapshots and rollback summary", () => {
   expect(within(rollbackInventoryRow).getByText("增加 1")).toBeVisible();
   expect(within(rollbackInventoryRow).getByText("库存 9 -> 10")).toBeVisible();
   expect(within(inventoryList).queryByText("sku-normal")).not.toBeInTheDocument();
+});
+
+test("shows an empty inventory state when an order has no inventory logs", () => {
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={orderItems}
+      inventoryLogs={[]}
+      onClose={() => undefined}
+    />
+  );
+
+  const inventorySummary = screen.getByLabelText("库存摘要指标");
+  expect(within(inventorySummary).getByText("售卖扣减")).toBeVisible();
+  expect(within(inventorySummary).getAllByText("0 个SKU / 0 件")).toHaveLength(3);
+  expect(screen.getByText("暂无库存流水。")).toBeVisible();
 });
 
 test("does not show void action for cancelled orders", () => {
