@@ -83,6 +83,59 @@ describe("buildDashboardModel", () => {
     expect(model.summary.cancelledOrderCount).toBe(1);
   });
 
+  test("今日统计订单归属日期优先 paidAt，缺失时使用 createdAt", () => {
+    const model = buildDashboardModel({
+      day,
+      orders: [
+        order({
+          id: "paid-at-today",
+          payableAmount: 20,
+          createdAt: "2026-06-14T09:00:00.000Z",
+          paidAt: "2026-06-15T09:00:00.000Z"
+        }),
+        order({
+          id: "created-at-today",
+          payableAmount: 30,
+          paidAt: undefined,
+          createdAt: "2026-06-15T10:00:00.000Z"
+        }),
+        order({
+          id: "paid-at-yesterday",
+          payableAmount: 40,
+          createdAt: "2026-06-15T11:00:00.000Z",
+          paidAt: "2026-06-14T11:00:00.000Z"
+        })
+      ],
+      orderItems: [
+        item({ id: "paid-at-today-item", orderId: "paid-at-today", productId: "sku-a", quantity: 2 }),
+        item({ id: "created-at-today-item", orderId: "created-at-today", productId: "sku-b", quantity: 3 }),
+        item({ id: "paid-at-yesterday-item", orderId: "paid-at-yesterday", productId: "sku-c", quantity: 4 })
+      ],
+      refunds: [],
+      products: []
+    });
+
+    expect(model.summary.paidAmount).toBe(50);
+    expect(model.summary.paidOrderCount).toBe(2);
+    expect(model.topSellingSkuRows.map((row) => row.productId)).toEqual(["sku-b", "sku-a"]);
+  });
+
+  test("今日退款按退款 createdAt 归属日期，非当天退款不计入今日退款", () => {
+    const model = buildDashboardModel({
+      day,
+      orders: [order({ id: "today-paid", payableAmount: 40 })],
+      orderItems: [],
+      refunds: [
+        refund({ id: "today-refund", orderId: "today-paid", amount: 8, createdAt: "2026-06-15T11:00:00.000Z" }),
+        refund({ id: "yesterday-refund", orderId: "today-paid", amount: 5, createdAt: "2026-06-14T11:00:00.000Z" })
+      ],
+      products: []
+    });
+
+    expect(model.summary.refundAmount).toBe(8);
+    expect(model.summary.netAmount).toBe(32);
+  });
+
   test("按订单累计退款区分部分退款和已退款", () => {
     const model = buildDashboardModel({
       day,
@@ -201,5 +254,37 @@ describe("buildDashboardModel", () => {
     expect(model.exceptionRows[1].badges).toContain("已退款");
     expect(model.exceptionRows[2].badges).toContain("部分退款");
     expect(model.exceptionRows[3].badges).toEqual(["已作废", "有备注"]);
+  });
+
+  test("今日异常订单最多返回 8 条并按时间倒序保留最新记录", () => {
+    const exceptionOrders = Array.from({ length: 9 }, (_, index) => {
+      const orderNumber = String(index + 1).padStart(3, "0");
+      return order({
+        id: `gift-warning-${orderNumber}`,
+        orderNo: `ECRM-${orderNumber}`,
+        giftStockWarning: true,
+        paidAt: `2026-06-15T${String(index + 1).padStart(2, "0")}:00:00.000Z`
+      });
+    });
+
+    const model = buildDashboardModel({
+      day,
+      orders: exceptionOrders,
+      orderItems: [],
+      refunds: [],
+      products: []
+    });
+
+    expect(model.exceptionRows).toHaveLength(8);
+    expect(model.exceptionRows.map((row) => row.orderNo)).toEqual([
+      "ECRM-009",
+      "ECRM-008",
+      "ECRM-007",
+      "ECRM-006",
+      "ECRM-005",
+      "ECRM-004",
+      "ECRM-003",
+      "ECRM-002"
+    ]);
   });
 });
