@@ -169,6 +169,17 @@ test("loads full dashboard data and renders core sections", async () => {
   expectMetricValue(afterSalesOverview, "作废备注", "1");
   expect(within(afterSalesOverview).getByText("作废备注")).toBeVisible();
 
+  const operationsOverview = screen.getByLabelText("出库与客单");
+  expect(operationsOverview).toHaveClass("dashboardOperationsStrip");
+  expectMetricValue(operationsOverview, "售出件数", "4");
+  expect(within(operationsOverview).getByText("售出件数")).toBeVisible();
+  expectMetricValue(operationsOverview, "赠品件数", "2");
+  expect(within(operationsOverview).getByText("赠品件数")).toBeVisible();
+  expectMetricValue(operationsOverview, "总出库", "6");
+  expect(within(operationsOverview).getByText("总出库")).toBeVisible();
+  expectMetricValue(operationsOverview, "客单价", "¥33.33");
+  expect(within(operationsOverview).getByText("客单价")).toBeVisible();
+
   const topSellingSku = screen.getByRole("region", { name: "热销 SKU" });
   expect(topSellingSku.querySelector(".dashboardRankList")).not.toBeNull();
   const topSellingRow = within(topSellingSku).getByText("热销挂件").closest(".dashboardRankRow");
@@ -221,6 +232,10 @@ test("shows dashboard empty states after successful empty load", async () => {
 
   expect(screen.getByLabelText("经营概览")).toBeVisible();
   expect(screen.getByLabelText("售后概览")).toBeVisible();
+  const operationsOverview = screen.getByLabelText("出库与客单");
+  expect(operationsOverview).toBeVisible();
+  expectMetricValue(operationsOverview, "售出件数", "0");
+  expectMetricValue(operationsOverview, "客单价", "¥0.00");
 });
 
 test("uses compact dashboard time range control structure", async () => {

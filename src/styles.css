@@ -849,7 +849,8 @@ p {
   background: var(--line);
 }
 
-.dashboardAfterSalesStrip {
+.dashboardAfterSalesStrip,
+.dashboardOperationsStrip {
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -861,7 +862,8 @@ p {
 }
 
 .dashboardMetricStrip div,
-.dashboardAfterSalesStrip div {
+.dashboardAfterSalesStrip div,
+.dashboardOperationsStrip div {
   background: rgba(255, 255, 255, 0.86);
 }
 
@@ -870,7 +872,8 @@ p {
   padding: 14px;
 }
 
-.dashboardAfterSalesStrip div {
+.dashboardAfterSalesStrip div,
+.dashboardOperationsStrip div {
   min-height: 60px;
   padding: 12px 14px;
 }
@@ -884,7 +887,8 @@ p {
   overflow-wrap: anywhere;
 }
 
-.dashboardAfterSalesStrip span {
+.dashboardAfterSalesStrip span,
+.dashboardOperationsStrip span {
   display: block;
   color: var(--ink);
   font-size: 20px;
@@ -894,7 +898,8 @@ p {
 }
 
 .dashboardMetricStrip p,
-.dashboardAfterSalesStrip p {
+.dashboardAfterSalesStrip p,
+.dashboardOperationsStrip p {
   color: var(--muted-strong);
   font-weight: 800;
 }
@@ -904,7 +909,8 @@ p {
   font-size: 13px;
 }
 
-.dashboardAfterSalesStrip p {
+.dashboardAfterSalesStrip p,
+.dashboardOperationsStrip p {
   margin-top: 6px;
   font-size: 12px;
 }
@@ -2642,7 +2648,8 @@ p {
   }
 
   .dashboardMetricStrip,
-  .dashboardAfterSalesStrip {
+  .dashboardAfterSalesStrip,
+  .dashboardOperationsStrip {
     grid-template-columns: 1fr;
   }
 
@@ -2650,7 +2657,8 @@ p {
     grid-column: auto;
   }
 
-  .dashboardAfterSalesStrip {
+  .dashboardAfterSalesStrip,
+  .dashboardOperationsStrip {
     grid-column: auto;
   }
 

@@ -229,6 +229,25 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            <div className="dashboardOperationsStrip" aria-label="出库与客单">
+              <div>
+                <span>{dashboard.operationsSummary.soldQuantity}</span>
+                <p>售出件数</p>
+              </div>
+              <div>
+                <span>{dashboard.operationsSummary.giftQuantity}</span>
+                <p>赠品件数</p>
+              </div>
+              <div>
+                <span>{dashboard.operationsSummary.outboundQuantity}</span>
+                <p>总出库</p>
+              </div>
+              <div>
+                <span>{formatMoney(dashboard.operationsSummary.averageOrderValue)}</span>
+                <p>客单价</p>
+              </div>
+            </div>
+
             <section className="dashboardSection" aria-labelledby="top-selling-sku-title">
               <div className="sectionTitle">
                 <BarChart3 size={21} aria-hidden="true" />
