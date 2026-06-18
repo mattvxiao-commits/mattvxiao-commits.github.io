@@ -47,6 +47,16 @@ export class EcrmDatabase extends Dexie {
       inventoryLogs: "id, productId, orderId, createdAt",
       orderRefunds: "id, orderId, createdAt"
     });
+    this.version(3).stores({
+      products:
+        "id, spu, name, status, salePrice, stockQty, isSellable, isGiftEligible, createdAt, [status+isSellable], [status+isGiftEligible]",
+      images: "id, createdAt",
+      settings: "id",
+      orders: "id, &orderNo, status, createdAt, paidAt, [status+paidAt]",
+      orderItems: "id, orderId, productId, lineType",
+      inventoryLogs: "id, productId, orderId, createdAt",
+      orderRefunds: "id, orderId, createdAt"
+    });
   }
 }
 

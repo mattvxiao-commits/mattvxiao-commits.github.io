@@ -2,7 +2,7 @@ import { saveAs } from "file-saver";
 import { db, type StoredImage } from "../db/db";
 import type { AppSettings, InventoryLog, Order, OrderItem, OrderRefund, Product } from "../domain/types";
 
-const BACKUP_VERSION = 3;
+const BACKUP_VERSION = 4;
 const IMAGE_BACKUP_NOTE = "图片已包含在 JSON 备份中";
 const LEGACY_IMAGE_BACKUP_NOTE = "图片暂不包含在 JSON 备份中";
 
@@ -24,22 +24,22 @@ type BackupData = {
   images: BackupImage[];
 };
 
-type BackupPayloadV3 = {
-  version: 3;
+type BackupPayloadV4 = {
+  version: 4;
   exportedAt: string;
   note: typeof IMAGE_BACKUP_NOTE;
   data: BackupData;
 };
 
 type ParsedBackupPayload = {
-  version: 1 | 2 | 3;
+  version: 1 | 2 | 3 | 4;
   exportedAt: string;
   note: typeof IMAGE_BACKUP_NOTE | typeof LEGACY_IMAGE_BACKUP_NOTE;
   data: BackupData;
 };
 
 export type BackupImportResult = {
-  version: 1 | 2 | 3;
+  version: 1 | 2 | 3 | 4;
   includedImages: boolean;
   imageCount: number;
 };
@@ -134,6 +134,12 @@ function assertEnum(record: Record<string, unknown>, key: string, allowed: Set<s
 
 function assertOptionalString(record: Record<string, unknown>, key: string): void {
   if (record[key] !== undefined && !isString(record[key])) {
+    throw new Error("备份文件格式不正确。");
+  }
+}
+
+function assertOptionalFiniteNumber(record: Record<string, unknown>, key: string): void {
+  if (record[key] !== undefined && !isFiniteNumber(record[key])) {
     throw new Error("备份文件格式不正确。");
   }
 }
@@ -285,6 +291,9 @@ function validateOrderItems(orderItems: unknown[]): asserts orderItems is OrderI
     assertNonNegativeNumber(item, "finalUnitPrice");
     assertEnum(item, "lineType", ORDER_LINE_TYPES);
     assertNonNegativeNumber(item, "lineTotal");
+    assertOptionalFiniteNumber(item, "unitCostSnapshot");
+    assertOptionalFiniteNumber(item, "costTotal");
+    assertOptionalFiniteNumber(item, "grossProfit");
   }
 }
 
@@ -374,7 +383,7 @@ function parseBackupPayload(text: string): ParsedBackupPayload {
 
   assertRecord(parsed, "备份文件格式不正确。");
 
-  if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== BACKUP_VERSION) {
+  if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3 && parsed.version !== BACKUP_VERSION) {
     throw new Error("不支持的备份版本。");
   }
 
@@ -386,7 +395,7 @@ function parseBackupPayload(text: string): ParsedBackupPayload {
     orders: readArray(parsed.data, "orders"),
     orderItems: readArray(parsed.data, "orderItems"),
     inventoryLogs: readArray(parsed.data, "inventoryLogs"),
-    orderRefunds: parsed.version === 3 ? readArray(parsed.data, "orderRefunds") : [],
+    orderRefunds: parsed.version === 3 || parsed.version === 4 ? readArray(parsed.data, "orderRefunds") : [],
     images: parsed.version === 1 ? [] : readArray(parsed.data, "images")
   };
 
@@ -518,7 +527,7 @@ export async function replaceAllDataInTransaction(data: BackupData): Promise<voi
 
 export async function exportJsonBackup(): Promise<void> {
   const images = await db.images.toArray();
-  const payload: BackupPayloadV3 = {
+  const payload: BackupPayloadV4 = {
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     note: IMAGE_BACKUP_NOTE,

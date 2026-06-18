@@ -84,14 +84,30 @@ function validPayload(overrides: Record<string, unknown> = {}) {
 }
 
 describe("backup utilities", () => {
-  test("exports images and refunds in version 3 JSON backup", async () => {
+  test("exports images, refunds, and order item costs in version 4 JSON backup", async () => {
     const saveAsModule = await import("file-saver");
     const saveAsMock = vi.mocked(saveAsModule.saveAs);
     const tableSpies = [
       vi.spyOn(db.products, "toArray").mockResolvedValue([]),
       vi.spyOn(db.settings, "toArray").mockResolvedValue([]),
       vi.spyOn(db.orders, "toArray").mockResolvedValue([]),
-      vi.spyOn(db.orderItems, "toArray").mockResolvedValue([]),
+      vi.spyOn(db.orderItems, "toArray").mockResolvedValue([
+        {
+          id: "order-item-1",
+          orderId: "order-1",
+          productId: "product-1",
+          productNameSnapshot: "口红",
+          spuSnapshot: "SPU-1",
+          quantity: 2,
+          originalUnitPrice: 20,
+          finalUnitPrice: 20,
+          lineType: "normal",
+          lineTotal: 40,
+          unitCostSnapshot: 8,
+          costTotal: 16,
+          grossProfit: 24
+        }
+      ]),
       vi.spyOn(db.inventoryLogs, "toArray").mockResolvedValue([]),
       vi.spyOn(db.orderRefunds, "toArray").mockResolvedValue([
         {
@@ -121,8 +137,16 @@ describe("backup utilities", () => {
     const blob = saveAsMock.mock.calls[0][0] as Blob;
     const payload = JSON.parse(await blob.text());
 
-    expect(payload.version).toBe(3);
+    expect(payload.version).toBe(4);
     expect(payload.note).toBe("图片已包含在 JSON 备份中");
+    expect(payload.data.orderItems).toEqual([
+      expect.objectContaining({
+        id: "order-item-1",
+        unitCostSnapshot: 8,
+        costTotal: 16,
+        grossProfit: 24
+      })
+    ]);
     expect(payload.data.orderRefunds).toEqual([
       expect.objectContaining({
         id: "refund-1",
@@ -204,7 +228,7 @@ describe("backup utilities", () => {
     await expect(
       importJsonBackupFromText(
         JSON.stringify({
-          version: 4,
+          version: 5,
           exportedAt: "2026-06-15T00:00:00.000Z",
           note: "图片暂不包含在 JSON 备份中",
           data: {
@@ -212,12 +236,178 @@ describe("backup utilities", () => {
             settings: [],
             orders: [],
             orderItems: [],
-            inventoryLogs: []
+            inventoryLogs: [],
+            images: [],
+            orderRefunds: []
           }
         }),
         { importData }
       )
     ).rejects.toThrow("不支持的备份版本");
+
+    expect(importData).not.toHaveBeenCalled();
+  });
+
+  test("imports version 4 order item cost fields into parsed backup data", async () => {
+    const importData = vi.fn();
+
+    const result = await importJsonBackupFromText(
+      JSON.stringify({
+        version: 4,
+        exportedAt: "2026-06-18T10:00:00.000Z",
+        note: "图片已包含在 JSON 备份中",
+        data: {
+          products: [],
+          settings: validPayload().data.settings,
+          orders: [],
+          orderItems: [
+            {
+              id: "order-item-1",
+              orderId: "order-1",
+              productId: "product-1",
+              productNameSnapshot: "口红",
+              spuSnapshot: "SPU-1",
+              quantity: 2,
+              originalUnitPrice: 20,
+              finalUnitPrice: 20,
+              lineType: "normal",
+              lineTotal: 40,
+              unitCostSnapshot: 8,
+              costTotal: 16,
+              grossProfit: 24
+            }
+          ],
+          inventoryLogs: [],
+          images: [],
+          orderRefunds: []
+        }
+      }),
+      { importData }
+    );
+
+    expect(result.version).toBe(4);
+    expect(importData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderItems: [
+          expect.objectContaining({
+            unitCostSnapshot: 8,
+            costTotal: 16,
+            grossProfit: 24
+          })
+        ]
+      })
+    );
+  });
+
+  test.each([
+    [
+      1,
+      {
+        ...validPayload(),
+        version: 1
+      }
+    ],
+    [
+      2,
+      {
+        ...validPayload(),
+        version: 2,
+        note: "图片已包含在 JSON 备份中",
+        data: {
+          ...validPayload().data,
+          images: []
+        }
+      }
+    ],
+    [
+      3,
+      {
+        ...validPayload(),
+        version: 3,
+        note: "图片已包含在 JSON 备份中",
+        data: {
+          ...validPayload().data,
+          images: [],
+          orderRefunds: []
+        }
+      }
+    ]
+  ] as const)("imports version %s old backups without requiring order item cost fields", async (_version, payload) => {
+    const importData = vi.fn();
+
+    await importJsonBackupFromText(
+      JSON.stringify({
+        ...payload,
+        data: {
+          ...payload.data,
+          orderItems: [
+            {
+              id: "order-item-1",
+              orderId: "order-1",
+              productId: "product-1",
+              productNameSnapshot: "口红",
+              spuSnapshot: "SPU-1",
+              quantity: 1,
+              originalUnitPrice: 10,
+              finalUnitPrice: 8,
+              lineType: "normal",
+              lineTotal: 8
+            }
+          ]
+        }
+      }),
+      { importData }
+    );
+
+    expect(importData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderItems: [
+          expect.not.objectContaining({
+            unitCostSnapshot: expect.anything(),
+            costTotal: expect.anything(),
+            grossProfit: expect.anything()
+          })
+        ]
+      })
+    );
+  });
+
+  test("rejects malformed order item cost fields before replacing data", async () => {
+    const importData = vi.fn();
+
+    await expect(
+      importJsonBackupFromText(
+        JSON.stringify({
+          version: 4,
+          exportedAt: "2026-06-18T10:00:00.000Z",
+          note: "图片已包含在 JSON 备份中",
+          data: {
+            products: [],
+            settings: validPayload().data.settings,
+            orders: [],
+            orderItems: [
+              {
+                id: "order-item-1",
+                orderId: "order-1",
+                productId: "product-1",
+                productNameSnapshot: "口红",
+                spuSnapshot: "SPU-1",
+                quantity: 1,
+                originalUnitPrice: 10,
+                finalUnitPrice: 8,
+                lineType: "normal",
+                lineTotal: 8,
+                unitCostSnapshot: "8"
+              }
+            ],
+            inventoryLogs: [],
+            images: [],
+            orderRefunds: []
+          }
+        }),
+        { importData }
+      )
+    ).rejects.toThrow("备份文件格式不正确");
 
     expect(importData).not.toHaveBeenCalled();
   });
