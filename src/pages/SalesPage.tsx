@@ -544,9 +544,11 @@ export default function SalesPage() {
       <div className={mode === "checkout" ? "salesHeader isCheckout" : "salesHeader"}>
         <div className="salesTitleBlock">
           <p className="eyebrow">Checkout</p>
-          <h1 id="sales-title">售卖</h1>
+          <div className="salesTitleLine">
+            <h1 id="sales-title">售卖</h1>
+            {settings ? <FieldLockStatus settings={settings} onSave={handleSaveFieldLock} /> : null}
+          </div>
           <p>选择商品、确认收款，订单只在手动确认已支付后保存并扣减库存。</p>
-          {settings ? <FieldLockStatus settings={settings} onSave={handleSaveFieldLock} /> : null}
         </div>
         {mode !== "checkout" ? (
           <div className="salesHeaderControls">

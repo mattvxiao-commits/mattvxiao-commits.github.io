@@ -71,21 +71,21 @@ test("selects add-on discount SPU from product SPU options and saves it", async 
   expect(repositories.saveSettings.mock.calls[0][0].promotion.addonDiscount.discountSpu).toBe("普通SPU");
 });
 
-test("enables field mode after setting matching four digit PIN", async () => {
+test("enables and saves field mode immediately after setting matching four digit PIN", async () => {
   render(<SettingsPage />);
 
   fireEvent.change(await screen.findByLabelText("设置现场模式 PIN"), { target: { value: "2580" } });
   fireEvent.change(screen.getByLabelText("确认现场模式 PIN"), { target: { value: "2580" } });
   fireEvent.click(screen.getByRole("button", { name: "开启现场模式" }));
-  expect(await screen.findByText("现场模式已开启")).toBeVisible();
-  fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
 
-  await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalled());
+  await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalledTimes(1));
+  expect(await screen.findByText("现场模式已开启")).toBeVisible();
   const savedSettings = repositories.saveSettings.mock.calls.at(-1)?.[0] as AppSettings;
   expect(savedSettings.fieldLock).toEqual(expect.objectContaining({
     enabled: true,
     pinHash: expect.any(String),
-    pinSalt: expect.any(String)
+    pinSalt: expect.any(String),
+    unlockExpiresAt: expect.any(String)
   }));
   expect(JSON.stringify(savedSettings)).not.toContain("2580");
 });
@@ -98,6 +98,51 @@ test("rejects mismatched field lock PIN confirmation", async () => {
   fireEvent.click(screen.getByRole("button", { name: "开启现场模式" }));
 
   expect(await screen.findByText("两次输入的密码不一致。")).toBeVisible();
+});
+
+test("relocks field mode immediately from settings page", async () => {
+  repositories.getSettings.mockResolvedValue({
+    ...settings,
+    fieldLock: {
+      ...settings.fieldLock,
+      enabled: true,
+      pinHash: "secret-hash",
+      pinSalt: "secret-salt",
+      unlockExpiresAt: "2099-06-19T09:05:00.000Z"
+    }
+  });
+
+  render(<SettingsPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "立即重新锁定" }));
+
+  await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalledTimes(1));
+  const savedSettings = repositories.saveSettings.mock.calls[0][0] as AppSettings;
+  expect(savedSettings.fieldLock.unlockExpiresAt).toBeUndefined();
+});
+
+test("disables field mode immediately from settings page", async () => {
+  repositories.getSettings.mockResolvedValue({
+    ...settings,
+    fieldLock: {
+      ...settings.fieldLock,
+      enabled: true,
+      pinHash: "secret-hash",
+      pinSalt: "secret-salt",
+      failedAttempts: 2
+    }
+  });
+
+  render(<SettingsPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "关闭现场模式" }));
+
+  await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalledTimes(1));
+  const savedSettings = repositories.saveSettings.mock.calls[0][0] as AppSettings;
+  expect(savedSettings.fieldLock).toEqual({
+    enabled: false,
+    failedAttempts: 0
+  });
 });
 
 test("keeps and warns about a configured discount SPU that is missing from products", async () => {

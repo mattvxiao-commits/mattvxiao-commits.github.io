@@ -47,7 +47,7 @@ export default function FieldLockDialog({
   }
 
   return (
-    <div className="modalBackdrop" role="presentation">
+    <div className="modalBackdrop fieldLockBackdrop" role="presentation">
       <section className="fieldLockDialog" role="dialog" aria-modal="true" aria-labelledby="field-lock-title">
         <div className="modalHeader">
           <div>

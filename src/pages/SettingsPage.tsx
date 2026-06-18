@@ -262,6 +262,28 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleFieldLockSave(fieldLock: AppSettings["fieldLock"]) {
+    if (!settings || isBusy) {
+      throw new Error("设置当前正忙，请稍后重试。");
+    }
+
+    setIsSaving(true);
+    setStatus(undefined);
+
+    try {
+      const nextSettings = applyGiftTiers({ ...settings, fieldLock }, giftA, giftB);
+      await saveSettings(nextSettings);
+      setSettings(nextSettings);
+      notifySettingsUpdated(nextSettings);
+      setStatus({ kind: "success", text: fieldLock.enabled ? "现场模式已保存并生效。" : "现场模式已关闭。" });
+    } catch {
+      setStatus({ kind: "error", text: "现场模式保存失败，请重试。" });
+      throw new Error("现场模式保存失败");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   async function handleExport() {
     if (isBusy) {
       return;
@@ -451,7 +473,7 @@ export default function SettingsPage() {
         <div className="settingsGrid">
           <FieldLockSettingsPanel
             fieldLock={settings.fieldLock}
-            onChange={(fieldLock) => updateSettings((current) => ({ ...current, fieldLock }))}
+            onSave={handleFieldLockSave}
           />
 
           <section className="settingsSection" aria-labelledby="basic-settings-title">
