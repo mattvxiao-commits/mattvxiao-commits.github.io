@@ -462,7 +462,7 @@ export default function DashboardPage() {
                 <AlertTriangle size={21} aria-hidden="true" />
                 <div>
                   <h2 id="low-stock-sku-title">低库存 SKU</h2>
-                  <p>库存少于 3，或按当前范围估算剩余不高于 10%。</p>
+                  <p>库存少于 3，或按当前范围估算剩余不高于 20%。</p>
                 </div>
               </div>
 

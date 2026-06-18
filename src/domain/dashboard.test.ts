@@ -644,7 +644,7 @@ describe("buildDashboardModel", () => {
     expect(model.soldOutRows.map((row) => row.productId)).toEqual(["sold-out"]);
   });
 
-  test("库存风险支持当前范围估算剩余百分比预警", () => {
+  test("库存风险支持当前范围估算剩余 20% 预警", () => {
     const model = buildDashboardModel({
       dateRange: todayRange,
       orders: [order({ id: "paid-a" })],
@@ -654,7 +654,7 @@ describe("buildDashboardModel", () => {
           orderId: "paid-a",
           productId: "ratio-low",
           productNameSnapshot: "百分比低库存",
-          quantity: 91,
+          quantity: 81,
           lineType: "normal"
         }),
         item({
@@ -669,14 +669,43 @@ describe("buildDashboardModel", () => {
       refunds: [],
       products: [
         product({ id: "ratio-low", name: "百分比低库存", stockQty: 9, isSellable: true, status: "active" }),
-        product({ id: "ratio-safe", name: "百分比安全库存", stockQty: 20, isSellable: true, status: "active" })
+        product({ id: "ratio-safe", name: "百分比安全库存", stockQty: 21, isSellable: true, status: "active" })
       ]
     });
 
     expect(model.lowStockRows.map((row) => row.productId)).toEqual(["ratio-low"]);
-    expect(model.lowStockRows[0]).toMatchObject({ productId: "ratio-low", stockQty: 9, soldQuantity: 91, stockRemainingPercent: 9 });
+    expect(model.lowStockRows[0]).toMatchObject({ productId: "ratio-low", stockQty: 9, soldQuantity: 81, stockRemainingPercent: 10 });
     expect(model.highRiskRows.map((row) => row.productId)).toEqual(["ratio-low"]);
-    expect(model.highRiskRows[0]).toMatchObject({ productId: "ratio-low", stockQty: 9, soldQuantity: 91, stockRemainingPercent: 9 });
+    expect(model.highRiskRows[0]).toMatchObject({ productId: "ratio-low", stockQty: 9, soldQuantity: 81, stockRemainingPercent: 10 });
+  });
+
+  test("库存风险在估算剩余 20% 时触发预警", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [order({ id: "paid-a" })],
+      orderItems: [
+        item({
+          id: "ratio-threshold-item",
+          orderId: "paid-a",
+          productId: "ratio-threshold",
+          productNameSnapshot: "二成库存",
+          quantity: 80,
+          lineType: "normal"
+        })
+      ],
+      refunds: [],
+      products: [product({ id: "ratio-threshold", name: "二成库存", stockQty: 20, isSellable: true, status: "active" })]
+    });
+
+    expect(model.lowStockRows.map((row) => row.productId)).toEqual(["ratio-threshold"]);
+    expect(model.highRiskRows.map((row) => row.productId)).toEqual(["ratio-threshold"]);
+    expect(model.restockSuggestionRows.map((row) => row.productId)).toEqual(["ratio-threshold"]);
+    expect(model.highRiskRows[0]).toMatchObject({
+      productId: "ratio-threshold",
+      stockQty: 20,
+      soldQuantity: 80,
+      stockRemainingPercent: 20
+    });
   });
 
   test("统计售罄、高风险、滞销和补货建议 SKU", () => {

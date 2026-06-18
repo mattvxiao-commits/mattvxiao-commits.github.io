@@ -294,7 +294,7 @@ test("loads full dashboard data and renders core sections", async () => {
 
   const lowStock = screen.getByRole("region", { name: "低库存 SKU" });
   expect(lowStock.querySelector(".dashboardRankList")).not.toBeNull();
-  expect(within(lowStock).getByText("库存少于 3，或按当前范围估算剩余不高于 10%。")).toBeVisible();
+  expect(within(lowStock).getByText("库存少于 3，或按当前范围估算剩余不高于 20%。")).toBeVisible();
   const lowStockRow = within(lowStock).getByText("低库存商品").closest(".dashboardRankRow");
   expect(lowStockRow).not.toBeNull();
   expect(within(lowStockRow as HTMLElement).getByText("NORMAL-BASE")).toBeVisible();

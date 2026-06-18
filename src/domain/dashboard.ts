@@ -137,6 +137,7 @@ export type DashboardModel = {
 };
 
 const paymentMethodOrder: DashboardPaymentMethodKey[] = ["wechat", "alipay", "cash", "other", "unrecorded"];
+const inventoryRiskRemainingPercentThreshold = 20;
 
 const paymentMethodLabels: Record<DashboardPaymentMethodKey, string> = {
   wechat: "微信",
@@ -473,7 +474,11 @@ function buildLowStockRows(products: Product[], soldQuantityByProduct: Map<strin
     .filter((product) => {
       const soldQuantity = soldQuantityByProduct.get(product.id) ?? 0;
       const stockRemainingPercent = calculateStockRemainingPercent(product.stockQty, soldQuantity);
-      return product.status === "active" && product.stockQty > 0 && (product.stockQty < 3 || stockRemainingPercent <= 10);
+      return (
+        product.status === "active" &&
+        product.stockQty > 0 &&
+        (product.stockQty < 3 || stockRemainingPercent <= inventoryRiskRemainingPercentThreshold)
+      );
     })
     .sort((left, right) => {
       if (left.stockQty !== right.stockQty) {
@@ -552,7 +557,11 @@ function buildInventoryRiskRows(
       .filter((product) => {
         const soldQuantity = soldQuantityByProduct.get(product.id) ?? 0;
         const stockRemainingPercent = calculateStockRemainingPercent(product.stockQty, soldQuantity);
-        return product.isSellable && soldQuantity >= 2 && (product.stockQty <= 2 || stockRemainingPercent <= 10);
+        return (
+          product.isSellable &&
+          soldQuantity >= 2 &&
+          (product.stockQty <= 2 || stockRemainingPercent <= inventoryRiskRemainingPercentThreshold)
+        );
       })
       .map((product) => toInventoryRiskRow(product, soldQuantityByProduct.get(product.id) ?? 0))
   ).slice(0, 5);
