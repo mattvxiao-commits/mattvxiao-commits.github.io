@@ -162,13 +162,16 @@ test("loads full dashboard data and renders core sections", async () => {
     refund({ id: "full-refund", orderId: "paid-full", amount: 20, createdAt: "2026-06-15T09:50:00.000Z" })
   ]);
   repositories.listProducts.mockResolvedValue([
+    product({ id: "sku-a", name: "热销挂件", spu: "挂件", stockQty: 1, status: "active" }),
+    product({ id: "sold-out", name: "售罄商品", spu: "挂件", stockQty: 0, status: "active" }),
+    product({ id: "stale-a", name: "滞销库存", spu: "纸品", stockQty: 9, isSellable: true, status: "active" }),
     product({ id: "low-1", name: "低库存商品", spu: "挂件", stockQty: 2, status: "active" }),
     product({ id: "safe", name: "库存充足商品", spu: "卡片", stockQty: 3, status: "active" })
   ]);
 
   render(<DashboardPage />);
 
-  expect(await screen.findByText("热销挂件")).toBeVisible();
+  expect(await screen.findByText("统计范围：今日")).toBeVisible();
 
   expect(screen.getByText("统计范围：今日")).toBeVisible();
 
@@ -295,6 +298,31 @@ test("loads full dashboard data and renders core sections", async () => {
   expect(within(lowStockRow as HTMLElement).getByText("NORMAL-BASE")).toBeVisible();
   expect(within(lowStockRow as HTMLElement).getByText("库存 2")).toBeVisible();
 
+  const soldOutSku = screen.getByRole("region", { name: "售罄 SKU" });
+  expect(soldOutSku.querySelector(".dashboardRankList")).not.toBeNull();
+  const soldOutRow = within(soldOutSku).getByText("售罄商品").closest(".dashboardRankRow");
+  expect(soldOutRow).not.toBeNull();
+  expect(within(soldOutRow as HTMLElement).getByText("库存 0")).toBeVisible();
+
+  const highRiskSku = screen.getByRole("region", { name: "高风险 SKU" });
+  expect(highRiskSku.querySelector(".dashboardRankList")).not.toBeNull();
+  const highRiskRow = within(highRiskSku).getByText("热销挂件").closest(".dashboardRankRow");
+  expect(highRiskRow).not.toBeNull();
+  expect(within(highRiskRow as HTMLElement).getByText("售出 3 件")).toBeVisible();
+  expect(within(highRiskRow as HTMLElement).getByText("库存 1")).toBeVisible();
+
+  const slowMovingSku = screen.getByRole("region", { name: "滞销 SKU" });
+  expect(slowMovingSku.querySelector(".dashboardRankList")).not.toBeNull();
+  const slowMovingRow = within(slowMovingSku).getByText("滞销库存").closest(".dashboardRankRow");
+  expect(slowMovingRow).not.toBeNull();
+  expect(within(slowMovingRow as HTMLElement).getByText("库存 9")).toBeVisible();
+
+  const restockSuggestions = screen.getByRole("region", { name: "补货建议" });
+  expect(restockSuggestions.querySelector(".dashboardRankList")).not.toBeNull();
+  const restockRow = within(restockSuggestions).getByText("热销挂件").closest(".dashboardRankRow");
+  expect(restockRow).not.toBeNull();
+  expect(within(restockRow as HTMLElement).getByText("建议补货")).toBeVisible();
+
   const exceptions = screen.getByRole("region", { name: "异常订单" });
   expect(exceptions.querySelector(".dashboardExceptionList")).not.toBeNull();
   expect(exceptions.querySelector(".dashboardExceptionRow")).not.toBeNull();
@@ -325,6 +353,10 @@ test("shows dashboard empty states after successful empty load", async () => {
   expect(screen.getByText("当前范围暂无 SPU 销售额。")).toBeVisible();
   expect(screen.getByText("当前范围暂无赠品消耗。")).toBeVisible();
   expect(screen.getByText("暂无低库存商品。")).toBeVisible();
+  expect(screen.getByText("暂无售罄 SKU。")).toBeVisible();
+  expect(screen.getByText("暂无高风险 SKU。")).toBeVisible();
+  expect(screen.getByText("暂无滞销 SKU。")).toBeVisible();
+  expect(screen.getByText("暂无补货建议。")).toBeVisible();
   expect(screen.getByText("当前范围暂无异常订单。")).toBeVisible();
 
   expect(screen.getByLabelText("经营概览")).toBeVisible();
@@ -577,6 +609,10 @@ test("shows sanitized error when dashboard loading fails", async () => {
   expect(screen.queryByRole("region", { name: "SPU 销售额" })).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "赠品消耗" })).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "低库存 SKU" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "售罄 SKU" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "高风险 SKU" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "滞销 SKU" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "补货建议" })).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "异常订单" })).not.toBeInTheDocument();
   expect(screen.queryByText(/^暂无/)).not.toBeInTheDocument();
 });

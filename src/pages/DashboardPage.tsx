@@ -488,6 +488,134 @@ export default function DashboardPage() {
               </div>
             </section>
 
+            <section className="dashboardSection" aria-labelledby="sold-out-sku-title">
+              <div className="sectionTitle">
+                <AlertTriangle size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="sold-out-sku-title">售罄 SKU</h2>
+                  <p>当前库存为 0 的启用商品。</p>
+                </div>
+              </div>
+
+              {!isLoading && dashboard.soldOutRows.length === 0 ? (
+                <div className="dashboardEmpty">
+                  <PackageX size={24} aria-hidden="true" />
+                  <p>暂无售罄 SKU。</p>
+                </div>
+              ) : null}
+
+              <div className="dashboardRankList">
+                {dashboard.soldOutRows.map((row) => (
+                  <article className="dashboardRankRow" key={row.productId}>
+                    <div>
+                      <h3>{row.productName}</h3>
+                      <p>{row.productCode ?? row.spu}</p>
+                    </div>
+                    <div className="dashboardRowMetric isOut">
+                      <span>库存 {row.stockQty}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="dashboardSection" aria-labelledby="high-risk-sku-title">
+              <div className="sectionTitle">
+                <AlertTriangle size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="high-risk-sku-title">高风险 SKU</h2>
+                  <p>当前范围销量高且库存偏低的可售商品。</p>
+                </div>
+              </div>
+
+              {!isLoading && dashboard.highRiskRows.length === 0 ? (
+                <div className="dashboardEmpty">
+                  <PackageX size={24} aria-hidden="true" />
+                  <p>暂无高风险 SKU。</p>
+                </div>
+              ) : null}
+
+              <div className="dashboardRankList">
+                {dashboard.highRiskRows.map((row) => (
+                  <article className="dashboardRankRow" key={row.productId}>
+                    <div>
+                      <h3>{row.productName}</h3>
+                      <p>{row.productCode ?? row.spu}</p>
+                    </div>
+                    <div className={row.stockQty === 0 ? "dashboardRowMetric isOut" : "dashboardRowMetric"}>
+                      <span>售出 {row.soldQuantity} 件</span>
+                      <strong>库存 {row.stockQty}</strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="dashboardSection" aria-labelledby="slow-moving-sku-title">
+              <div className="sectionTitle">
+                <AlertTriangle size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="slow-moving-sku-title">滞销 SKU</h2>
+                  <p>当前范围无销量且仍有库存的可售商品。</p>
+                </div>
+              </div>
+
+              {!isLoading && dashboard.slowMovingRows.length === 0 ? (
+                <div className="dashboardEmpty">
+                  <PackageX size={24} aria-hidden="true" />
+                  <p>暂无滞销 SKU。</p>
+                </div>
+              ) : null}
+
+              <div className="dashboardRankList">
+                {dashboard.slowMovingRows.map((row) => (
+                  <article className="dashboardRankRow" key={row.productId}>
+                    <div>
+                      <h3>{row.productName}</h3>
+                      <p>{row.productCode ?? row.spu}</p>
+                    </div>
+                    <div className="dashboardRowMetric">
+                      <span>库存 {row.stockQty}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="dashboardSection" aria-labelledby="restock-suggestions-title">
+              <div className="sectionTitle">
+                <AlertTriangle size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="restock-suggestions-title">补货建议</h2>
+                  <p>基于当前范围销量和库存生成的补货提醒。</p>
+                </div>
+              </div>
+
+              {!isLoading && dashboard.restockSuggestionRows.length === 0 ? (
+                <div className="dashboardEmpty">
+                  <PackageX size={24} aria-hidden="true" />
+                  <p>暂无补货建议。</p>
+                </div>
+              ) : null}
+
+              <div className="dashboardRankList">
+                {dashboard.restockSuggestionRows.map((row) => (
+                  <article className="dashboardRankRow" key={row.productId}>
+                    <div>
+                      <h3>{row.productName}</h3>
+                      <p>{row.productCode ?? row.spu}</p>
+                    </div>
+                    <div className={row.stockQty === 0 ? "dashboardRowMetric isOut" : "dashboardRowMetric"}>
+                      <span>建议补货</span>
+                      <strong>
+                        售出 {row.soldQuantity} / 库存 {row.stockQty}
+                      </strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
             <section className="dashboardSection" aria-labelledby="exception-orders-title">
               <div className="sectionTitle">
                 <AlertTriangle size={21} aria-hidden="true" />
