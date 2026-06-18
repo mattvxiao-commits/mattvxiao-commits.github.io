@@ -992,4 +992,285 @@ describe("buildDashboardModel", () => {
     });
     expect(model.giftTierRows).toEqual([]);
   });
+
+  test("基于有成本快照的已支付订单明细计算毛利概览", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [order({ id: "paid-a", payableAmount: 40 })],
+      orderItems: [
+        item({
+          id: "paid-a-item",
+          orderId: "paid-a",
+          productId: "sku-a",
+          lineTotal: 40,
+          quantity: 2,
+          unitCostSnapshot: 8,
+          costTotal: 16,
+          grossProfit: 24
+        })
+      ],
+      refunds: [],
+      products: []
+    });
+
+    expect(model.profitSummary).toEqual({
+      revenueWithCostSnapshot: 40,
+      costAmount: 16,
+      grossProfit: 24,
+      grossMargin: 60,
+      giftCostAmount: 0,
+      missingCostItemCount: 0,
+      missingCostOrderCount: 0
+    });
+  });
+
+  test("赠品成本降低毛利，并统计缺少成本快照的旧订单明细", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [
+        order({ id: "paid-a", payableAmount: 40 }),
+        order({ id: "legacy-a", payableAmount: 12, paidAt: "2026-06-15T10:00:00.000Z" })
+      ],
+      orderItems: [
+        item({
+          id: "paid-a-normal",
+          orderId: "paid-a",
+          productId: "sku-a",
+          lineType: "normal",
+          lineTotal: 40,
+          quantity: 2,
+          unitCostSnapshot: 8,
+          costTotal: 16,
+          grossProfit: 24
+        }),
+        item({
+          id: "paid-a-gift",
+          orderId: "paid-a",
+          productId: "gift-a",
+          lineType: "gift",
+          lineTotal: 0,
+          quantity: 1,
+          unitCostSnapshot: 2,
+          costTotal: 2,
+          grossProfit: -2
+        }),
+        item({ id: "legacy-a-normal", orderId: "legacy-a", productId: "sku-old", lineType: "normal", lineTotal: 12, quantity: 1 }),
+        item({
+          id: "legacy-a-addon",
+          orderId: "legacy-a",
+          productId: "sku-old-addon",
+          lineType: "discount_addon",
+          lineTotal: 3,
+          quantity: 1,
+          unitCostSnapshot: 1,
+          costTotal: undefined,
+          grossProfit: 2
+        })
+      ],
+      refunds: [],
+      products: []
+    });
+
+    expect(model.profitSummary).toEqual({
+      revenueWithCostSnapshot: 40,
+      costAmount: 18,
+      grossProfit: 22,
+      grossMargin: 55,
+      giftCostAmount: 2,
+      missingCostItemCount: 2,
+      missingCostOrderCount: 1
+    });
+  });
+
+  test("生成 SKU 毛利排行、SPU 毛利排行和低毛利 SKU", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [order({ id: "paid-a", payableAmount: 152 })],
+      orderItems: [
+        item({
+          id: "sku-high-normal",
+          orderId: "paid-a",
+          productId: "sku-high",
+          productNameSnapshot: "高毛利徽章",
+          spuSnapshot: "徽章",
+          productCodeSnapshot: "BADGE-H",
+          lineType: "normal",
+          quantity: 5,
+          lineTotal: 100,
+          unitCostSnapshot: 6,
+          costTotal: 30,
+          grossProfit: 70
+        }),
+        item({
+          id: "sku-low-normal",
+          orderId: "paid-a",
+          productId: "sku-low",
+          productNameSnapshot: "低毛利贴纸",
+          spuSnapshot: "贴纸",
+          productCodeSnapshot: "STICKER-L",
+          lineType: "normal",
+          quantity: 5,
+          lineTotal: 25,
+          unitCostSnapshot: 4.5,
+          costTotal: 22.5,
+          grossProfit: 2.5
+        }),
+        item({
+          id: "sku-zero-normal",
+          orderId: "paid-a",
+          productId: "sku-zero",
+          productNameSnapshot: "零毛利卡片",
+          spuSnapshot: "卡片",
+          productCodeSnapshot: "CARD-Z",
+          lineType: "normal",
+          quantity: 2,
+          lineTotal: 12,
+          unitCostSnapshot: 6,
+          costTotal: 12,
+          grossProfit: 0
+        }),
+        item({
+          id: "sku-gift",
+          orderId: "paid-a",
+          productId: "sku-high",
+          productNameSnapshot: "高毛利徽章",
+          spuSnapshot: "徽章",
+          productCodeSnapshot: "BADGE-H",
+          lineType: "gift",
+          quantity: 3,
+          lineTotal: 0,
+          unitCostSnapshot: 5,
+          costTotal: 15,
+          grossProfit: -15
+        }),
+        item({
+          id: "sku-addon",
+          orderId: "paid-a",
+          productId: "sku-addon",
+          productNameSnapshot: "加购钥匙扣",
+          spuSnapshot: "钥匙扣",
+          productCodeSnapshot: "KEY-A",
+          lineType: "discount_addon",
+          quantity: 1,
+          lineTotal: 15,
+          unitCostSnapshot: 5,
+          costTotal: 5,
+          grossProfit: 10
+        })
+      ],
+      refunds: [],
+      products: []
+    });
+
+    expect(model.profitSkuRows.map((row) => row.productId)).toEqual(["sku-high", "sku-addon", "sku-low", "sku-zero"]);
+    expect(model.profitSkuRows[0]).toEqual({
+      productId: "sku-high",
+      productName: "高毛利徽章",
+      spu: "徽章",
+      productCode: "BADGE-H",
+      quantity: 5,
+      revenue: 100,
+      costAmount: 45,
+      grossProfit: 55,
+      grossMargin: 55
+    });
+    expect(model.profitSpuRows.map((row) => row.spu)).toEqual(["徽章", "钥匙扣", "贴纸", "卡片"]);
+    expect(model.profitSpuRows[0]).toEqual({
+      spu: "徽章",
+      quantity: 5,
+      revenue: 100,
+      costAmount: 45,
+      grossProfit: 55,
+      grossMargin: 55
+    });
+    expect(model.lowProfitSkuRows.map((row) => row.productId)).toEqual(["sku-zero", "sku-low"]);
+    expect(model.lowProfitSkuRows[0]).toMatchObject({ productId: "sku-zero", quantity: 2, grossMargin: 0, grossProfit: 0 });
+  });
+
+  test("日期范围外订单的成本明细不影响毛利概览和毛利排行", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [
+        order({ id: "today-paid", payableAmount: 30 }),
+        order({ id: "outside-paid", payableAmount: 999, paidAt: "2026-06-14T09:00:00.000Z" })
+      ],
+      orderItems: [
+        item({
+          id: "today-cost",
+          orderId: "today-paid",
+          productId: "sku-today",
+          productNameSnapshot: "今日商品",
+          spuSnapshot: "今日 SPU",
+          lineTotal: 30,
+          quantity: 1,
+          unitCostSnapshot: 10,
+          costTotal: 10,
+          grossProfit: 20
+        }),
+        item({
+          id: "outside-cost",
+          orderId: "outside-paid",
+          productId: "sku-outside",
+          productNameSnapshot: "范围外商品",
+          spuSnapshot: "范围外 SPU",
+          lineTotal: 999,
+          quantity: 9,
+          unitCostSnapshot: 1,
+          costTotal: 9,
+          grossProfit: 990
+        })
+      ],
+      refunds: [],
+      products: []
+    });
+
+    expect(model.profitSummary).toMatchObject({ revenueWithCostSnapshot: 30, costAmount: 10, grossProfit: 20 });
+    expect(model.profitSkuRows.map((row) => row.productId)).toEqual(["sku-today"]);
+    expect(model.profitSpuRows.map((row) => row.spu)).toEqual(["今日 SPU"]);
+    expect(model.lowProfitSkuRows).toEqual([]);
+  });
+
+  test("作废订单不纳入毛利", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [
+        order({ id: "paid-a", payableAmount: 30 }),
+        order({ id: "cancelled-a", status: "cancelled", paidAt: undefined, cancelledAt: "2026-06-15T10:00:00.000Z" })
+      ],
+      orderItems: [
+        item({
+          id: "paid-a-cost",
+          orderId: "paid-a",
+          productId: "sku-paid",
+          lineTotal: 30,
+          quantity: 1,
+          unitCostSnapshot: 10,
+          costTotal: 10,
+          grossProfit: 20
+        }),
+        item({
+          id: "cancelled-a-cost",
+          orderId: "cancelled-a",
+          productId: "sku-cancelled",
+          lineTotal: 80,
+          quantity: 1,
+          unitCostSnapshot: 20,
+          costTotal: 20,
+          grossProfit: 60
+        }),
+        item({ id: "cancelled-a-missing", orderId: "cancelled-a", productId: "sku-cancelled-missing", lineTotal: 10, quantity: 1 })
+      ],
+      refunds: [],
+      products: []
+    });
+
+    expect(model.profitSummary).toMatchObject({
+      revenueWithCostSnapshot: 30,
+      costAmount: 10,
+      grossProfit: 20,
+      missingCostItemCount: 0,
+      missingCostOrderCount: 0
+    });
+    expect(model.profitSkuRows.map((row) => row.productId)).toEqual(["sku-paid"]);
+  });
 });

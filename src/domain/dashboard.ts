@@ -85,6 +85,37 @@ export type DashboardGiftRow = {
   quantity: number;
 };
 
+export type DashboardProfitSummary = {
+  revenueWithCostSnapshot: number;
+  costAmount: number;
+  grossProfit: number;
+  grossMargin: number;
+  giftCostAmount: number;
+  missingCostItemCount: number;
+  missingCostOrderCount: number;
+};
+
+export type DashboardProfitSkuRow = {
+  productId: string;
+  productName: string;
+  spu: string;
+  productCode?: string;
+  quantity: number;
+  revenue: number;
+  costAmount: number;
+  grossProfit: number;
+  grossMargin: number;
+};
+
+export type DashboardProfitSpuRow = {
+  spu: string;
+  quantity: number;
+  revenue: number;
+  costAmount: number;
+  grossProfit: number;
+  grossMargin: number;
+};
+
 export type DashboardLowStockRow = {
   productId: string;
   productName: string;
@@ -128,6 +159,10 @@ export type DashboardModel = {
   topSellingSpuRows: DashboardSpuRow[];
   topRevenueSpuRows: DashboardSpuRow[];
   giftConsumptionRows: DashboardGiftRow[];
+  profitSummary: DashboardProfitSummary;
+  profitSkuRows: DashboardProfitSkuRow[];
+  profitSpuRows: DashboardProfitSpuRow[];
+  lowProfitSkuRows: DashboardProfitSkuRow[];
   lowStockRows: DashboardLowStockRow[];
   soldOutRows: DashboardInventoryRiskRow[];
   highRiskRows: DashboardInventoryRiskRow[];
@@ -469,6 +504,133 @@ function calculateStockRemainingPercent(stockQty: number, soldQuantity: number):
   return Math.round((stockQty / estimatedStartQty) * 100);
 }
 
+function hasCostSnapshot(item: OrderItem): item is OrderItem & {
+  unitCostSnapshot: number;
+  costTotal: number;
+  grossProfit: number;
+} {
+  return (
+    typeof item.unitCostSnapshot === "number" && typeof item.costTotal === "number" && typeof item.grossProfit === "number"
+  );
+}
+
+function calculateGrossMargin(grossProfit: number, revenue: number): number {
+  if (revenue === 0) {
+    return 0;
+  }
+
+  return roundMoney((grossProfit / revenue) * 100);
+}
+
+function sortProfitRows<T extends { revenue: number; grossProfit: number; productName?: string; spu?: string }>(rows: T[]): T[] {
+  return [...rows].sort((left, right) => {
+    if (right.grossProfit !== left.grossProfit) {
+      return right.grossProfit - left.grossProfit;
+    }
+
+    if (right.revenue !== left.revenue) {
+      return right.revenue - left.revenue;
+    }
+
+    return (left.productName ?? left.spu ?? "").localeCompare(right.productName ?? right.spu ?? "", "zh-Hans-CN");
+  });
+}
+
+function buildProfitMetrics(
+  rangePaidOrderIds: Set<string>,
+  orderItems: OrderItem[]
+): Pick<DashboardModel, "profitSummary" | "profitSkuRows" | "profitSpuRows" | "lowProfitSkuRows"> {
+  const missingCostOrderIds = new Set<string>();
+  const skuRowsByProduct = new Map<string, DashboardProfitSkuRow>();
+  const spuRowsBySpu = new Map<string, DashboardProfitSpuRow>();
+  let revenueWithCostSnapshot = 0;
+  let costAmount = 0;
+  let grossProfit = 0;
+  let giftCostAmount = 0;
+  let missingCostItemCount = 0;
+
+  for (const item of orderItems) {
+    if (!rangePaidOrderIds.has(item.orderId)) {
+      continue;
+    }
+
+    if (!hasCostSnapshot(item)) {
+      missingCostItemCount += 1;
+      missingCostOrderIds.add(item.orderId);
+      continue;
+    }
+
+    revenueWithCostSnapshot = roundMoney(revenueWithCostSnapshot + item.lineTotal);
+    costAmount = roundMoney(costAmount + item.costTotal);
+    grossProfit = roundMoney(grossProfit + item.grossProfit);
+
+    if (item.lineType === "gift") {
+      giftCostAmount = roundMoney(giftCostAmount + item.costTotal);
+    }
+
+    const existingSkuRow = skuRowsByProduct.get(item.productId);
+    const skuRevenue = roundMoney((existingSkuRow?.revenue ?? 0) + item.lineTotal);
+    const skuCostAmount = roundMoney((existingSkuRow?.costAmount ?? 0) + item.costTotal);
+    const skuGrossProfit = roundMoney((existingSkuRow?.grossProfit ?? 0) + item.grossProfit);
+    skuRowsByProduct.set(item.productId, {
+      productId: item.productId,
+      productName: existingSkuRow?.productName ?? item.productNameSnapshot,
+      spu: existingSkuRow?.spu ?? item.spuSnapshot,
+      productCode: existingSkuRow?.productCode ?? item.productCodeSnapshot,
+      quantity: (existingSkuRow?.quantity ?? 0) + (item.lineType === "gift" ? 0 : item.quantity),
+      revenue: skuRevenue,
+      costAmount: skuCostAmount,
+      grossProfit: skuGrossProfit,
+      grossMargin: calculateGrossMargin(skuGrossProfit, skuRevenue)
+    });
+
+    const existingSpuRow = spuRowsBySpu.get(item.spuSnapshot);
+    const spuRevenue = roundMoney((existingSpuRow?.revenue ?? 0) + item.lineTotal);
+    const spuCostAmount = roundMoney((existingSpuRow?.costAmount ?? 0) + item.costTotal);
+    const spuGrossProfit = roundMoney((existingSpuRow?.grossProfit ?? 0) + item.grossProfit);
+    spuRowsBySpu.set(item.spuSnapshot, {
+      spu: item.spuSnapshot,
+      quantity: (existingSpuRow?.quantity ?? 0) + (item.lineType === "gift" ? 0 : item.quantity),
+      revenue: spuRevenue,
+      costAmount: spuCostAmount,
+      grossProfit: spuGrossProfit,
+      grossMargin: calculateGrossMargin(spuGrossProfit, spuRevenue)
+    });
+  }
+
+  const profitSkuRows = sortProfitRows([...skuRowsByProduct.values()]).slice(0, 5);
+  const profitSpuRows = sortProfitRows([...spuRowsBySpu.values()]).slice(0, 5);
+  const lowProfitSkuRows = [...skuRowsByProduct.values()]
+    .filter((row) => row.quantity > 0 && (row.grossMargin < 20 || row.grossProfit <= 0))
+    .sort((left, right) => {
+      if (left.grossMargin !== right.grossMargin) {
+        return left.grossMargin - right.grossMargin;
+      }
+
+      if (left.grossProfit !== right.grossProfit) {
+        return left.grossProfit - right.grossProfit;
+      }
+
+      return right.revenue - left.revenue;
+    })
+    .slice(0, 5);
+
+  return {
+    profitSummary: {
+      revenueWithCostSnapshot,
+      costAmount,
+      grossProfit,
+      grossMargin: calculateGrossMargin(grossProfit, revenueWithCostSnapshot),
+      giftCostAmount,
+      missingCostItemCount,
+      missingCostOrderCount: missingCostOrderIds.size
+    },
+    profitSkuRows,
+    profitSpuRows,
+    lowProfitSkuRows
+  };
+}
+
 function buildLowStockRows(products: Product[], soldQuantityByProduct: Map<string, number>): DashboardLowStockRow[] {
   return products
     .filter((product) => {
@@ -664,6 +826,7 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
     refundedAmount: allRefundTotalsByOrder.get(order.id) ?? 0
   }));
   const spuRows = buildSpuRows(rangePaidOrderIds, input.orderItems);
+  const profitMetrics = buildProfitMetrics(rangePaidOrderIds, input.orderItems);
   const soldQuantityByProduct = buildSoldQuantityByProduct(rangePaidOrderIds, input.orderItems);
   const inventoryRiskRows = buildInventoryRiskRows(input.products, soldQuantityByProduct);
 
@@ -690,6 +853,7 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
     topSellingSpuRows: sortSpuRowsByQuantity(spuRows).slice(0, 5),
     topRevenueSpuRows: sortSpuRowsByAmount(spuRows).slice(0, 5),
     giftConsumptionRows: buildGiftConsumptionRows(rangePaidOrderIds, input.orderItems),
+    ...profitMetrics,
     lowStockRows: buildLowStockRows(input.products, soldQuantityByProduct),
     ...inventoryRiskRows,
     exceptionRows: buildExceptionRows(input.orders, allRefundTotalsByOrder, rangePaidOrderIds, input.dateRange)
