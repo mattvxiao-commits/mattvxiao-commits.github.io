@@ -5,7 +5,7 @@ import type { FieldLockSettings } from "../domain/types";
 
 type FieldLockSettingsPanelProps = {
   fieldLock: FieldLockSettings;
-  onSave: (fieldLock: FieldLockSettings) => Promise<void>;
+  onSave: (fieldLock: FieldLockSettings, action: "enable" | "relock" | "disable") => Promise<void>;
 };
 
 export default function FieldLockSettingsPanel({ fieldLock, onSave }: FieldLockSettingsPanelProps) {
@@ -19,7 +19,7 @@ export default function FieldLockSettingsPanel({ fieldLock, onSave }: FieldLockS
     setIsSaving(true);
     try {
       const nextFieldLock = unlockFieldLock(await setFieldLockPin(fieldLock, pin, confirmPin));
-      await onSave(nextFieldLock);
+      await onSave(nextFieldLock, "enable");
       setPin("");
       setConfirmPin("");
     } catch (caught) {
@@ -33,10 +33,13 @@ export default function FieldLockSettingsPanel({ fieldLock, onSave }: FieldLockS
     setError(undefined);
     setIsSaving(true);
     try {
-      await onSave({
-        enabled: false,
-        failedAttempts: 0
-      });
+      await onSave(
+        {
+          enabled: false,
+          failedAttempts: 0
+        },
+        "disable"
+      );
     } catch {
       setError("现场模式关闭失败，请重试。");
     } finally {
@@ -48,7 +51,7 @@ export default function FieldLockSettingsPanel({ fieldLock, onSave }: FieldLockS
     setError(undefined);
     setIsSaving(true);
     try {
-      await onSave(relockFieldLock(fieldLock));
+      await onSave(relockFieldLock(fieldLock), "relock");
     } catch {
       setError("现场模式重新锁定失败，请重试。");
     } finally {

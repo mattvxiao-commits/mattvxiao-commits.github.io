@@ -5,7 +5,7 @@ import {
   Settings,
   Store,
 } from "lucide-react";
-import { type MouseEvent, type ReactElement, useEffect, useState } from "react";
+import { type MouseEvent, type ReactElement, useEffect, useRef, useState } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import FieldLockDialog from "./components/FieldLockDialog";
 import { getSettings, saveSettings } from "./db/repositories";
@@ -97,6 +97,7 @@ export default function App() {
   const [settings, setSettings] = useState<AppSettings>();
   const [pendingPath, setPendingPath] = useState<string>();
   const [isLockDialogOpen, setIsLockDialogOpen] = useState(false);
+  const suppressNextUnlockDialogRef = useRef(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -106,12 +107,21 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => subscribeSettingsUpdated((updatedSettings) => {
-    setSettings({
+  useEffect(() => subscribeSettingsUpdated((updatedSettings, options) => {
+    const normalizedSettings = {
       ...updatedSettings,
       fieldLock: normalizeFieldLockSettings(updatedSettings.fieldLock)
-    });
-  }), []);
+    };
+
+    setSettings(normalizedSettings);
+
+    if (options?.suppressUnlockDialog && requiresFieldLockUnlock(normalizedSettings.fieldLock)) {
+      suppressNextUnlockDialogRef.current = true;
+      setPendingPath(undefined);
+      setIsLockDialogOpen(false);
+      navigate("/sales", { replace: true });
+    }
+  }), [navigate]);
 
   useEffect(() => {
     let isMounted = true;
@@ -141,6 +151,14 @@ export default function App() {
     }
 
     if (requiresFieldLockUnlock(settings.fieldLock)) {
+      if (suppressNextUnlockDialogRef.current) {
+        suppressNextUnlockDialogRef.current = false;
+        setPendingPath(undefined);
+        setIsLockDialogOpen(false);
+        navigate("/sales", { replace: true });
+        return;
+      }
+
       setPendingPath(location.pathname);
       setIsLockDialogOpen(true);
       navigate("/sales", { replace: true });

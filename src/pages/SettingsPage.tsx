@@ -262,7 +262,7 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleFieldLockSave(fieldLock: AppSettings["fieldLock"]) {
+  async function handleFieldLockSave(fieldLock: AppSettings["fieldLock"], action: "enable" | "relock" | "disable") {
     if (!settings || isBusy) {
       throw new Error("设置当前正忙，请稍后重试。");
     }
@@ -274,7 +274,7 @@ export default function SettingsPage() {
       const nextSettings = applyGiftTiers({ ...settings, fieldLock }, giftA, giftB);
       await saveSettings(nextSettings);
       setSettings(nextSettings);
-      notifySettingsUpdated(nextSettings);
+      notifySettingsUpdated(nextSettings, { suppressUnlockDialog: action === "relock" });
       setStatus({ kind: "success", text: fieldLock.enabled ? "现场模式已保存并生效。" : "现场模式已关闭。" });
     } catch {
       setStatus({ kind: "error", text: "现场模式保存失败，请重试。" });

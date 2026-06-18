@@ -1,9 +1,10 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, test, vi } from "vitest";
 import App from "./App";
 import { createDefaultSettings } from "./db/db";
 import { setFieldLockPin } from "./domain/fieldLock";
+import { notifySettingsUpdated } from "./utils/settingsEvents";
 
 const repositories = vi.hoisted(() => ({
   getSettings: vi.fn(),
@@ -82,4 +83,42 @@ test("unlocks protected navigation with correct PIN", async () => {
   fireEvent.click(screen.getByRole("button", { name: "解锁" }));
 
   expect(await screen.findByRole("heading", { level: 1, name: "商品" })).toBeVisible();
+});
+
+test("silently returns to sales when field mode is relocked from settings", async () => {
+  const unlockedSettings = {
+    ...createDefaultSettings(),
+    fieldLock: {
+      enabled: true,
+      pinHash: "secret-hash",
+      pinSalt: "secret-salt",
+      failedAttempts: 0,
+      unlockExpiresAt: "2099-06-19T09:05:00.000Z"
+    }
+  };
+  repositories.getSettings.mockResolvedValue(unlockedSettings);
+
+  render(
+    <MemoryRouter initialEntries={["/settings"]}>
+      <App />
+    </MemoryRouter>
+  );
+
+  expect(await screen.findByRole("heading", { level: 1, name: "设置" })).toBeVisible();
+
+  act(() => {
+    notifySettingsUpdated(
+      {
+        ...unlockedSettings,
+        fieldLock: {
+          ...unlockedSettings.fieldLock,
+          unlockExpiresAt: undefined
+        }
+      },
+      { suppressUnlockDialog: true }
+    );
+  });
+
+  expect(await screen.findByRole("heading", { level: 1, name: "售卖" })).toBeVisible();
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "管理页面已锁定" })).not.toBeInTheDocument());
 });
