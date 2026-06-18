@@ -79,9 +79,22 @@ afterEach(() => {
 
 test("loads full dashboard data and renders core sections", async () => {
   repositories.listOrders.mockResolvedValue([
-    paidOrder({ id: "paid-main", orderNo: "ECRM-001", payableAmount: 80 }),
-    paidOrder({ id: "paid-partial", orderNo: "ECRM-002", payableAmount: 30, paidAt: "2026-06-15T09:10:00.000Z" }),
-    paidOrder({ id: "paid-full", orderNo: "ECRM-003", payableAmount: 20, paidAt: "2026-06-15T09:20:00.000Z" }),
+    paidOrder({ id: "paid-main", orderNo: "ECRM-001", payableAmount: 80, triggeredGiftTier: 35 }),
+    paidOrder({
+      id: "paid-partial",
+      orderNo: "ECRM-002",
+      payableAmount: 30,
+      paymentMethod: "alipay",
+      triggeredGiftTier: 68,
+      paidAt: "2026-06-15T09:10:00.000Z"
+    }),
+    paidOrder({
+      id: "paid-full",
+      orderNo: "ECRM-003",
+      payableAmount: 20,
+      paymentMethod: "cash",
+      paidAt: "2026-06-15T09:20:00.000Z"
+    }),
     paidOrder({
       id: "voided",
       orderNo: "ECRM-004",
@@ -114,6 +127,18 @@ test("loads full dashboard data and renders core sections", async () => {
             quantity: 2,
             lineType: "gift",
             lineTotal: 0
+          }),
+          orderItem({
+            id: "addon-main",
+            orderId,
+            productId: "addon-a",
+            productNameSnapshot: "加购贴纸",
+            spuSnapshot: "贴纸",
+            quantity: 2,
+            originalUnitPrice: 5,
+            finalUnitPrice: 3,
+            lineType: "discount_addon",
+            lineTotal: 6
           })
         ],
         "paid-partial": [
@@ -171,14 +196,57 @@ test("loads full dashboard data and renders core sections", async () => {
 
   const operationsOverview = screen.getByLabelText("出库与客单");
   expect(operationsOverview).toHaveClass("dashboardOperationsStrip");
-  expectMetricValue(operationsOverview, "售出件数", "4");
+  expectMetricValue(operationsOverview, "售出件数", "6");
   expect(within(operationsOverview).getByText("售出件数")).toBeVisible();
   expectMetricValue(operationsOverview, "赠品件数", "2");
   expect(within(operationsOverview).getByText("赠品件数")).toBeVisible();
-  expectMetricValue(operationsOverview, "总出库", "6");
+  expectMetricValue(operationsOverview, "总出库", "8");
   expect(within(operationsOverview).getByText("总出库")).toBeVisible();
   expectMetricValue(operationsOverview, "客单价", "¥33.33");
   expect(within(operationsOverview).getByText("客单价")).toBeVisible();
+
+  const promotionOverview = screen.getByLabelText("活动效果");
+  expect(promotionOverview).toHaveClass("dashboardOperationsStrip");
+  expectMetricValue(promotionOverview, "加购件数", "2");
+  expect(within(promotionOverview).getByText("加购件数")).toBeVisible();
+  expectMetricValue(promotionOverview, "优惠让利", "¥4.00");
+  expect(within(promotionOverview).getByText("优惠让利")).toBeVisible();
+  expectMetricValue(promotionOverview, "优惠订单", "1");
+  expect(within(promotionOverview).getByText("优惠订单")).toBeVisible();
+  expectMetricValue(promotionOverview, "满赠订单", "2");
+  expect(within(promotionOverview).getByText("满赠订单")).toBeVisible();
+
+  const paymentMethods = screen.getByRole("region", { name: "支付方式" });
+  expect(paymentMethods.querySelector(".dashboardRankList")).not.toBeNull();
+  const wechatPaymentRow = within(paymentMethods).getByText("微信").closest(".dashboardRankRow");
+  expect(wechatPaymentRow).not.toBeNull();
+  expect(within(wechatPaymentRow as HTMLElement).getByText("1 单")).toBeVisible();
+  expect(within(wechatPaymentRow as HTMLElement).getByText("¥80.00")).toBeVisible();
+  const alipayPaymentRow = within(paymentMethods).getByText("支付宝").closest(".dashboardRankRow");
+  expect(alipayPaymentRow).not.toBeNull();
+  expect(within(alipayPaymentRow as HTMLElement).getByText("1 单")).toBeVisible();
+  expect(within(alipayPaymentRow as HTMLElement).getByText("¥30.00")).toBeVisible();
+  const cashPaymentRow = within(paymentMethods).getByText("现金").closest(".dashboardRankRow");
+  expect(cashPaymentRow).not.toBeNull();
+  expect(within(cashPaymentRow as HTMLElement).getByText("1 单")).toBeVisible();
+  expect(within(cashPaymentRow as HTMLElement).getByText("¥20.00")).toBeVisible();
+  const otherPaymentRow = within(paymentMethods).getByText("其他").closest(".dashboardRankRow");
+  expect(otherPaymentRow).not.toBeNull();
+  expect(within(otherPaymentRow as HTMLElement).getByText("0 单")).toBeVisible();
+  expect(within(otherPaymentRow as HTMLElement).getByText("¥0.00")).toBeVisible();
+  const unrecordedPaymentRow = within(paymentMethods).getByText("未记录").closest(".dashboardRankRow");
+  expect(unrecordedPaymentRow).not.toBeNull();
+  expect(within(unrecordedPaymentRow as HTMLElement).getByText("0 单")).toBeVisible();
+  expect(within(unrecordedPaymentRow as HTMLElement).getByText("¥0.00")).toBeVisible();
+
+  const giftTiers = screen.getByRole("region", { name: "满赠触发" });
+  expect(giftTiers.querySelector(".dashboardRankList")).not.toBeNull();
+  const tier35Row = within(giftTiers).getByText("满 35").closest(".dashboardRankRow");
+  expect(tier35Row).not.toBeNull();
+  expect(within(tier35Row as HTMLElement).getByText("1 单")).toBeVisible();
+  const tier68Row = within(giftTiers).getByText("满 68").closest(".dashboardRankRow");
+  expect(tier68Row).not.toBeNull();
+  expect(within(tier68Row as HTMLElement).getByText("1 单")).toBeVisible();
 
   const topSellingSku = screen.getByRole("region", { name: "热销 SKU" });
   expect(topSellingSku.querySelector(".dashboardRankList")).not.toBeNull();
@@ -193,6 +261,9 @@ test("loads full dashboard data and renders core sections", async () => {
   expect(within(topSellingSpu).getByText("挂件")).toBeVisible();
   expect(within(topSellingSpu).getByText("3 件")).toBeVisible();
   expect(within(topSellingSpu).getByText("¥60.00")).toBeVisible();
+  expect(within(topSellingSpu).getByText("贴纸")).toBeVisible();
+  expect(within(topSellingSpu).getByText("2 件")).toBeVisible();
+  expect(within(topSellingSpu).getByText("¥6.00")).toBeVisible();
   expect(within(topSellingSpu).getByText("纸品")).toBeVisible();
 
   const topRevenueSpu = screen.getByRole("region", { name: "SPU 销售额" });
@@ -205,6 +276,10 @@ test("loads full dashboard data and renders core sections", async () => {
   expect(topRevenuePaperRow).not.toBeNull();
   expect(within(topRevenuePaperRow as HTMLElement).getByText("1 件")).toBeVisible();
   expect(within(topRevenuePaperRow as HTMLElement).getByText("¥30.00")).toBeVisible();
+  const topRevenueStickerRow = within(topRevenueSpu).getByText("贴纸").closest(".dashboardRankRow");
+  expect(topRevenueStickerRow).not.toBeNull();
+  expect(within(topRevenueStickerRow as HTMLElement).getByText("2 件")).toBeVisible();
+  expect(within(topRevenueStickerRow as HTMLElement).getByText("¥6.00")).toBeVisible();
 
   const giftConsumption = screen.getByRole("region", { name: "赠品消耗" });
   expect(giftConsumption.querySelector(".dashboardRankList")).not.toBeNull();
@@ -244,6 +319,8 @@ test("shows dashboard empty states after successful empty load", async () => {
   render(<DashboardPage />);
 
   expect(await screen.findByText("当前范围暂无已支付订单。")).toBeVisible();
+  expect(screen.getByText("当前范围暂无支付记录。")).toBeVisible();
+  expect(screen.getByText("当前范围暂无满赠触发。")).toBeVisible();
   expect(screen.getByText("当前范围暂无 SPU 销售。")).toBeVisible();
   expect(screen.getByText("当前范围暂无 SPU 销售额。")).toBeVisible();
   expect(screen.getByText("当前范围暂无赠品消耗。")).toBeVisible();
@@ -256,6 +333,12 @@ test("shows dashboard empty states after successful empty load", async () => {
   expect(operationsOverview).toBeVisible();
   expectMetricValue(operationsOverview, "售出件数", "0");
   expectMetricValue(operationsOverview, "客单价", "¥0.00");
+  const promotionOverview = screen.getByLabelText("活动效果");
+  expect(promotionOverview).toBeVisible();
+  expectMetricValue(promotionOverview, "加购件数", "0");
+  expectMetricValue(promotionOverview, "优惠让利", "¥0.00");
+  expectMetricValue(promotionOverview, "优惠订单", "0");
+  expectMetricValue(promotionOverview, "满赠订单", "0");
 });
 
 test("uses compact dashboard time range control structure", async () => {
@@ -486,6 +569,9 @@ test("shows sanitized error when dashboard loading fails", async () => {
   expect(screen.queryByText(/raw refund database failure/)).not.toBeInTheDocument();
   expect(screen.queryByLabelText("经营概览")).not.toBeInTheDocument();
   expect(screen.queryByLabelText("售后概览")).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "支付方式" })).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("活动效果")).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "满赠触发" })).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "热销 SKU" })).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "热销 SPU" })).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "SPU 销售额" })).not.toBeInTheDocument();

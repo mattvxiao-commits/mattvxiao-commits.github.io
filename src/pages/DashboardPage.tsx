@@ -248,6 +248,88 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            <div className="dashboardOperationsStrip" aria-label="活动效果">
+              <div>
+                <span>{dashboard.promotionSummary.addonQuantity}</span>
+                <p>加购件数</p>
+              </div>
+              <div>
+                <span>{formatMoney(dashboard.promotionSummary.addonDiscountAmount)}</span>
+                <p>优惠让利</p>
+              </div>
+              <div>
+                <span>{dashboard.promotionSummary.addonOrderCount}</span>
+                <p>优惠订单</p>
+              </div>
+              <div>
+                <span>{dashboard.promotionSummary.giftTriggeredOrderCount}</span>
+                <p>满赠订单</p>
+              </div>
+            </div>
+
+            <section className="dashboardSection" aria-labelledby="payment-method-title">
+              <div className="sectionTitle">
+                <BarChart3 size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="payment-method-title">支付方式</h2>
+                  <p>当前范围已支付订单按支付方式汇总。</p>
+                </div>
+              </div>
+
+              {!isLoading && dashboard.paymentMethodRows.every((row) => row.orderCount === 0) ? (
+                <div className="dashboardEmpty">
+                  <PackageX size={24} aria-hidden="true" />
+                  <p>当前范围暂无支付记录。</p>
+                </div>
+              ) : null}
+
+              <div className="dashboardRankList">
+                {dashboard.paymentMethodRows.map((row) => (
+                  <article className="dashboardRankRow" key={row.method}>
+                    <div>
+                      <h3>{row.label}</h3>
+                      <p>支付方式</p>
+                    </div>
+                    <div className="dashboardRowMetric">
+                      <span>{row.orderCount} 单</span>
+                      <strong>{formatMoney(row.amount)}</strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="dashboardSection" aria-labelledby="gift-tier-title">
+              <div className="sectionTitle">
+                <BarChart3 size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="gift-tier-title">满赠触发</h2>
+                  <p>当前范围已支付订单触发的满赠门槛。</p>
+                </div>
+              </div>
+
+              {!isLoading && dashboard.giftTierRows.length === 0 ? (
+                <div className="dashboardEmpty">
+                  <PackageX size={24} aria-hidden="true" />
+                  <p>当前范围暂无满赠触发。</p>
+                </div>
+              ) : null}
+
+              <div className="dashboardRankList">
+                {dashboard.giftTierRows.map((row) => (
+                  <article className="dashboardRankRow" key={row.threshold}>
+                    <div>
+                      <h3>满 {row.threshold}</h3>
+                      <p>满赠门槛</p>
+                    </div>
+                    <div className="dashboardRowMetric">
+                      <span>{row.orderCount} 单</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
             <section className="dashboardSection" aria-labelledby="top-selling-sku-title">
               <div className="sectionTitle">
                 <BarChart3 size={21} aria-hidden="true" />
