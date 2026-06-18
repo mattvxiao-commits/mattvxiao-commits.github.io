@@ -1,5 +1,6 @@
 import { saveAs } from "file-saver";
-import * as XLSX from "xlsx";
+import writeXlsxFile from "write-excel-file/browser";
+import type { SheetData } from "write-excel-file/browser";
 import type { OrderExportSheet } from "../domain/orderExport";
 
 export type ExportOrderExcelInput = {
@@ -7,20 +8,21 @@ export type ExportOrderExcelInput = {
   exportedAt: string;
 };
 
-export function exportOrderExcel(input: ExportOrderExcelInput): void {
-  const workbook = XLSX.utils.book_new();
-
-  for (const sheet of input.sheets) {
-    const worksheet = XLSX.utils.json_to_sheet(sheet.rows);
-    XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
-  }
-
-  const workbookArray = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-  const blob = new Blob([workbookArray], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-  });
+export async function exportOrderExcel(input: ExportOrderExcelInput): Promise<void> {
+  const blob = await writeXlsxFile(input.sheets.map((sheet) => ({
+    sheet: sheet.name,
+    data: toSheetData(sheet)
+  }))).toBlob();
 
   saveAs(blob, `ecrm-orders-${formatDateForFilename(input.exportedAt)}.xlsx`);
+}
+
+function toSheetData(sheet: OrderExportSheet): SheetData {
+  const headers = Array.from(new Set(sheet.rows.flatMap((row) => Object.keys(row))));
+  const headerRow = headers.map((header) => ({ value: header, fontWeight: "bold" as const }));
+  const dataRows = sheet.rows.map((row) => headers.map((header) => ({ value: row[header] ?? "" })));
+
+  return [headerRow, ...dataRows];
 }
 
 function formatDateForFilename(value: string): string {

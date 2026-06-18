@@ -301,7 +301,7 @@ export default function SettingsPage() {
         appVersion: APP_VERSION
       });
 
-      exportOrderExcel({ sheets, exportedAt });
+      await exportOrderExcel({ sheets, exportedAt });
       setStatus({ kind: "success", text: "订单 Excel 已导出。" });
     } catch {
       setStatus({ kind: "error", text: "订单 Excel 导出失败，请稍后重试。" });

@@ -1,22 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { exportOrderExcel } from "./orderExcelExport";
 
-const { workbook, bookNew, jsonToSheet, bookAppendSheet, write, saveAs } = vi.hoisted(() => ({
-  workbook: { SheetNames: [], Sheets: {} },
-  bookNew: vi.fn(),
-  jsonToSheet: vi.fn((rows) => ({ worksheetRows: rows })),
-  bookAppendSheet: vi.fn(),
-  write: vi.fn(() => new ArrayBuffer(8)),
+const { writeXlsxFile, saveAs } = vi.hoisted(() => ({
+  writeXlsxFile: vi.fn(() => ({
+    toBlob: vi.fn(() => new Blob(["xlsx"], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    }))
+  })),
   saveAs: vi.fn()
 }));
 
-vi.mock("xlsx", () => ({
-  utils: {
-    book_new: bookNew,
-    json_to_sheet: jsonToSheet,
-    book_append_sheet: bookAppendSheet
-  },
-  write
+vi.mock("write-excel-file/browser", () => ({
+  default: writeXlsxFile
 }));
 
 vi.mock("file-saver", () => ({
@@ -26,14 +21,13 @@ vi.mock("file-saver", () => ({
 describe("exportOrderExcel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    bookNew.mockReturnValue(workbook);
   });
 
-  it("把订单导出 sheet 写入 xlsx 并保存文件", () => {
+  it("把订单导出 sheet 写入 xlsx 并保存文件", async () => {
     const summaryRows = [{ 订单编号: "ECRM-001" }];
     const detailRows = [{ 商品名称: "徽章 A" }];
 
-    exportOrderExcel({
+    await exportOrderExcel({
       sheets: [
         { name: "订单汇总", rows: summaryRows },
         { name: "订单明细", rows: detailRows }
@@ -41,14 +35,32 @@ describe("exportOrderExcel", () => {
       exportedAt: "2026-06-17T23:30:00.000Z"
     });
 
-    expect(bookNew).toHaveBeenCalledOnce();
-    expect(bookNew).toHaveReturnedWith(workbook);
-    expect(jsonToSheet).toHaveBeenNthCalledWith(1, summaryRows);
-    expect(jsonToSheet).toHaveBeenNthCalledWith(2, detailRows);
-    expect(jsonToSheet).toHaveBeenCalledTimes(2);
-    expect(bookAppendSheet).toHaveBeenNthCalledWith(1, workbook, { worksheetRows: summaryRows }, "订单汇总");
-    expect(bookAppendSheet).toHaveBeenNthCalledWith(2, workbook, { worksheetRows: detailRows }, "订单明细");
-    expect(write).toHaveBeenCalledWith(workbook, { bookType: "xlsx", type: "array" });
+    expect(writeXlsxFile).toHaveBeenCalledOnce();
+    expect(writeXlsxFile).toHaveBeenCalledWith([
+      {
+        sheet: "订单汇总",
+        data: [
+          [
+            { value: "订单编号", fontWeight: "bold" }
+          ],
+          [
+            { value: "ECRM-001" }
+          ]
+        ]
+      },
+      {
+        sheet: "订单明细",
+        data: [
+          [
+            { value: "商品名称", fontWeight: "bold" }
+          ],
+          [
+            { value: "徽章 A" }
+          ]
+        ]
+      }
+    ]);
+    expect(writeXlsxFile.mock.results[0].value.toBlob).toHaveBeenCalledOnce();
     const blob = saveAs.mock.calls[0][0];
     expect(blob).toBeInstanceOf(Blob);
     expect(blob.type).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
