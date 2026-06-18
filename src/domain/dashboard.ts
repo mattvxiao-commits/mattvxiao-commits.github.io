@@ -41,6 +41,27 @@ export type DashboardOperationsSummary = {
   averageOrderValue: number;
 };
 
+export type DashboardPaymentMethodKey = PaymentMethod | "unrecorded";
+
+export type DashboardPaymentMethodRow = {
+  method: DashboardPaymentMethodKey;
+  label: string;
+  orderCount: number;
+  amount: number;
+};
+
+export type DashboardPromotionSummary = {
+  addonQuantity: number;
+  addonDiscountAmount: number;
+  addonOrderCount: number;
+  giftTriggeredOrderCount: number;
+};
+
+export type DashboardGiftTierRow = {
+  threshold: number;
+  orderCount: number;
+};
+
 export type DashboardSkuRow = {
   productId: string;
   productName: string;
@@ -88,12 +109,25 @@ export type DashboardExceptionRow = {
 export type DashboardModel = {
   summary: DashboardSummary;
   operationsSummary: DashboardOperationsSummary;
+  paymentMethodRows: DashboardPaymentMethodRow[];
+  promotionSummary: DashboardPromotionSummary;
+  giftTierRows: DashboardGiftTierRow[];
   topSellingSkuRows: DashboardSkuRow[];
   topSellingSpuRows: DashboardSpuRow[];
   topRevenueSpuRows: DashboardSpuRow[];
   giftConsumptionRows: DashboardGiftRow[];
   lowStockRows: DashboardLowStockRow[];
   exceptionRows: DashboardExceptionRow[];
+};
+
+const paymentMethodOrder: DashboardPaymentMethodKey[] = ["wechat", "alipay", "cash", "other", "unrecorded"];
+
+const paymentMethodLabels: Record<DashboardPaymentMethodKey, string> = {
+  wechat: "微信",
+  alipay: "支付宝",
+  cash: "现金",
+  other: "其他",
+  unrecorded: "未记录"
 };
 
 function startOfLocalDay(value: Date): Date {
@@ -249,6 +283,81 @@ function buildOperationsSummary(
     outboundQuantity: soldQuantity + giftQuantity,
     averageOrderValue: paidOrderCount > 0 ? roundMoney(netAmount / paidOrderCount) : 0
   };
+}
+
+function buildPaymentMethodRows(rangePaidOrders: Order[]): DashboardPaymentMethodRow[] {
+  const rowsByMethod = new Map<DashboardPaymentMethodKey, DashboardPaymentMethodRow>();
+
+  for (const method of paymentMethodOrder) {
+    rowsByMethod.set(method, {
+      method,
+      label: paymentMethodLabels[method],
+      orderCount: 0,
+      amount: 0
+    });
+  }
+
+  for (const order of rangePaidOrders) {
+    const method = order.paymentMethod ?? "unrecorded";
+    const existing = rowsByMethod.get(method);
+
+    if (!existing) {
+      continue;
+    }
+
+    rowsByMethod.set(method, {
+      ...existing,
+      orderCount: existing.orderCount + 1,
+      amount: roundMoney(existing.amount + order.payableAmount)
+    });
+  }
+
+  return paymentMethodOrder.map((method) => rowsByMethod.get(method)).filter((row): row is DashboardPaymentMethodRow => Boolean(row));
+}
+
+function buildPromotionSummary(
+  rangePaidOrders: Order[],
+  rangePaidOrderIds: Set<string>,
+  orderItems: OrderItem[]
+): DashboardPromotionSummary {
+  const addonOrderIds = new Set<string>();
+  let addonQuantity = 0;
+  let addonDiscountAmount = 0;
+
+  for (const item of orderItems) {
+    if (!rangePaidOrderIds.has(item.orderId) || item.lineType !== "discount_addon") {
+      continue;
+    }
+
+    addonOrderIds.add(item.orderId);
+    addonQuantity += item.quantity;
+    addonDiscountAmount = roundMoney(addonDiscountAmount + (item.originalUnitPrice - item.finalUnitPrice) * item.quantity);
+  }
+
+  return {
+    addonQuantity,
+    addonDiscountAmount,
+    addonOrderCount: addonOrderIds.size,
+    giftTriggeredOrderCount: rangePaidOrders.filter((order) => typeof order.triggeredGiftTier === "number").length
+  };
+}
+
+function buildGiftTierRows(rangePaidOrders: Order[]): DashboardGiftTierRow[] {
+  const rowsByThreshold = new Map<number, DashboardGiftTierRow>();
+
+  for (const order of rangePaidOrders) {
+    if (typeof order.triggeredGiftTier !== "number") {
+      continue;
+    }
+
+    const existing = rowsByThreshold.get(order.triggeredGiftTier);
+    rowsByThreshold.set(order.triggeredGiftTier, {
+      threshold: order.triggeredGiftTier,
+      orderCount: (existing?.orderCount ?? 0) + 1
+    });
+  }
+
+  return [...rowsByThreshold.values()].sort((left, right) => left.threshold - right.threshold);
 }
 
 function buildTopSellingSkuRows(rangePaidOrderIds: Set<string>, orderItems: OrderItem[]): DashboardSkuRow[] {
@@ -444,6 +553,9 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
       notedCancelledOrderCount: rangeCancelledOrders.filter((order) => Boolean(order.cancelNote?.trim())).length
     },
     operationsSummary: buildOperationsSummary(rangePaidOrderIds, input.orderItems, netAmount, rangePaidOrders.length),
+    paymentMethodRows: buildPaymentMethodRows(rangePaidOrders),
+    promotionSummary: buildPromotionSummary(rangePaidOrders, rangePaidOrderIds, input.orderItems),
+    giftTierRows: buildGiftTierRows(rangePaidOrders),
     topSellingSkuRows: buildTopSellingSkuRows(rangePaidOrderIds, input.orderItems),
     topSellingSpuRows: sortSpuRowsByQuantity(spuRows).slice(0, 5),
     topRevenueSpuRows: sortSpuRowsByAmount(spuRows).slice(0, 5),

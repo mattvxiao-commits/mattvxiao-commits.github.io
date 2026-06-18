@@ -705,4 +705,122 @@ describe("buildDashboardModel", () => {
       "ECRM-002"
     ]);
   });
+
+  test("按支付方式统计当前范围已支付订单数和收款金额", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [
+        order({ id: "wechat-1", paymentMethod: "wechat", payableAmount: 40 }),
+        order({ id: "wechat-2", paymentMethod: "wechat", payableAmount: 10, paidAt: "2026-06-15T10:00:00.000Z" }),
+        order({ id: "alipay-1", paymentMethod: "alipay", payableAmount: 30 }),
+        order({ id: "cash-1", paymentMethod: "cash", payableAmount: 20 }),
+        order({ id: "other-1", paymentMethod: "other", payableAmount: 8 }),
+        order({ id: "unrecorded-1", paymentMethod: undefined, payableAmount: 6 }),
+        order({ id: "outside", paymentMethod: "wechat", payableAmount: 99, paidAt: "2026-06-14T10:00:00.000Z" }),
+        order({
+          id: "cancelled",
+          status: "cancelled",
+          paymentMethod: "alipay",
+          payableAmount: 70,
+          paidAt: undefined,
+          cancelledAt: "2026-06-15T11:00:00.000Z"
+        })
+      ],
+      orderItems: [],
+      refunds: [refund({ orderId: "wechat-1", amount: 5 })],
+      products: []
+    });
+
+    expect(model.paymentMethodRows).toEqual([
+      { method: "wechat", label: "微信", orderCount: 2, amount: 50 },
+      { method: "alipay", label: "支付宝", orderCount: 1, amount: 30 },
+      { method: "cash", label: "现金", orderCount: 1, amount: 20 },
+      { method: "other", label: "其他", orderCount: 1, amount: 8 },
+      { method: "unrecorded", label: "未记录", orderCount: 1, amount: 6 }
+    ]);
+  });
+
+  test("统计当前范围优惠加购与满赠触发效果", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [
+        order({ id: "addon-a", triggeredGiftTier: 35 }),
+        order({ id: "addon-b", triggeredGiftTier: 68, paidAt: "2026-06-15T10:00:00.000Z" }),
+        order({ id: "gift-only", triggeredGiftTier: 68, paidAt: "2026-06-15T10:30:00.000Z" }),
+        order({ id: "outside", triggeredGiftTier: 148, paidAt: "2026-06-14T10:00:00.000Z" })
+      ],
+      orderItems: [
+        item({
+          id: "addon-a-1",
+          orderId: "addon-a",
+          productId: "sku-addon-a",
+          quantity: 2,
+          originalUnitPrice: 5,
+          finalUnitPrice: 3,
+          lineType: "discount_addon",
+          lineTotal: 6
+        }),
+        item({
+          id: "addon-b-1",
+          orderId: "addon-b",
+          productId: "sku-addon-b",
+          quantity: 1,
+          originalUnitPrice: 5,
+          finalUnitPrice: 3,
+          lineType: "discount_addon",
+          lineTotal: 3
+        }),
+        item({ id: "normal", orderId: "addon-b", productId: "sku-normal", quantity: 4, lineType: "normal", lineTotal: 40 }),
+        item({ id: "gift", orderId: "gift-only", productId: "gift-a", quantity: 2, lineType: "gift", lineTotal: 0 }),
+        item({
+          id: "outside-addon",
+          orderId: "outside",
+          productId: "sku-outside-addon",
+          quantity: 9,
+          originalUnitPrice: 5,
+          finalUnitPrice: 3,
+          lineType: "discount_addon",
+          lineTotal: 27
+        })
+      ],
+      refunds: [],
+      products: []
+    });
+
+    expect(model.promotionSummary).toEqual({
+      addonQuantity: 3,
+      addonDiscountAmount: 6,
+      addonOrderCount: 2,
+      giftTriggeredOrderCount: 3
+    });
+    expect(model.giftTierRows).toEqual([
+      { threshold: 35, orderCount: 1 },
+      { threshold: 68, orderCount: 2 }
+    ]);
+  });
+
+  test("无已支付订单时支付方式与活动效果指标为空或为 0", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [order({ id: "cancelled", status: "cancelled", paidAt: undefined, cancelledAt: "2026-06-15T10:00:00.000Z" })],
+      orderItems: [item({ orderId: "cancelled", lineType: "discount_addon", quantity: 3 })],
+      refunds: [],
+      products: []
+    });
+
+    expect(model.paymentMethodRows).toEqual([
+      { method: "wechat", label: "微信", orderCount: 0, amount: 0 },
+      { method: "alipay", label: "支付宝", orderCount: 0, amount: 0 },
+      { method: "cash", label: "现金", orderCount: 0, amount: 0 },
+      { method: "other", label: "其他", orderCount: 0, amount: 0 },
+      { method: "unrecorded", label: "未记录", orderCount: 0, amount: 0 }
+    ]);
+    expect(model.promotionSummary).toEqual({
+      addonQuantity: 0,
+      addonDiscountAmount: 0,
+      addonOrderCount: 0,
+      giftTriggeredOrderCount: 0
+    });
+    expect(model.giftTierRows).toEqual([]);
+  });
 });
