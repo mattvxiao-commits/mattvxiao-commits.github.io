@@ -246,6 +246,146 @@ describe("buildPaidOrder", () => {
     });
   });
 
+  it("writes unit cost snapshot, cost total, and gross profit for normal order items", () => {
+    const result = buildPaidOrder({
+      products: products().map((item) => (item.id === "normal" ? { ...item, costPrice: 8 } : item)),
+      calculated: calculated({
+        lines: [
+          {
+            productId: "normal",
+            productName: "普通商品",
+            spu: "普通SPU",
+            productCode: "NORMAL-BASE",
+            quantity: 2,
+            originalUnitPrice: 20,
+            finalUnitPrice: 20,
+            lineType: "normal",
+            lineTotal: 40
+          }
+        ],
+        giftLines: [],
+        subtotalBeforeDiscount: 40,
+        discountAmount: 0,
+        payableAmount: 40
+      }),
+      promotion,
+      orderPrefix: "ECRM",
+      paymentMethod: "wechat",
+      now
+    });
+
+    expect(result.orderItems[0]).toMatchObject({
+      unitCostSnapshot: 8,
+      costTotal: 16,
+      grossProfit: 24
+    });
+  });
+
+  it("calculates gross profit from line totals for discounted add-ons and gifts", () => {
+    const result = buildPaidOrder({
+      products: products().map((item) => {
+        if (item.id === "addon") {
+          return { ...item, costPrice: 2 };
+        }
+
+        if (item.id === "gift-a") {
+          return { ...item, costPrice: 1.5 };
+        }
+
+        return item;
+      }),
+      calculated: calculated({
+        lines: [
+          {
+            productId: "addon",
+            productName: "优惠商品A",
+            spu: "优惠SPU",
+            productCode: "ADDON-A",
+            quantity: 3,
+            originalUnitPrice: 5,
+            finalUnitPrice: 3,
+            lineType: "discount_addon",
+            lineTotal: 9
+          }
+        ],
+        giftLines: [
+          {
+            productId: "gift-a",
+            productName: "商品A赠品",
+            spu: "赠品SPU-A",
+            productCode: "GIFT-A",
+            quantity: 2,
+            originalUnitPrice: 0,
+            finalUnitPrice: 0,
+            lineType: "gift",
+            lineTotal: 0
+          }
+        ],
+        subtotalBeforeDiscount: 15,
+        discountAmount: 6,
+        payableAmount: 9
+      }),
+      promotion,
+      orderPrefix: "ECRM",
+      paymentMethod: "cash",
+      now
+    });
+
+    expect(result.orderItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: "addon",
+          unitCostSnapshot: 2,
+          costTotal: 6,
+          grossProfit: 3
+        }),
+        expect.objectContaining({
+          productId: "gift-a",
+          unitCostSnapshot: 1.5,
+          costTotal: 3,
+          grossProfit: -3
+        })
+      ])
+    );
+  });
+
+  it("does not change existing order item cost snapshots when product cost changes after order creation", () => {
+    const [normalProduct] = products().map((item) => (item.id === "normal" ? { ...item, costPrice: 4 } : item));
+
+    const result = buildPaidOrder({
+      products: [normalProduct],
+      calculated: calculated({
+        lines: [
+          {
+            productId: "normal",
+            productName: "普通商品",
+            spu: "普通SPU",
+            productCode: "NORMAL-BASE",
+            quantity: 1,
+            originalUnitPrice: 12,
+            finalUnitPrice: 12,
+            lineType: "normal",
+            lineTotal: 12
+          }
+        ],
+        giftLines: [],
+        subtotalBeforeDiscount: 12,
+        discountAmount: 0,
+        payableAmount: 12
+      }),
+      promotion,
+      orderPrefix: "ECRM",
+      paymentMethod: "alipay",
+      now
+    });
+
+    normalProduct.costPrice = 9;
+
+    expect(result.orderItems[0].unitCostSnapshot).toBe(4);
+    expect(result.orderItems[0].costTotal).toBe(4);
+    expect(result.orderItems[0].grossProfit).toBe(8);
+  });
+
   it("throws a clear Chinese error when discounted addon inventory would become negative", () => {
     expect(() =>
       buildPaidOrder({

@@ -69,7 +69,10 @@ function makeOrderItem(
   orderId: string,
   productById: Map<string, Product>
 ): OrderItem {
-  getProductForLine(line, productById);
+  const product = getProductForLine(line, productById);
+  const unitCostSnapshot = product.costPrice;
+  const costTotal = roundMoney(unitCostSnapshot * line.quantity);
+  const grossProfit = roundMoney(line.lineTotal - costTotal);
 
   return {
     id: makeLineId(),
@@ -82,8 +85,15 @@ function makeOrderItem(
     originalUnitPrice: line.originalUnitPrice,
     finalUnitPrice: line.finalUnitPrice,
     lineType: line.lineType,
-    lineTotal: line.lineTotal
+    lineTotal: line.lineTotal,
+    unitCostSnapshot,
+    costTotal,
+    grossProfit
   };
+}
+
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 function deductInventory(

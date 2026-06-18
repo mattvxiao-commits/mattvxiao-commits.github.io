@@ -164,6 +164,9 @@ export type OrderItem = {
   finalUnitPrice: number;
   lineType: OrderLineType;
   lineTotal: number;
+  unitCostSnapshot?: number;
+  costTotal?: number;
+  grossProfit?: number;
 };
 
 export type InventoryLog = {
