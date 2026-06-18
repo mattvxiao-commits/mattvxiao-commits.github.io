@@ -205,6 +205,34 @@ describe("buildOrderExportSheets", () => {
     });
   });
 
+  it("订单明细单位成本快照为负数时按缺少成本快照导出", () => {
+    const sheets = buildSheets({
+      orderItems: [makeOrderItem({ unitCostSnapshot: -1, costTotal: 16, grossProfit: 24 })]
+    });
+
+    expect(sheets[1].rows[0]).toMatchObject({
+      单位成本快照: "",
+      成本小计: "",
+      毛利: "",
+      毛利率: "",
+      是否缺少成本快照: "是"
+    });
+  });
+
+  it("订单明细成本小计为负数时按缺少成本快照导出", () => {
+    const sheets = buildSheets({
+      orderItems: [makeOrderItem({ unitCostSnapshot: 8, costTotal: -1, grossProfit: 24 })]
+    });
+
+    expect(sheets[1].rows[0]).toMatchObject({
+      单位成本快照: "",
+      成本小计: "",
+      毛利: "",
+      毛利率: "",
+      是否缺少成本快照: "是"
+    });
+  });
+
   it("导出退款记录、库存流水和商品当前数据的中文字段", () => {
     const sheets = buildSheets({
       refunds: [makeRefund()],

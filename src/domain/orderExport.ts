@@ -229,7 +229,11 @@ function sumRefundsByOrder(refunds: OrderRefund[]): Map<string, number> {
 function getCompleteCostSnapshot(
   item: OrderItem
 ): { unitCostSnapshot: number; costTotal: number; grossProfit: number } | null {
-  if (!isFiniteNumber(item.unitCostSnapshot) || !isFiniteNumber(item.costTotal) || !isFiniteNumber(item.grossProfit)) {
+  if (
+    !isNonNegativeFiniteNumber(item.unitCostSnapshot) ||
+    !isNonNegativeFiniteNumber(item.costTotal) ||
+    !isFiniteNumber(item.grossProfit)
+  ) {
     return null;
   }
 
@@ -246,6 +250,10 @@ function calculateGrossMargin(lineTotal: number, grossProfit: number): number {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function isNonNegativeFiniteNumber(value: unknown): value is number {
+  return isFiniteNumber(value) && value >= 0;
 }
 
 function formatPaymentMethod(value: PaymentMethod | undefined): string {
