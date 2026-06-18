@@ -34,6 +34,13 @@ export type DashboardSummary = {
   notedCancelledOrderCount: number;
 };
 
+export type DashboardOperationsSummary = {
+  soldQuantity: number;
+  giftQuantity: number;
+  outboundQuantity: number;
+  averageOrderValue: number;
+};
+
 export type DashboardSkuRow = {
   productId: string;
   productName: string;
@@ -74,6 +81,7 @@ export type DashboardExceptionRow = {
 
 export type DashboardModel = {
   summary: DashboardSummary;
+  operationsSummary: DashboardOperationsSummary;
   topSellingSkuRows: DashboardSkuRow[];
   giftConsumptionRows: DashboardGiftRow[];
   lowStockRows: DashboardLowStockRow[];
@@ -201,6 +209,38 @@ function sortByQuantityThenName<T extends { quantity: number; productName: strin
 
     return left.productName.localeCompare(right.productName, "zh-Hans-CN");
   });
+}
+
+function buildOperationsSummary(
+  rangePaidOrderIds: Set<string>,
+  orderItems: OrderItem[],
+  netAmount: number,
+  paidOrderCount: number
+): DashboardOperationsSummary {
+  let soldQuantity = 0;
+  let giftQuantity = 0;
+
+  for (const item of orderItems) {
+    if (!rangePaidOrderIds.has(item.orderId)) {
+      continue;
+    }
+
+    if (item.lineType === "gift") {
+      giftQuantity += item.quantity;
+      continue;
+    }
+
+    if (item.lineType === "normal" || item.lineType === "discount_addon") {
+      soldQuantity += item.quantity;
+    }
+  }
+
+  return {
+    soldQuantity,
+    giftQuantity,
+    outboundQuantity: soldQuantity + giftQuantity,
+    averageOrderValue: paidOrderCount > 0 ? roundMoney(netAmount / paidOrderCount) : 0
+  };
 }
 
 function buildTopSellingSkuRows(rangePaidOrderIds: Set<string>, orderItems: OrderItem[]): DashboardSkuRow[] {
@@ -333,6 +373,7 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
   const allRefundTotalsByOrder = sumRefundsByOrder(input.refunds);
   const paidAmount = rangePaidOrders.reduce((sum, order) => roundMoney(sum + order.payableAmount), 0);
   const refundAmount = rangeRefunds.reduce((sum, refund) => roundMoney(sum + refund.amount), 0);
+  const netAmount = roundMoney(paidAmount - refundAmount);
   const rangeCancelledOrders = input.orders.filter((order) => isRangeCancelledOrder(order, input.dateRange));
   const afterSalesRefundStates = [...rangePaidOrders, ...rangeCancelledOrders].map((order) => ({
     order,
@@ -343,7 +384,7 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
     summary: {
       paidAmount,
       refundAmount,
-      netAmount: roundMoney(paidAmount - refundAmount),
+      netAmount,
       paidOrderCount: rangePaidOrders.length,
       cancelledOrderCount: rangeCancelledOrders.length,
       partialRefundOrderCount: afterSalesRefundStates.filter(
@@ -354,6 +395,7 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
       ).length,
       notedCancelledOrderCount: rangeCancelledOrders.filter((order) => Boolean(order.cancelNote?.trim())).length
     },
+    operationsSummary: buildOperationsSummary(rangePaidOrderIds, input.orderItems, netAmount, rangePaidOrders.length),
     topSellingSkuRows: buildTopSellingSkuRows(rangePaidOrderIds, input.orderItems),
     giftConsumptionRows: buildGiftConsumptionRows(rangePaidOrderIds, input.orderItems),
     lowStockRows: buildLowStockRows(input.products),

@@ -289,6 +289,59 @@ describe("buildDashboardModel", () => {
     expect(model.topSellingSkuRows.map((row) => row.productId)).toEqual(["sku-b", "sku-a"]);
   });
 
+  test("统计当前范围售出件数、赠品件数、总出库件数和客单价", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [
+        order({ id: "paid-a", payableAmount: 50 }),
+        order({ id: "paid-b", payableAmount: 30, paidAt: "2026-06-15T10:00:00.000Z" }),
+        order({ id: "outside", payableAmount: 99, paidAt: "2026-06-14T10:00:00.000Z" })
+      ],
+      orderItems: [
+        item({ id: "normal-a", orderId: "paid-a", productId: "sku-a", quantity: 2, lineType: "normal", lineTotal: 40 }),
+        item({
+          id: "addon-a",
+          orderId: "paid-a",
+          productId: "sku-addon",
+          quantity: 1,
+          originalUnitPrice: 5,
+          finalUnitPrice: 3,
+          lineType: "discount_addon",
+          lineTotal: 3
+        }),
+        item({ id: "gift-a", orderId: "paid-a", productId: "gift-a", quantity: 2, lineType: "gift", lineTotal: 0 }),
+        item({ id: "normal-b", orderId: "paid-b", productId: "sku-b", quantity: 3, lineType: "normal", lineTotal: 30 }),
+        item({ id: "outside-normal", orderId: "outside", productId: "sku-old", quantity: 9, lineType: "normal", lineTotal: 99 })
+      ],
+      refunds: [refund({ orderId: "paid-a", amount: 10, createdAt: "2026-06-15T11:00:00.000Z" })],
+      products: []
+    });
+
+    expect(model.operationsSummary).toEqual({
+      soldQuantity: 6,
+      giftQuantity: 2,
+      outboundQuantity: 8,
+      averageOrderValue: 35
+    });
+  });
+
+  test("无已支付订单时出库与客单指标为 0", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [],
+      orderItems: [],
+      refunds: [],
+      products: []
+    });
+
+    expect(model.operationsSummary).toEqual({
+      soldQuantity: 0,
+      giftQuantity: 0,
+      outboundQuantity: 0,
+      averageOrderValue: 0
+    });
+  });
+
   test("今日退款按退款 createdAt 归属日期，非当天退款不计入今日退款", () => {
     const model = buildDashboardModel({
       dateRange: todayRange,
