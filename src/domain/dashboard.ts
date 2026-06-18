@@ -50,6 +50,12 @@ export type DashboardSkuRow = {
   amount: number;
 };
 
+export type DashboardSpuRow = {
+  spu: string;
+  quantity: number;
+  amount: number;
+};
+
 export type DashboardGiftRow = {
   productId: string;
   productName: string;
@@ -83,6 +89,8 @@ export type DashboardModel = {
   summary: DashboardSummary;
   operationsSummary: DashboardOperationsSummary;
   topSellingSkuRows: DashboardSkuRow[];
+  topSellingSpuRows: DashboardSpuRow[];
+  topRevenueSpuRows: DashboardSpuRow[];
   giftConsumptionRows: DashboardGiftRow[];
   lowStockRows: DashboardLowStockRow[];
   exceptionRows: DashboardExceptionRow[];
@@ -265,6 +273,45 @@ function buildTopSellingSkuRows(rangePaidOrderIds: Set<string>, orderItems: Orde
   return sortByQuantityThenName([...rowsByProduct.values()]).slice(0, 5);
 }
 
+function buildSpuRows(rangePaidOrderIds: Set<string>, orderItems: OrderItem[]): DashboardSpuRow[] {
+  const rowsBySpu = new Map<string, DashboardSpuRow>();
+
+  for (const item of orderItems) {
+    if (!rangePaidOrderIds.has(item.orderId) || item.lineType === "gift") {
+      continue;
+    }
+
+    const existing = rowsBySpu.get(item.spuSnapshot);
+    rowsBySpu.set(item.spuSnapshot, {
+      spu: item.spuSnapshot,
+      quantity: (existing?.quantity ?? 0) + item.quantity,
+      amount: roundMoney((existing?.amount ?? 0) + item.lineTotal)
+    });
+  }
+
+  return [...rowsBySpu.values()];
+}
+
+function sortSpuRowsByQuantity(rows: DashboardSpuRow[]): DashboardSpuRow[] {
+  return [...rows].sort((left, right) => {
+    if (right.quantity !== left.quantity) {
+      return right.quantity - left.quantity;
+    }
+
+    return left.spu.localeCompare(right.spu, "zh-Hans-CN");
+  });
+}
+
+function sortSpuRowsByAmount(rows: DashboardSpuRow[]): DashboardSpuRow[] {
+  return [...rows].sort((left, right) => {
+    if (right.amount !== left.amount) {
+      return right.amount - left.amount;
+    }
+
+    return left.spu.localeCompare(right.spu, "zh-Hans-CN");
+  });
+}
+
 function buildGiftConsumptionRows(rangePaidOrderIds: Set<string>, orderItems: OrderItem[]): DashboardGiftRow[] {
   const rowsByProduct = new Map<string, DashboardGiftRow>();
 
@@ -379,6 +426,7 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
     order,
     refundedAmount: allRefundTotalsByOrder.get(order.id) ?? 0
   }));
+  const spuRows = buildSpuRows(rangePaidOrderIds, input.orderItems);
 
   return {
     summary: {
@@ -397,6 +445,8 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
     },
     operationsSummary: buildOperationsSummary(rangePaidOrderIds, input.orderItems, netAmount, rangePaidOrders.length),
     topSellingSkuRows: buildTopSellingSkuRows(rangePaidOrderIds, input.orderItems),
+    topSellingSpuRows: sortSpuRowsByQuantity(spuRows).slice(0, 5),
+    topRevenueSpuRows: sortSpuRowsByAmount(spuRows).slice(0, 5),
     giftConsumptionRows: buildGiftConsumptionRows(rangePaidOrderIds, input.orderItems),
     lowStockRows: buildLowStockRows(input.products),
     exceptionRows: buildExceptionRows(input.orders, allRefundTotalsByOrder, rangePaidOrderIds, input.dateRange)

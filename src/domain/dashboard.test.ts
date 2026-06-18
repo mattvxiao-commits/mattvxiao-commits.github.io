@@ -513,6 +513,70 @@ describe("buildDashboardModel", () => {
     expect(model.topSellingSkuRows.map((row) => row.productId)).toEqual(["sku-1", "sku-2", "sku-3", "sku-4", "sku-5"]);
   });
 
+  test("按 SPU 聚合当前范围热销数量和销售额排行", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [
+        order({ id: "paid-a" }),
+        order({ id: "paid-b", paidAt: "2026-06-15T10:00:00.000Z" }),
+        order({ id: "outside", paidAt: "2026-06-14T10:00:00.000Z" })
+      ],
+      orderItems: [
+        item({ id: "a-1", orderId: "paid-a", productId: "sku-a1", spuSnapshot: "挂件", quantity: 2, lineTotal: 40 }),
+        item({ id: "a-2", orderId: "paid-a", productId: "sku-a2", spuSnapshot: "挂件", quantity: 1, lineTotal: 20 }),
+        item({ id: "b-1", orderId: "paid-b", productId: "sku-b1", spuSnapshot: "贴纸", quantity: 4, lineTotal: 16 }),
+        item({
+          id: "addon",
+          orderId: "paid-b",
+          productId: "sku-addon",
+          spuSnapshot: "加购",
+          quantity: 3,
+          lineType: "discount_addon",
+          lineTotal: 9
+        }),
+        item({ id: "gift", orderId: "paid-a", productId: "gift-a", spuSnapshot: "赠品", quantity: 9, lineType: "gift", lineTotal: 0 }),
+        item({ id: "outside", orderId: "outside", productId: "sku-old", spuSnapshot: "旧品", quantity: 99, lineTotal: 99 })
+      ],
+      refunds: [],
+      products: []
+    });
+
+    expect(model.topSellingSpuRows).toEqual([
+      { spu: "贴纸", quantity: 4, amount: 16 },
+      { spu: "挂件", quantity: 3, amount: 60 },
+      { spu: "加购", quantity: 3, amount: 9 }
+    ]);
+    expect(model.topRevenueSpuRows).toEqual([
+      { spu: "挂件", quantity: 3, amount: 60 },
+      { spu: "贴纸", quantity: 4, amount: 16 },
+      { spu: "加购", quantity: 3, amount: 9 }
+    ]);
+  });
+
+  test("SPU 排行最多返回 5 条并在数值相同时按 SPU 名称排序", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [order({ id: "order-1" })],
+      orderItems: ["A", "B", "C", "D", "E", "F"].map((spu, index) =>
+        item({
+          id: `spu-${spu}`,
+          orderId: "order-1",
+          productId: `sku-${spu}`,
+          spuSnapshot: spu,
+          quantity: index === 0 || index === 1 ? 10 : 6 - index,
+          lineTotal: index === 0 || index === 1 ? 100 : (6 - index) * 10
+        })
+      ),
+      refunds: [],
+      products: []
+    });
+
+    expect(model.topSellingSpuRows).toHaveLength(5);
+    expect(model.topSellingSpuRows.map((row) => row.spu)).toEqual(["A", "B", "C", "D", "E"]);
+    expect(model.topRevenueSpuRows).toHaveLength(5);
+    expect(model.topRevenueSpuRows.map((row) => row.spu)).toEqual(["A", "B", "C", "D", "E"]);
+  });
+
   test("赠品消耗只统计今日已支付订单的 gift 明细", () => {
     const model = buildDashboardModel({
       dateRange: todayRange,
