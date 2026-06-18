@@ -359,17 +359,10 @@ describe("backup utilities", () => {
       { importData }
     );
 
-    expect(importData).toHaveBeenCalledWith(
-      expect.objectContaining({
-        orderItems: [
-          expect.not.objectContaining({
-            unitCostSnapshot: expect.anything(),
-            costTotal: expect.anything(),
-            grossProfit: expect.anything()
-          })
-        ]
-      })
-    );
+    const importedOrderItem = importData.mock.calls[0][0].orderItems[0];
+    expect(importedOrderItem.unitCostSnapshot).toBeUndefined();
+    expect(importedOrderItem.costTotal).toBeUndefined();
+    expect(importedOrderItem.grossProfit).toBeUndefined();
   });
 
   test("rejects malformed order item cost fields before replacing data", async () => {
@@ -410,6 +403,140 @@ describe("backup utilities", () => {
     ).rejects.toThrow("备份文件格式不正确");
 
     expect(importData).not.toHaveBeenCalled();
+  });
+
+  test("rejects negative order item unit cost snapshots before replacing data", async () => {
+    const importData = vi.fn();
+
+    await expect(
+      importJsonBackupFromText(
+        JSON.stringify({
+          version: 4,
+          exportedAt: "2026-06-18T10:00:00.000Z",
+          note: "图片已包含在 JSON 备份中",
+          data: {
+            products: [],
+            settings: validPayload().data.settings,
+            orders: [],
+            orderItems: [
+              {
+                id: "order-item-1",
+                orderId: "order-1",
+                productId: "product-1",
+                productNameSnapshot: "口红",
+                spuSnapshot: "SPU-1",
+                quantity: 1,
+                originalUnitPrice: 10,
+                finalUnitPrice: 8,
+                lineType: "normal",
+                lineTotal: 8,
+                unitCostSnapshot: -1,
+                costTotal: 1,
+                grossProfit: 7
+              }
+            ],
+            inventoryLogs: [],
+            images: [],
+            orderRefunds: []
+          }
+        }),
+        { importData }
+      )
+    ).rejects.toThrow("备份文件格式不正确");
+
+    expect(importData).not.toHaveBeenCalled();
+  });
+
+  test("rejects negative order item cost totals before replacing data", async () => {
+    const importData = vi.fn();
+
+    await expect(
+      importJsonBackupFromText(
+        JSON.stringify({
+          version: 4,
+          exportedAt: "2026-06-18T10:00:00.000Z",
+          note: "图片已包含在 JSON 备份中",
+          data: {
+            products: [],
+            settings: validPayload().data.settings,
+            orders: [],
+            orderItems: [
+              {
+                id: "order-item-1",
+                orderId: "order-1",
+                productId: "product-1",
+                productNameSnapshot: "口红",
+                spuSnapshot: "SPU-1",
+                quantity: 1,
+                originalUnitPrice: 10,
+                finalUnitPrice: 8,
+                lineType: "normal",
+                lineTotal: 8,
+                unitCostSnapshot: 1,
+                costTotal: -1,
+                grossProfit: 9
+              }
+            ],
+            inventoryLogs: [],
+            images: [],
+            orderRefunds: []
+          }
+        }),
+        { importData }
+      )
+    ).rejects.toThrow("备份文件格式不正确");
+
+    expect(importData).not.toHaveBeenCalled();
+  });
+
+  test("imports negative order item gross profit for gift or loss lines", async () => {
+    const importData = vi.fn();
+
+    await importJsonBackupFromText(
+      JSON.stringify({
+        version: 4,
+        exportedAt: "2026-06-18T10:00:00.000Z",
+        note: "图片已包含在 JSON 备份中",
+        data: {
+          products: [],
+          settings: validPayload().data.settings,
+          orders: [],
+          orderItems: [
+            {
+              id: "order-item-1",
+              orderId: "order-1",
+              productId: "product-1",
+              productNameSnapshot: "赠品卡",
+              spuSnapshot: "赠品",
+              quantity: 2,
+              originalUnitPrice: 0,
+              finalUnitPrice: 0,
+              lineType: "gift",
+              lineTotal: 0,
+              unitCostSnapshot: 1.5,
+              costTotal: 3,
+              grossProfit: -3
+            }
+          ],
+          inventoryLogs: [],
+          images: [],
+          orderRefunds: []
+        }
+      }),
+      { importData }
+    );
+
+    expect(importData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderItems: [
+          expect.objectContaining({
+            unitCostSnapshot: 1.5,
+            costTotal: 3,
+            grossProfit: -3
+          })
+        ]
+      })
+    );
   });
 
   test("imports version 3 order refunds into the refund table", async () => {

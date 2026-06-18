@@ -144,6 +144,12 @@ function assertOptionalFiniteNumber(record: Record<string, unknown>, key: string
   }
 }
 
+function assertOptionalNonNegativeNumber(record: Record<string, unknown>, key: string): void {
+  if (record[key] !== undefined && !isNonNegativeNumber(record[key])) {
+    throw new Error("备份文件格式不正确。");
+  }
+}
+
 function validatePromotion(value: unknown): void {
   assertRecord(value, "备份文件格式不正确。");
   assertBoolean(value, "enabled");
@@ -291,8 +297,8 @@ function validateOrderItems(orderItems: unknown[]): asserts orderItems is OrderI
     assertNonNegativeNumber(item, "finalUnitPrice");
     assertEnum(item, "lineType", ORDER_LINE_TYPES);
     assertNonNegativeNumber(item, "lineTotal");
-    assertOptionalFiniteNumber(item, "unitCostSnapshot");
-    assertOptionalFiniteNumber(item, "costTotal");
+    assertOptionalNonNegativeNumber(item, "unitCostSnapshot");
+    assertOptionalNonNegativeNumber(item, "costTotal");
     assertOptionalFiniteNumber(item, "grossProfit");
   }
 }
