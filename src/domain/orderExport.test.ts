@@ -276,6 +276,10 @@ describe("buildOrderExportSheets", () => {
         expect.objectContaining({
           项目: "恢复说明",
           说明: expect.stringContaining("Excel 不能用于恢复系统数据")
+        }),
+        expect.objectContaining({
+          项目: "退款退货入库说明",
+          说明: expect.stringMatching(/人工退款.*不会自动.*退货入库|人工退款.*不会自动.*库存回补/)
         })
       ])
     );
