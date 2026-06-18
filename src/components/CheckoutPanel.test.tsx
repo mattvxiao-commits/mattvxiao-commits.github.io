@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { expect, test, vi } from "vitest";
 import CheckoutPanel from "./CheckoutPanel";
-import { defaultPromotion, product } from "../test/fixtures";
+import { appSettings, product } from "../test/fixtures";
 import type { AppSettings, CalculatedCart, Product } from "../domain/types";
 import type { GiftSelections } from "../domain/giftSelection";
 
@@ -30,10 +30,7 @@ const calculated: CalculatedCart = {
 };
 
 const settings: AppSettings = {
-  id: "settings",
-  shopName: "ECRM 摊位",
-  orderPrefix: "ECRM",
-  promotion: defaultPromotion()
+  ...appSettings()
 };
 
 test("shows only the selected QR payment code without a duplicate amount card and ignores duplicate paid confirmation while saving", async () => {

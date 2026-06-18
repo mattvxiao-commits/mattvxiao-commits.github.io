@@ -56,6 +56,15 @@ export type PromotionConfig = {
   giftTiers: GiftTierConfig[];
 };
 
+export type FieldLockSettings = {
+  enabled: boolean;
+  pinHash?: string;
+  pinSalt?: string;
+  unlockExpiresAt?: string;
+  failedAttempts: number;
+  lockedUntil?: string;
+};
+
 export type GiftTierConfig = {
   threshold: number;
   gifts: GiftConfig[];
@@ -122,6 +131,7 @@ export type AppSettings = {
   wechatQrImageId?: string;
   alipayQrImageId?: string;
   promotion: PromotionConfig;
+  fieldLock: FieldLockSettings;
 };
 
 export type Order = {

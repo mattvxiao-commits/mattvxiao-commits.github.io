@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { AppSettings } from "../domain/types";
-import { defaultPromotion, product } from "../test/fixtures";
+import { appSettings, defaultPromotion, product } from "../test/fixtures";
 import SettingsPage from "./SettingsPage";
 
 const repositories = vi.hoisted(() => ({
@@ -35,10 +35,7 @@ vi.mock("../utils/backup", () => ({
 vi.mock("../utils/orderExcelExport", () => orderExcelExportUtils);
 
 const settings: AppSettings = {
-  id: "settings",
-  shopName: "ECRM 摊位",
-  orderPrefix: "ECRM",
-  promotion: defaultPromotion()
+  ...appSettings()
 };
 
 beforeEach(() => {
@@ -72,6 +69,35 @@ test("selects add-on discount SPU from product SPU options and saves it", async 
 
   await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalledTimes(1));
   expect(repositories.saveSettings.mock.calls[0][0].promotion.addonDiscount.discountSpu).toBe("普通SPU");
+});
+
+test("enables field mode after setting matching four digit PIN", async () => {
+  render(<SettingsPage />);
+
+  fireEvent.change(await screen.findByLabelText("设置现场模式 PIN"), { target: { value: "2580" } });
+  fireEvent.change(screen.getByLabelText("确认现场模式 PIN"), { target: { value: "2580" } });
+  fireEvent.click(screen.getByRole("button", { name: "开启现场模式" }));
+  expect(await screen.findByText("现场模式已开启")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
+
+  await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalled());
+  const savedSettings = repositories.saveSettings.mock.calls.at(-1)?.[0] as AppSettings;
+  expect(savedSettings.fieldLock).toEqual(expect.objectContaining({
+    enabled: true,
+    pinHash: expect.any(String),
+    pinSalt: expect.any(String)
+  }));
+  expect(JSON.stringify(savedSettings)).not.toContain("2580");
+});
+
+test("rejects mismatched field lock PIN confirmation", async () => {
+  render(<SettingsPage />);
+
+  fireEvent.change(await screen.findByLabelText("设置现场模式 PIN"), { target: { value: "2580" } });
+  fireEvent.change(screen.getByLabelText("确认现场模式 PIN"), { target: { value: "2581" } });
+  fireEvent.click(screen.getByRole("button", { name: "开启现场模式" }));
+
+  expect(await screen.findByText("两次输入的密码不一致。")).toBeVisible();
 });
 
 test("keeps and warns about a configured discount SPU that is missing from products", async () => {

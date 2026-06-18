@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import CartPanel from "../components/CartPanel";
 import CheckoutPanel from "../components/CheckoutPanel";
+import FieldLockStatus from "../components/FieldLockStatus";
 import OrderDetailDialog from "../components/OrderDetailDialog";
 import {
   getSettings,
@@ -22,6 +23,7 @@ import {
   listProducts,
   listRefunds,
   savePaidOrder,
+  saveSettings,
   saveOrderRefund,
   voidPaidOrder
 } from "../db/repositories";
@@ -53,6 +55,7 @@ import type {
 } from "../domain/types";
 import { useCartStore } from "../state/cartStore";
 import { getImageUrl } from "../utils/image";
+import { notifySettingsUpdated } from "../utils/settingsEvents";
 
 type SalesMode = "cart" | "checkout";
 type SalesViewMode = "list" | "grid";
@@ -290,6 +293,13 @@ export default function SalesPage() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  async function handleSaveFieldLock(nextSettings: AppSettings) {
+    await saveSettings(nextSettings);
+    setSettings(nextSettings);
+    notifySettingsUpdated(nextSettings);
+    setStatus({ kind: "success", text: "现场模式已重新锁定。" });
   }
 
   useEffect(() => {
@@ -536,6 +546,7 @@ export default function SalesPage() {
           <p className="eyebrow">Checkout</p>
           <h1 id="sales-title">售卖</h1>
           <p>选择商品、确认收款，订单只在手动确认已支付后保存并扣减库存。</p>
+          {settings ? <FieldLockStatus settings={settings} onSave={handleSaveFieldLock} /> : null}
         </div>
         {mode !== "checkout" ? (
           <div className="salesHeaderControls">

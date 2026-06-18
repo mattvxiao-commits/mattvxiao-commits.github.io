@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { describe, expect, test, vi } from "vitest";
 import { db } from "../db/db";
+import { createDefaultFieldLockSettings } from "../domain/fieldLock";
 import { exportJsonBackup, importJsonBackupFromText, replaceAllDataInTransaction } from "./backup";
 import emptyInventoryOrderBackup from "../../docs/manual-test-data/ecrm-empty-inventory-order-backup.json";
 
@@ -72,7 +73,8 @@ function validPayload(overrides: Record<string, unknown> = {}) {
               maxDiscountQty: 3
             },
             giftTiers: []
-          }
+          },
+          fieldLock: createDefaultFieldLockSettings()
         }
       ],
       orders: [],
@@ -171,6 +173,89 @@ describe("backup utilities", () => {
     }
   });
 
+  test("exports settings without field lock secrets", async () => {
+    const saveAsModule = await import("file-saver");
+    const saveAsMock = vi.mocked(saveAsModule.saveAs);
+    saveAsMock.mockClear();
+
+    const tableSpies = [
+      vi.spyOn(db.products, "toArray").mockResolvedValue([]),
+      vi.spyOn(db.settings, "toArray").mockResolvedValue([
+        {
+          id: "settings",
+          shopName: "ECRM 摊位",
+          orderPrefix: "ECRM",
+          promotion: {
+            enabled: false,
+            addonDiscount: {
+              enabled: false,
+              discountSpu: "",
+              discountPrice: 3,
+              maxDiscountQty: 3
+            },
+            giftTiers: []
+          },
+          fieldLock: {
+            enabled: true,
+            pinHash: "secret-hash",
+            pinSalt: "secret-salt",
+            unlockExpiresAt: "2026-06-19T09:05:00.000Z",
+            failedAttempts: 2,
+            lockedUntil: "2026-06-19T09:00:30.000Z"
+          }
+        }
+      ]),
+      vi.spyOn(db.orders, "toArray").mockResolvedValue([]),
+      vi.spyOn(db.orderItems, "toArray").mockResolvedValue([]),
+      vi.spyOn(db.inventoryLogs, "toArray").mockResolvedValue([]),
+      vi.spyOn(db.orderRefunds, "toArray").mockResolvedValue([]),
+      vi.spyOn(db.images, "toArray").mockResolvedValue([])
+    ];
+
+    await exportJsonBackup();
+
+    const blob = saveAsMock.mock.calls[0][0] as Blob;
+    const payload = JSON.parse(await blob.text());
+    expect(payload.data.settings[0].fieldLock).toEqual(createDefaultFieldLockSettings());
+    expect(payload.data.settings[0].fieldLock.pinHash).toBeUndefined();
+    expect(payload.data.settings[0].fieldLock.pinSalt).toBeUndefined();
+
+    for (const spy of tableSpies) {
+      spy.mockRestore();
+    }
+  });
+
+  test("imports old backup settings with field lock disabled by default", async () => {
+    const importData = vi.fn();
+    const payload = validPayload();
+
+    await importJsonBackupFromText(JSON.stringify(payload), { importData });
+
+    expect(importData.mock.calls[0][0].settings[0].fieldLock).toEqual(createDefaultFieldLockSettings());
+  });
+
+  test("imports backup with field lock secrets stripped", async () => {
+    const importData = vi.fn();
+    const payload = validPayload({
+      settings: [
+        {
+          ...validPayload().data.settings[0],
+          fieldLock: {
+            enabled: true,
+            pinHash: "secret-hash",
+            pinSalt: "secret-salt",
+            unlockExpiresAt: "2026-06-19T09:05:00.000Z",
+            failedAttempts: 0
+          }
+        }
+      ]
+    });
+
+    await importJsonBackupFromText(JSON.stringify(payload), { importData });
+
+    expect(importData.mock.calls[0][0].settings[0].fieldLock).toEqual(createDefaultFieldLockSettings());
+  });
+
   test("imports version 2 images into the image table", async () => {
     const imageBulkPut = vi.spyOn(db.images, "bulkPut").mockResolvedValue(["image-1"] as never);
 
@@ -190,7 +275,8 @@ describe("backup utilities", () => {
               maxDiscountQty: 3
             },
             giftTiers: []
-          }
+          },
+          fieldLock: createDefaultFieldLockSettings()
         }
       ],
       orders: [],
@@ -605,7 +691,8 @@ describe("backup utilities", () => {
               maxDiscountQty: 3
             },
             giftTiers: []
-          }
+          },
+          fieldLock: createDefaultFieldLockSettings()
         }
       ],
       orders: [],
@@ -1055,7 +1142,8 @@ describe("backup utilities", () => {
               maxDiscountQty: 3
             },
             giftTiers: []
-          }
+          },
+          fieldLock: createDefaultFieldLockSettings()
         }
       ],
       orders: [],
@@ -1128,7 +1216,8 @@ describe("backup utilities", () => {
                 maxDiscountQty: 3
               },
               giftTiers: []
-            }
+            },
+            fieldLock: createDefaultFieldLockSettings()
           }
         ],
         orders: [],

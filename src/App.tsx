@@ -5,13 +5,18 @@ import {
   Settings,
   Store,
 } from "lucide-react";
-import { useEffect } from "react";
-import { NavLink, Navigate, Route, Routes } from "react-router-dom";
+import { type MouseEvent, type ReactElement, useEffect, useState } from "react";
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import FieldLockDialog from "./components/FieldLockDialog";
+import { getSettings, saveSettings } from "./db/repositories";
+import { normalizeFieldLockSettings, requiresFieldLockUnlock, verifyFieldLockPin } from "./domain/fieldLock";
+import type { AppSettings } from "./domain/types";
 import DashboardPage from "./pages/DashboardPage";
 import ProductsPage from "./pages/ProductsPage";
 import SalesPage from "./pages/SalesPage";
 import SettingsPage from "./pages/SettingsPage";
 import { revokeImageUrls } from "./utils/image";
+import { subscribeSettingsUpdated } from "./utils/settingsEvents";
 
 const pages = [
   {
@@ -52,6 +57,8 @@ const pages = [
   },
 ];
 
+const protectedPagePaths = new Set(["/products", "/settings", "/dashboard"]);
+
 type PagePlaceholderProps = {
   page: (typeof pages)[number];
 };
@@ -87,11 +94,115 @@ function PagePlaceholder({ page }: PagePlaceholderProps) {
 }
 
 export default function App() {
+  const [settings, setSettings] = useState<AppSettings>();
+  const [pendingPath, setPendingPath] = useState<string>();
+  const [isLockDialogOpen, setIsLockDialogOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
   useEffect(() => {
     return () => {
       revokeImageUrls();
     };
   }, []);
+
+  useEffect(() => subscribeSettingsUpdated((updatedSettings) => {
+    setSettings({
+      ...updatedSettings,
+      fieldLock: normalizeFieldLockSettings(updatedSettings.fieldLock)
+    });
+  }), []);
+
+  useEffect(() => {
+    let isMounted = true;
+    getSettings()
+      .then((loadedSettings) => {
+        if (isMounted) {
+          setSettings({
+            ...loadedSettings,
+            fieldLock: normalizeFieldLockSettings(loadedSettings.fieldLock)
+          });
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setSettings(undefined);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!settings || !isProtectedPath(location.pathname)) {
+      return;
+    }
+
+    if (requiresFieldLockUnlock(settings.fieldLock)) {
+      setPendingPath(location.pathname);
+      setIsLockDialogOpen(true);
+      navigate("/sales", { replace: true });
+    }
+  }, [location.pathname, navigate, settings]);
+
+  function shouldLockPath(path: string): boolean {
+    return Boolean(settings && isProtectedPath(path) && requiresFieldLockUnlock(settings.fieldLock));
+  }
+
+  function handleNavClick(event: MouseEvent<HTMLAnchorElement>, path: string) {
+    if (!shouldLockPath(path)) {
+      return;
+    }
+
+    event.preventDefault();
+    setPendingPath(path);
+    setIsLockDialogOpen(true);
+  }
+
+  async function handleVerifyPin(pin: string) {
+    if (!settings) {
+      return { success: false, message: "设置尚未加载完成，请稍后重试。" };
+    }
+
+    const result = await verifyFieldLockPin(settings.fieldLock, pin);
+    const nextSettings = {
+      ...settings,
+      fieldLock: result.settings
+    };
+
+    setSettings(nextSettings);
+    await saveSettings(nextSettings);
+    return { success: result.success, message: result.message };
+  }
+
+  function handleVerified() {
+    setIsLockDialogOpen(false);
+    navigate(pendingPath ?? "/products");
+    setPendingPath(undefined);
+  }
+
+  function handleCancelUnlock() {
+    setIsLockDialogOpen(false);
+    setPendingPath(undefined);
+  }
+
+  function renderProtectedPage(path: string, element: ReactElement) {
+    if (!isProtectedPath(path)) {
+      return element;
+    }
+
+    if (!settings) {
+      return <p className="emptyState">正在加载现场模式...</p>;
+    }
+
+    if (requiresFieldLockUnlock(settings.fieldLock)) {
+      return <Navigate to="/sales" replace />;
+    }
+
+    return element;
+  }
 
   return (
     <div className="appShell">
@@ -109,7 +220,7 @@ export default function App() {
           {pages.map((page) => {
             const Icon = page.icon;
             return (
-              <NavLink key={page.to} to={page.to}>
+              <NavLink key={page.to} to={page.to} onClick={(event) => handleNavClick(event, page.to)}>
                 <Icon size={18} strokeWidth={2.2} aria-hidden="true" />
                 <span>{page.label}</span>
               </NavLink>
@@ -120,10 +231,10 @@ export default function App() {
       <main>
         <Routes>
           <Route path="/" element={<Navigate to="/products" replace />} />
-          <Route path="/products" element={<ProductsPage />} />
+          <Route path="/products" element={renderProtectedPage("/products", <ProductsPage />)} />
           <Route path="/sales" element={<SalesPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/dashboard" element={renderProtectedPage("/dashboard", <DashboardPage />)} />
+          <Route path="/settings" element={renderProtectedPage("/settings", <SettingsPage />)} />
           {pages.map((page) => (
             page.to === "/products" || page.to === "/sales" || page.to === "/dashboard" || page.to === "/settings" ? null :
             <Route
@@ -134,6 +245,16 @@ export default function App() {
           ))}
         </Routes>
       </main>
+      <FieldLockDialog
+        isOpen={isLockDialogOpen}
+        onCancel={handleCancelUnlock}
+        onVerify={handleVerifyPin}
+        onVerified={handleVerified}
+      />
     </div>
   );
+}
+
+function isProtectedPath(path: string): boolean {
+  return protectedPagePaths.has(path);
 }

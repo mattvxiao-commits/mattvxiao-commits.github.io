@@ -1,4 +1,5 @@
 import Dexie, { type Table } from "dexie";
+import { createDefaultFieldLockSettings } from "../domain/fieldLock";
 import type {
   AppSettings,
   InventoryLog,
@@ -82,6 +83,7 @@ export function createDefaultSettings(): AppSettings {
     id: "settings",
     shopName: "ECRM 摊位",
     orderPrefix: "ECRM",
-    promotion: structuredClone(defaultPromotion)
+    promotion: structuredClone(defaultPromotion),
+    fieldLock: createDefaultFieldLockSettings()
   };
 }

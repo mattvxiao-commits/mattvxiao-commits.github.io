@@ -1,5 +1,6 @@
 import { saveAs } from "file-saver";
 import { db, type StoredImage } from "../db/db";
+import { createDefaultFieldLockSettings, sanitizeFieldLockForBackup } from "../domain/fieldLock";
 import type { AppSettings, InventoryLog, Order, OrderItem, OrderRefund, Product } from "../domain/types";
 
 const BACKUP_VERSION = 4;
@@ -203,6 +204,26 @@ function validateSettings(settings: unknown[]): asserts settings is AppSettings[
   }
 
   validatePromotion(setting.promotion);
+
+  if (setting.fieldLock !== undefined) {
+    assertRecord(setting.fieldLock, "备份文件格式不正确。");
+    assertBoolean(setting.fieldLock, "enabled");
+    if (setting.fieldLock.pinHash !== undefined) {
+      assertString(setting.fieldLock, "pinHash");
+    }
+    if (setting.fieldLock.pinSalt !== undefined) {
+      assertString(setting.fieldLock, "pinSalt");
+    }
+    if (setting.fieldLock.unlockExpiresAt !== undefined) {
+      assertString(setting.fieldLock, "unlockExpiresAt");
+    }
+    if (setting.fieldLock.lockedUntil !== undefined) {
+      assertString(setting.fieldLock, "lockedUntil");
+    }
+    if (!isNonNegativeInteger(setting.fieldLock.failedAttempts)) {
+      throw new Error("备份文件格式不正确。");
+    }
+  }
 }
 
 function validateProducts(products: unknown[]): asserts products is Product[] {
@@ -411,7 +432,17 @@ function parseBackupPayload(text: string): ParsedBackupPayload {
     version: parsed.version,
     exportedAt: typeof parsed.exportedAt === "string" ? parsed.exportedAt : new Date().toISOString(),
     note: parsed.version === 1 ? LEGACY_IMAGE_BACKUP_NOTE : IMAGE_BACKUP_NOTE,
-    data
+    data: normalizeBackupData(data)
+  };
+}
+
+function normalizeBackupData(data: BackupData): BackupData {
+  return {
+    ...data,
+    settings: data.settings.map((setting) => ({
+      ...setting,
+      fieldLock: createDefaultFieldLockSettings()
+    }))
   };
 }
 
@@ -539,7 +570,10 @@ export async function exportJsonBackup(): Promise<void> {
     note: IMAGE_BACKUP_NOTE,
     data: {
       products: await db.products.toArray(),
-      settings: await db.settings.toArray(),
+      settings: (await db.settings.toArray()).map((setting) => ({
+        ...setting,
+        fieldLock: sanitizeFieldLockForBackup(setting.fieldLock)
+      })),
       orders: await db.orders.toArray(),
       orderItems: await db.orderItems.toArray(),
       inventoryLogs: await db.inventoryLogs.toArray(),

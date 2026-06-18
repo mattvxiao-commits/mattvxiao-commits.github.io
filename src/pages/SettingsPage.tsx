@@ -1,5 +1,6 @@
 import { Download, FileSpreadsheet, Gift, QrCode, Save, Settings2, TicketPercent, Upload } from "lucide-react";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import FieldLockSettingsPanel from "../components/FieldLockSettingsPanel";
 import {
   getSettings,
   listInventoryLogsForOrder,
@@ -15,6 +16,7 @@ import { displayProductCode } from "../domain/productCode";
 import type { AppSettings, GiftConfig, Product } from "../domain/types";
 import { exportJsonBackup, IMAGE_BACKUP_NOTE, importJsonBackup } from "../utils/backup";
 import { exportOrderExcel } from "../utils/orderExcelExport";
+import { notifySettingsUpdated } from "../utils/settingsEvents";
 
 const APP_VERSION = "0.1.0";
 
@@ -249,7 +251,9 @@ export default function SettingsPage() {
     setStatus(undefined);
 
     try {
-      await saveSettings(applyGiftTiers(settings, giftA, giftB));
+      const nextSettings = applyGiftTiers(settings, giftA, giftB);
+      await saveSettings(nextSettings);
+      notifySettingsUpdated(nextSettings);
       setStatus({ kind: "success", text: "设置已保存。" });
     } catch {
       setStatus({ kind: "error", text: "设置保存失败，请检查后重试。" });
@@ -358,6 +362,7 @@ export default function SettingsPage() {
       const importResult = await importJsonBackup(file);
       const [nextSettings, nextProducts] = await Promise.all([getSettings(), listProducts()]);
       setSettings(nextSettings);
+      notifySettingsUpdated(nextSettings);
       setProducts(nextProducts);
       setGiftA(selectedGiftTargets(nextSettings).giftA);
       setGiftB(selectedGiftTargets(nextSettings).giftB);
@@ -444,6 +449,11 @@ export default function SettingsPage() {
 
       {settings ? (
         <div className="settingsGrid">
+          <FieldLockSettingsPanel
+            fieldLock={settings.fieldLock}
+            onChange={(fieldLock) => updateSettings((current) => ({ ...current, fieldLock }))}
+          />
+
           <section className="settingsSection" aria-labelledby="basic-settings-title">
             <div className="sectionTitle">
               <Settings2 size={21} aria-hidden="true" />

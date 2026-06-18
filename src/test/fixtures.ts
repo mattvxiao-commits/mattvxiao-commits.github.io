@@ -1,4 +1,5 @@
-import type { Product, PromotionConfig } from "../domain/types";
+import { createDefaultFieldLockSettings } from "../domain/fieldLock";
+import type { AppSettings, Product, PromotionConfig } from "../domain/types";
 
 export function product(overrides: Partial<Product> = {}): Product {
   const now = "2026-06-15T00:00:00.000Z";
@@ -47,5 +48,16 @@ export function defaultPromotion(): PromotionConfig {
         ]
       }
     ]
+  };
+}
+
+export function appSettings(overrides: Partial<AppSettings> = {}): AppSettings {
+  return {
+    id: "settings",
+    shopName: "ECRM 摊位",
+    orderPrefix: "ECRM",
+    promotion: defaultPromotion(),
+    fieldLock: createDefaultFieldLockSettings(),
+    ...overrides
   };
 }

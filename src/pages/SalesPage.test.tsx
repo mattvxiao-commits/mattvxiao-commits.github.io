@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, expect, test, vi } from "vitest";
 import type { AppSettings, InventoryLog, Order, OrderItem } from "../domain/types";
 import { useCartStore } from "../state/cartStore";
-import { defaultPromotion, product } from "../test/fixtures";
+import { appSettings, defaultPromotion, product } from "../test/fixtures";
 import SalesPage from "./SalesPage";
 
 const sellableProduct = product({
@@ -15,10 +15,7 @@ const sellableProduct = product({
 });
 
 const settings: AppSettings = {
-  id: "settings",
-  shopName: "ECRM 摊位",
-  orderPrefix: "ECRM",
-  promotion: defaultPromotion()
+  ...appSettings()
 };
 
 const repositories = vi.hoisted(() => ({
@@ -30,6 +27,7 @@ const repositories = vi.hoisted(() => ({
   listOrderRefunds: vi.fn(),
   listRefunds: vi.fn(),
   savePaidOrder: vi.fn(),
+  saveSettings: vi.fn(),
   saveOrderRefund: vi.fn(),
   voidPaidOrder: vi.fn()
 }));
@@ -57,6 +55,7 @@ beforeEach(() => {
   repositories.listOrderRefunds.mockResolvedValue([]);
   repositories.listRefunds.mockResolvedValue([]);
   repositories.savePaidOrder.mockResolvedValue(undefined);
+  repositories.saveSettings.mockResolvedValue(undefined);
   repositories.saveOrderRefund.mockResolvedValue({
     id: "refund-1",
     orderId: "order-detail",
@@ -67,6 +66,44 @@ beforeEach(() => {
   });
   repositories.voidPaidOrder.mockResolvedValue(undefined);
   useCartStore.getState().replace([]);
+});
+
+test("shows field mode status without blocking sales", async () => {
+  repositories.getSettings.mockResolvedValue({
+    ...settings,
+    fieldLock: {
+      ...settings.fieldLock,
+      enabled: true,
+      pinHash: "secret-hash",
+      pinSalt: "secret-salt"
+    }
+  });
+
+  render(<SalesPage />);
+
+  expect(await screen.findByText("现场模式已开启")).toBeVisible();
+  expect(await screen.findByRole("button", { name: "加入 普通商品" })).toBeVisible();
+});
+
+test("relocks field mode from sales page", async () => {
+  repositories.getSettings.mockResolvedValue({
+    ...settings,
+    fieldLock: {
+      ...settings.fieldLock,
+      enabled: true,
+      pinHash: "secret-hash",
+      pinSalt: "secret-salt",
+      unlockExpiresAt: "2099-06-19T09:05:00.000Z"
+    }
+  });
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "重新锁定" }));
+
+  await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalled());
+  const savedSettings = repositories.saveSettings.mock.calls.at(-1)?.[0] as AppSettings;
+  expect(savedSettings.fieldLock.unlockExpiresAt).toBeUndefined();
 });
 
 function order(overrides: Partial<Order> = {}): Order {
