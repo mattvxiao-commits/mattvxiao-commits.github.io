@@ -196,24 +196,16 @@ test("shows order review instead of sellable products while checking out", async
   expect(screen.queryByRole("button", { name: "打开购物车，当前 1 件，应收 ¥20.00" })).not.toBeInTheDocument();
 });
 
-test("shows compact sales list by default and can switch to image grid", async () => {
+test("shows compact sales list by default without exposing image grid mode", async () => {
   render(<SalesPage />);
 
   const list = await screen.findByRole("list", { name: "售卖商品紧凑列表" });
   expect(within(list).getByRole("heading", { level: 2, name: "普通商品" })).toBeVisible();
   expect(within(list).queryByText("NORMAL-BASE")).not.toBeInTheDocument();
   expect(screen.queryByRole("list", { name: "售卖商品图片网格" })).not.toBeInTheDocument();
-
-  fireEvent.click(screen.getByRole("button", { name: "图片网格" }));
-
-  const grid = await screen.findByRole("list", { name: "售卖商品图片网格" });
-  expect(within(grid).getByRole("heading", { level: 2, name: "普通商品" })).toBeVisible();
-  expect(within(grid).queryByText("NORMAL-BASE")).not.toBeInTheDocument();
-  expect(screen.queryByRole("list", { name: "售卖商品紧凑列表" })).not.toBeInTheDocument();
-
-  fireEvent.click(screen.getByRole("button", { name: "紧凑列表" }));
-
-  expect(await screen.findByRole("list", { name: "售卖商品紧凑列表" })).toBeVisible();
+  expect(screen.queryByRole("group", { name: "切换商品展示方式" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "图片网格" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "紧凑列表" })).not.toBeInTheDocument();
 });
 
 test("renders multiple products in the compact list without switching to image grid", async () => {

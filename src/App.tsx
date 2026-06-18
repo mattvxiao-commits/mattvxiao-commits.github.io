@@ -58,6 +58,7 @@ const pages = [
 ];
 
 const protectedPagePaths = new Set(["/products", "/settings", "/dashboard"]);
+const defaultBrandSubtitle = "Booth POS 摊位工具";
 
 type PagePlaceholderProps = {
   page: (typeof pages)[number];
@@ -100,6 +101,7 @@ export default function App() {
   const suppressNextUnlockDialogRef = useRef(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const brandSubtitle = settings?.shopName.trim() || defaultBrandSubtitle;
 
   useEffect(() => {
     return () => {
@@ -231,7 +233,7 @@ export default function App() {
           </div>
           <div>
             <div className="brand">ECRM</div>
-            <div className="subtitle">Booth POS 摊位工具</div>
+            <div className="subtitle">{brandSubtitle}</div>
           </div>
         </div>
         <nav className="nav" aria-label="主导航">

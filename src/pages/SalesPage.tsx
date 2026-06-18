@@ -1,8 +1,6 @@
 import {
   ChevronDown,
   ChevronUp,
-  LayoutGrid,
-  List,
   Plus,
   ReceiptText,
   RefreshCw,
@@ -58,7 +56,6 @@ import { getImageUrl } from "../utils/image";
 import { notifySettingsUpdated } from "../utils/settingsEvents";
 
 type SalesMode = "cart" | "checkout";
-type SalesViewMode = "list" | "grid";
 type VoidOrderInput = {
   cancelReason: OrderCancelReason;
   cancelNote?: string;
@@ -240,7 +237,6 @@ export default function SalesPage() {
   const [selectedSpu, setSelectedSpu] = useState("全部");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("wechat");
   const [mode, setMode] = useState<SalesMode>("cart");
-  const [salesViewMode, setSalesViewMode] = useState<SalesViewMode>("list");
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isOrderHistoryOpen, setIsOrderHistoryOpen] = useState(false);
   const [orderQuery, setOrderQuery] = useState("");
@@ -566,26 +562,6 @@ export default function SalesPage() {
               ))}
             </div>
             <div className="salesHeaderActions">
-              <div className="viewSwitch" role="group" aria-label="切换商品展示方式">
-                <button
-                  type="button"
-                  aria-pressed={salesViewMode === "list"}
-                  className={salesViewMode === "list" ? "isSelected" : ""}
-                  onClick={() => setSalesViewMode("list")}
-                >
-                  <List size={16} aria-hidden="true" />
-                  紧凑列表
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={salesViewMode === "grid"}
-                  className={salesViewMode === "grid" ? "isSelected" : ""}
-                  onClick={() => setSalesViewMode("grid")}
-                >
-                  <LayoutGrid size={16} aria-hidden="true" />
-                  图片网格
-                </button>
-              </div>
               <button type="button" className="secondaryButton" disabled={isLoading} onClick={() => void refreshSalesData()}>
                 <RefreshCw size={17} aria-hidden="true" />
                 刷新
@@ -620,77 +596,40 @@ export default function SalesPage() {
                 </div>
               ) : null}
 
-              {salesViewMode === "list" ? (
-                <div className="salesProductList" role="list" aria-label="售卖商品紧凑列表" aria-live="polite">
-                  {visibleProducts.map((product) => {
-                    const quantityInCart = cartQuantityByProduct.get(product.id) ?? 0;
-                    const remainingStock = product.stockQty - quantityInCart;
-                    const hasReachedStock = remainingStock <= 0;
+              <div className="salesProductList" role="list" aria-label="售卖商品紧凑列表" aria-live="polite">
+                {visibleProducts.map((product) => {
+                  const quantityInCart = cartQuantityByProduct.get(product.id) ?? 0;
+                  const remainingStock = product.stockQty - quantityInCart;
+                  const hasReachedStock = remainingStock <= 0;
 
-                    return (
-                      <article className="salesProductRow" role="listitem" key={product.id}>
-                        <SalesProductImage product={product} />
-                        <div className="salesProductRowMain">
-                          <div>
-                            <h2>{product.name}</h2>
-                            <p>{product.spu}</p>
-                          </div>
-                          <div className="salesProductRowMeta">
-                            <span>{formatMoney(product.salePrice)}</span>
-                            <span>库存 {product.stockQty}</span>
-                            {quantityInCart > 0 ? <span>已加 {quantityInCart}</span> : null}
-                            {hasReachedStock ? <span>已达库存</span> : null}
-                          </div>
+                  return (
+                    <article className="salesProductRow" role="listitem" key={product.id}>
+                      <SalesProductImage product={product} />
+                      <div className="salesProductRowMain">
+                        <div>
+                          <h2>{product.name}</h2>
+                          <p>{product.spu}</p>
                         </div>
-                        <button
-                          type="button"
-                          className="addSaleButton"
-                          aria-label={`加入 ${product.name}`}
-                          disabled={hasReachedStock}
-                          onClick={() => addProduct(product.id)}
-                        >
-                          <Plus size={21} aria-hidden="true" />
-                        </button>
-                      </article>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="salesProductGrid" role="list" aria-label="售卖商品图片网格" aria-live="polite">
-                  {visibleProducts.map((product) => {
-                    const quantityInCart = cartQuantityByProduct.get(product.id) ?? 0;
-                    const remainingStock = product.stockQty - quantityInCart;
-                    const hasReachedStock = remainingStock <= 0;
-
-                    return (
-                      <article className="salesProductCard" role="listitem" key={product.id}>
-                        <SalesProductImage product={product} />
-                        <div className="salesProductBody">
-                          <div>
-                            <h2>{product.name}</h2>
-                            <p>{product.spu}</p>
-                          </div>
-                          <div className="salesProductFacts">
-                            <span>{formatMoney(product.salePrice)}</span>
-                            <span>库存 {product.stockQty}</span>
-                            {quantityInCart > 0 ? <span>已加 {quantityInCart}</span> : null}
-                            {hasReachedStock ? <span>已达库存</span> : null}
-                          </div>
+                        <div className="salesProductRowMeta">
+                          <span>{formatMoney(product.salePrice)}</span>
+                          <span>库存 {product.stockQty}</span>
+                          {quantityInCart > 0 ? <span>已加 {quantityInCart}</span> : null}
+                          {hasReachedStock ? <span>已达库存</span> : null}
                         </div>
-                        <button
-                          type="button"
-                          className="addSaleButton"
-                          aria-label={`加入 ${product.name}`}
-                          disabled={hasReachedStock}
-                          onClick={() => addProduct(product.id)}
-                        >
-                          <Plus size={21} aria-hidden="true" />
-                        </button>
-                      </article>
-                    );
-                  })}
-                </div>
-              )}
+                      </div>
+                      <button
+                        type="button"
+                        className="addSaleButton"
+                        aria-label={`加入 ${product.name}`}
+                        disabled={hasReachedStock}
+                        onClick={() => addProduct(product.id)}
+                      >
+                        <Plus size={21} aria-hidden="true" />
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
             </>
           )}
         </div>

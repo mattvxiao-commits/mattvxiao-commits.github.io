@@ -42,6 +42,32 @@ test("renders the app shell navigation and redirects to products by default", as
   ).toBeVisible();
 });
 
+test("shows shop name in the top bar subtitle and refreshes it after settings update", async () => {
+  repositories.getSettings.mockResolvedValue({
+    ...createDefaultSettings(),
+    shopName: "楼下的妖怪便利店"
+  });
+
+  render(
+    <MemoryRouter initialEntries={["/sales"]}>
+      <App />
+    </MemoryRouter>
+  );
+
+  expect(await screen.findByText("楼下的妖怪便利店")).toBeVisible();
+  expect(screen.queryByText("Booth POS 摊位工具")).not.toBeInTheDocument();
+
+  act(() => {
+    notifySettingsUpdated({
+      ...createDefaultSettings(),
+      shopName: "GA10 摊位"
+    });
+  });
+
+  expect(await screen.findByText("GA10 摊位")).toBeVisible();
+  expect(screen.queryByText("楼下的妖怪便利店")).not.toBeInTheDocument();
+});
+
 test("locks products navigation when field mode is enabled", async () => {
   repositories.getSettings.mockResolvedValue({
     ...createDefaultSettings(),
