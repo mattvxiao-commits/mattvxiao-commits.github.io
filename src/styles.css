@@ -861,6 +861,10 @@ p {
   background: var(--line);
 }
 
+.dashboardProfitStrip {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .dashboardMetricStrip div,
 .dashboardAfterSalesStrip div,
 .dashboardOperationsStrip div {
@@ -924,6 +928,14 @@ p {
   border: 1px solid rgba(222, 214, 201, 0.94);
   border-radius: 8px;
   background: rgba(255, 253, 250, 0.92);
+}
+
+.dashboardProfitOverview {
+  grid-column: 1 / -1;
+}
+
+.dashboardProfitOverview .dashboardOperationsStrip {
+  grid-column: auto;
 }
 
 .dashboardRankList,

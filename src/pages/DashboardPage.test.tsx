@@ -353,6 +353,120 @@ test("loads full dashboard data and renders core sections", async () => {
   expect(repositories.listOrderItems).toHaveBeenCalledTimes(4);
 });
 
+test("shows profit overview, gift cost and missing cost snapshot notice", async () => {
+  repositories.listOrders.mockResolvedValue([
+    paidOrder({ id: "profit-order", orderNo: "ECRM-PROFIT", payableAmount: 120 }),
+    paidOrder({ id: "legacy-order", orderNo: "ECRM-LEGACY", payableAmount: 20, paidAt: "2026-06-15T09:20:00.000Z" })
+  ]);
+  repositories.listOrderItems.mockImplementation((orderId: string) =>
+    Promise.resolve(
+      ({
+        "profit-order": [
+          orderItem({
+            id: "profit-normal",
+            orderId,
+            productId: "sku-profit",
+            productNameSnapshot: "高毛利徽章",
+            spuSnapshot: "徽章",
+            quantity: 2,
+            lineTotal: 100,
+            unitCostSnapshot: 20,
+            costTotal: 40,
+            grossProfit: 60
+          }),
+          orderItem({
+            id: "profit-gift",
+            orderId,
+            productId: "sku-gift",
+            productNameSnapshot: "赠品贴纸",
+            spuSnapshot: "贴纸",
+            quantity: 1,
+            lineType: "gift",
+            lineTotal: 0,
+            unitCostSnapshot: 6,
+            costTotal: 6,
+            grossProfit: -6
+          })
+        ],
+        "legacy-order": [
+          orderItem({
+            id: "legacy-item",
+            orderId,
+            productId: "sku-legacy",
+            productNameSnapshot: "旧订单明细",
+            lineTotal: 20
+          })
+        ]
+      })[orderId] ?? []
+    )
+  );
+
+  render(<DashboardPage />);
+
+  expect(await screen.findByText("毛利概览")).toBeVisible();
+  const profitOverview = screen.getByLabelText("毛利概览指标");
+  expect(profitOverview).toHaveClass("dashboardOperationsStrip");
+  expectMetricValue(profitOverview, "销售额（有成本快照）", "¥100.00");
+  expectMetricValue(profitOverview, "成本", "¥46.00");
+  expectMetricValue(profitOverview, "毛利", "¥54.00");
+  expectMetricValue(profitOverview, "毛利率", "54%");
+  expectMetricValue(profitOverview, "赠品成本", "¥6.00");
+  expect(screen.getByText("当前范围有 1 条旧订单明细缺少成本快照，未纳入准确毛利。")).toBeVisible();
+});
+
+test("shows SKU profit ranking, SPU profit ranking and low profit SKU", async () => {
+  repositories.listOrders.mockResolvedValue([
+    paidOrder({ id: "order-profit-ranking", orderNo: "ECRM-RANK", payableAmount: 125 })
+  ]);
+  repositories.listOrderItems.mockResolvedValue([
+    orderItem({
+      id: "high-profit",
+      orderId: "order-profit-ranking",
+      productId: "sku-high",
+      productNameSnapshot: "高毛利徽章",
+      spuSnapshot: "徽章",
+      productCodeSnapshot: "BADGE-H",
+      quantity: 5,
+      lineTotal: 100,
+      unitCostSnapshot: 6,
+      costTotal: 30,
+      grossProfit: 70
+    }),
+    orderItem({
+      id: "low-profit",
+      orderId: "order-profit-ranking",
+      productId: "sku-low",
+      productNameSnapshot: "低毛利贴纸",
+      spuSnapshot: "贴纸",
+      productCodeSnapshot: "STICKER-L",
+      quantity: 5,
+      lineTotal: 25,
+      unitCostSnapshot: 4.5,
+      costTotal: 22.5,
+      grossProfit: 2.5
+    })
+  ]);
+
+  render(<DashboardPage />);
+
+  const skuProfit = await screen.findByRole("region", { name: "SKU 毛利排行" });
+  const highProfitSkuRow = within(skuProfit).getByText("高毛利徽章").closest(".dashboardRankRow");
+  expect(highProfitSkuRow).not.toBeNull();
+  expect(within(highProfitSkuRow as HTMLElement).getByText("BADGE-H")).toBeVisible();
+  expect(within(highProfitSkuRow as HTMLElement).getByText("5 件")).toBeVisible();
+  expect(within(highProfitSkuRow as HTMLElement).getByText("¥70.00")).toBeVisible();
+
+  const spuProfit = screen.getByRole("region", { name: "SPU 毛利排行" });
+  expect(within(spuProfit).getByText("徽章")).toBeVisible();
+  expect(within(spuProfit).getByText("¥70.00")).toBeVisible();
+
+  const lowProfitSku = screen.getByRole("region", { name: "低毛利 SKU" });
+  expect(within(lowProfitSku).getByText("低毛利贴纸")).toBeVisible();
+  expect(within(lowProfitSku).getByText("STICKER-L")).toBeVisible();
+  expect(within(lowProfitSku).getByText("毛利率 10%")).toBeVisible();
+  expect(within(lowProfitSku).getByText("¥2.50")).toBeVisible();
+});
+
 test("shows dashboard empty states after successful empty load", async () => {
   render(<DashboardPage />);
 
@@ -362,6 +476,9 @@ test("shows dashboard empty states after successful empty load", async () => {
   expect(screen.getByText("当前范围暂无 SPU 销售。")).toBeVisible();
   expect(screen.getByText("当前范围暂无 SPU 销售额。")).toBeVisible();
   expect(screen.getByText("当前范围暂无赠品消耗。")).toBeVisible();
+  expect(screen.getByText("当前范围暂无 SKU 毛利数据。")).toBeVisible();
+  expect(screen.getByText("当前范围暂无 SPU 毛利数据。")).toBeVisible();
+  expect(screen.getByText("当前范围暂无低毛利 SKU。")).toBeVisible();
   expect(screen.getByText("暂无低库存商品。")).toBeVisible();
   expect(screen.getByText("暂无售罄 SKU。")).toBeVisible();
   expect(screen.getByText("暂无高风险 SKU。")).toBeVisible();
@@ -381,6 +498,13 @@ test("shows dashboard empty states after successful empty load", async () => {
   expectMetricValue(promotionOverview, "优惠让利", "¥0.00");
   expectMetricValue(promotionOverview, "优惠订单", "0");
   expectMetricValue(promotionOverview, "满赠订单", "0");
+  const profitOverview = screen.getByLabelText("毛利概览指标");
+  expect(profitOverview).toBeVisible();
+  expectMetricValue(profitOverview, "销售额（有成本快照）", "¥0.00");
+  expectMetricValue(profitOverview, "成本", "¥0.00");
+  expectMetricValue(profitOverview, "毛利", "¥0.00");
+  expectMetricValue(profitOverview, "毛利率", "0%");
+  expectMetricValue(profitOverview, "赠品成本", "¥0.00");
 });
 
 test("uses compact dashboard time range control structure", async () => {
@@ -434,23 +558,28 @@ test("defaults to today and switches to yesterday using already loaded data", as
         productId: `${orderId}-sku`,
         productNameSnapshot: orderId === "today" ? "今日商品" : "昨天商品",
         quantity: 1,
-        lineTotal: orderId === "today" ? 80 : 30
+        lineTotal: orderId === "today" ? 80 : 30,
+        unitCostSnapshot: orderId === "today" ? 50 : 10,
+        costTotal: orderId === "today" ? 50 : 10,
+        grossProfit: orderId === "today" ? 30 : 20
       })
     ])
   );
 
   render(<DashboardPage />);
 
-  expect(await screen.findByText("今日商品")).toBeVisible();
+  expect((await screen.findAllByText("今日商品"))[0]).toBeVisible();
   expect(screen.getByText("统计范围：今日")).toBeVisible();
   expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥80.00");
+  expectMetricValue(screen.getByLabelText("毛利概览指标"), "毛利", "¥30.00");
   expect(screen.queryByText("昨天商品")).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("button", { name: "昨天" }));
 
   expect(screen.getByText("统计范围：昨天")).toBeVisible();
   expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥30.00");
-  expect(screen.getByText("昨天商品")).toBeVisible();
+  expectMetricValue(screen.getByLabelText("毛利概览指标"), "毛利", "¥20.00");
+  expect(screen.getAllByText("昨天商品")[0]).toBeVisible();
   expect(screen.queryByText("今日商品")).not.toBeInTheDocument();
   expect(repositories.listOrders).toHaveBeenCalledTimes(1);
   expect(repositories.listProducts).toHaveBeenCalledTimes(1);

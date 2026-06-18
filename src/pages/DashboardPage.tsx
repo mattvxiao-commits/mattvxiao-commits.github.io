@@ -30,6 +30,10 @@ function todayCustomRange(): DashboardCustomRangeInput {
   return { startDate: today, endDate: today };
 }
 
+function formatPercent(value: number): string {
+  return `${value.toFixed(1).replace(/\.0$/, "")}%`;
+}
+
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardState>({ orders: [], orderItems: [], products: [], refunds: [] });
   const [isLoading, setIsLoading] = useState(true);
@@ -267,6 +271,45 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            <section className="dashboardSection dashboardProfitOverview" aria-labelledby="profit-overview-title">
+              <div className="sectionTitle">
+                <BarChart3 size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="profit-overview-title">毛利概览</h2>
+                  <p>当前范围有成本快照的订单明细汇总。</p>
+                </div>
+              </div>
+
+              <div className="dashboardOperationsStrip dashboardProfitStrip" aria-label="毛利概览指标">
+                <div>
+                  <span>{formatMoney(dashboard.profitSummary.revenueWithCostSnapshot)}</span>
+                  <p>销售额（有成本快照）</p>
+                </div>
+                <div>
+                  <span>{formatMoney(dashboard.profitSummary.costAmount)}</span>
+                  <p>成本</p>
+                </div>
+                <div>
+                  <span>{formatMoney(dashboard.profitSummary.grossProfit)}</span>
+                  <p>毛利</p>
+                </div>
+                <div>
+                  <span>{formatPercent(dashboard.profitSummary.grossMargin)}</span>
+                  <p>毛利率</p>
+                </div>
+                <div>
+                  <span>{formatMoney(dashboard.profitSummary.giftCostAmount)}</span>
+                  <p>赠品成本</p>
+                </div>
+              </div>
+
+              {dashboard.profitSummary.missingCostItemCount > 0 ? (
+                <p className="errorBanner" role="status">
+                  当前范围有 {dashboard.profitSummary.missingCostItemCount} 条旧订单明细缺少成本快照，未纳入准确毛利。
+                </p>
+              ) : null}
+            </section>
+
             <section className="dashboardSection" aria-labelledby="payment-method-title">
               <div className="sectionTitle">
                 <BarChart3 size={21} aria-hidden="true" />
@@ -324,6 +367,102 @@ export default function DashboardPage() {
                     </div>
                     <div className="dashboardRowMetric">
                       <span>{row.orderCount} 单</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="dashboardSection" aria-labelledby="profit-sku-title">
+              <div className="sectionTitle">
+                <BarChart3 size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="profit-sku-title">SKU 毛利排行</h2>
+                  <p>当前范围有成本快照的 SKU 按毛利排序。</p>
+                </div>
+              </div>
+
+              {!isLoading && dashboard.profitSkuRows.length === 0 ? (
+                <div className="dashboardEmpty">
+                  <PackageX size={24} aria-hidden="true" />
+                  <p>当前范围暂无 SKU 毛利数据。</p>
+                </div>
+              ) : null}
+
+              <div className="dashboardRankList">
+                {dashboard.profitSkuRows.map((row) => (
+                  <article className="dashboardRankRow" key={row.productId}>
+                    <div>
+                      <h3>{row.productName}</h3>
+                      <p>{row.productCode ?? row.spu}</p>
+                    </div>
+                    <div className="dashboardRowMetric">
+                      <span>{row.quantity} 件</span>
+                      <strong>{formatMoney(row.grossProfit)}</strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="dashboardSection" aria-labelledby="profit-spu-title">
+              <div className="sectionTitle">
+                <BarChart3 size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="profit-spu-title">SPU 毛利排行</h2>
+                  <p>当前范围有成本快照的 SPU 按毛利排序。</p>
+                </div>
+              </div>
+
+              {!isLoading && dashboard.profitSpuRows.length === 0 ? (
+                <div className="dashboardEmpty">
+                  <PackageX size={24} aria-hidden="true" />
+                  <p>当前范围暂无 SPU 毛利数据。</p>
+                </div>
+              ) : null}
+
+              <div className="dashboardRankList">
+                {dashboard.profitSpuRows.map((row) => (
+                  <article className="dashboardRankRow" key={row.spu}>
+                    <div>
+                      <h3>{row.spu}</h3>
+                      <p>SPU</p>
+                    </div>
+                    <div className="dashboardRowMetric">
+                      <span>{row.quantity} 件</span>
+                      <strong>{formatMoney(row.grossProfit)}</strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="dashboardSection" aria-labelledby="low-profit-sku-title">
+              <div className="sectionTitle">
+                <AlertTriangle size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="low-profit-sku-title">低毛利 SKU</h2>
+                  <p>毛利率低于 20%，或毛利不高于 0 的 SKU。</p>
+                </div>
+              </div>
+
+              {!isLoading && dashboard.lowProfitSkuRows.length === 0 ? (
+                <div className="dashboardEmpty">
+                  <PackageX size={24} aria-hidden="true" />
+                  <p>当前范围暂无低毛利 SKU。</p>
+                </div>
+              ) : null}
+
+              <div className="dashboardRankList">
+                {dashboard.lowProfitSkuRows.map((row) => (
+                  <article className="dashboardRankRow" key={row.productId}>
+                    <div>
+                      <h3>{row.productName}</h3>
+                      <p>{row.productCode ?? row.spu}</p>
+                    </div>
+                    <div className={row.grossProfit <= 0 ? "dashboardRowMetric isOut" : "dashboardRowMetric"}>
+                      <span>毛利率 {formatPercent(row.grossMargin)}</span>
+                      <strong>{formatMoney(row.grossProfit)}</strong>
                     </div>
                   </article>
                 ))}
