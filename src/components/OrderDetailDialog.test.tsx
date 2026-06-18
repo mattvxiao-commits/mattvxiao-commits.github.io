@@ -179,6 +179,56 @@ test("shows a read-only order detail dialog with order, item snapshot, and inven
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
+test("shows cost and gross profit for order item snapshots", () => {
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={[
+        {
+          ...orderItems[0],
+          id: "item-cost-snapshot",
+          quantity: 2,
+          lineTotal: 40,
+          unitCostSnapshot: 8,
+          costTotal: 16,
+          grossProfit: 24
+        }
+      ]}
+      inventoryLogs={[]}
+      orderRefunds={[]}
+      onClose={() => undefined}
+    />
+  );
+
+  const itemList = screen.getByRole("list", { name: "订单商品明细" });
+  expect(within(itemList).getByText("成本 ¥16.00")).toBeVisible();
+  expect(within(itemList).getByText("毛利 ¥24.00")).toBeVisible();
+});
+
+test("shows missing cost snapshot for legacy order items", () => {
+  render(
+    <OrderDetailDialog
+      order={{ ...order, id: "order-legacy", orderNo: "ECRM-OLD" }}
+      orderItems={[
+        {
+          ...orderItems[0],
+          id: "item-legacy",
+          orderId: "order-legacy",
+          productNameSnapshot: "旧商品",
+          unitCostSnapshot: undefined,
+          costTotal: undefined,
+          grossProfit: undefined
+        }
+      ]}
+      inventoryLogs={[]}
+      orderRefunds={[]}
+      onClose={() => undefined}
+    />
+  );
+
+  expect(screen.getByText("缺少成本快照")).toBeVisible();
+});
+
 test("shows void action for paid orders and confirms before calling handler", () => {
   const onVoidOrder = vi.fn();
 

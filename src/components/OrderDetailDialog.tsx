@@ -379,6 +379,17 @@ export default function OrderDetailDialog({
                     <span>小计</span>
                     <strong>{`小计 ${formatMoney(item.lineTotal)}`}</strong>
                   </div>
+                  <div className="orderDetailLineCost">
+                    <span>成本/毛利</span>
+                    {typeof item.costTotal === "number" && typeof item.grossProfit === "number" ? (
+                      <>
+                        <strong>{`成本 ${formatMoney(item.costTotal)}`}</strong>
+                        <strong>{`毛利 ${formatMoney(item.grossProfit)}`}</strong>
+                      </>
+                    ) : (
+                      <strong>缺少成本快照</strong>
+                    )}
+                  </div>
                 </article>
               ))}
             </div>
