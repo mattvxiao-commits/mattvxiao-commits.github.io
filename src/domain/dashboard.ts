@@ -510,7 +510,14 @@ function hasCostSnapshot(item: OrderItem): item is OrderItem & {
   grossProfit: number;
 } {
   return (
-    typeof item.unitCostSnapshot === "number" && typeof item.costTotal === "number" && typeof item.grossProfit === "number"
+    typeof item.unitCostSnapshot === "number" &&
+    Number.isFinite(item.unitCostSnapshot) &&
+    item.unitCostSnapshot >= 0 &&
+    typeof item.costTotal === "number" &&
+    Number.isFinite(item.costTotal) &&
+    item.costTotal >= 0 &&
+    typeof item.grossProfit === "number" &&
+    Number.isFinite(item.grossProfit)
   );
 }
 
@@ -611,7 +618,16 @@ function buildProfitMetrics(
         return left.grossProfit - right.grossProfit;
       }
 
-      return right.revenue - left.revenue;
+      if (right.revenue !== left.revenue) {
+        return right.revenue - left.revenue;
+      }
+
+      const nameOrder = left.productName.localeCompare(right.productName, "zh-Hans-CN");
+      if (nameOrder !== 0) {
+        return nameOrder;
+      }
+
+      return left.productId.localeCompare(right.productId, "zh-Hans-CN");
     })
     .slice(0, 5);
 

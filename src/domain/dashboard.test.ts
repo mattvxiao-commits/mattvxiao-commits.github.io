@@ -1082,6 +1082,88 @@ describe("buildDashboardModel", () => {
     });
   });
 
+  test("NaN 和 Infinity 成本字段视为缺少成本快照，不污染毛利统计", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [
+        order({ id: "paid-valid", payableAmount: 40 }),
+        order({ id: "paid-invalid-a", payableAmount: 10, paidAt: "2026-06-15T10:00:00.000Z" }),
+        order({ id: "paid-invalid-b", payableAmount: 12, paidAt: "2026-06-15T11:00:00.000Z" })
+      ],
+      orderItems: [
+        item({
+          id: "valid-cost",
+          orderId: "paid-valid",
+          productId: "sku-valid",
+          productNameSnapshot: "有效成本商品",
+          lineTotal: 40,
+          quantity: 2,
+          unitCostSnapshot: 8,
+          costTotal: 16,
+          grossProfit: 24
+        }),
+        item({
+          id: "nan-unit-cost",
+          orderId: "paid-invalid-a",
+          productId: "sku-nan",
+          productNameSnapshot: "无效成本商品 A",
+          lineTotal: 10,
+          quantity: 1,
+          unitCostSnapshot: Number.NaN,
+          costTotal: 4,
+          grossProfit: 6
+        }),
+        item({
+          id: "infinite-cost",
+          orderId: "paid-invalid-a",
+          productId: "sku-infinity",
+          productNameSnapshot: "无效成本商品 B",
+          lineTotal: 8,
+          quantity: 1,
+          unitCostSnapshot: 2,
+          costTotal: Infinity,
+          grossProfit: 6
+        }),
+        item({
+          id: "negative-cost",
+          orderId: "paid-invalid-b",
+          productId: "sku-negative",
+          productNameSnapshot: "无效成本商品 C",
+          lineTotal: 12,
+          quantity: 1,
+          unitCostSnapshot: 2,
+          costTotal: -1,
+          grossProfit: 13
+        }),
+        item({
+          id: "negative-profit",
+          orderId: "paid-valid",
+          productId: "sku-negative-profit",
+          productNameSnapshot: "负毛利商品",
+          lineTotal: 5,
+          quantity: 1,
+          unitCostSnapshot: 6,
+          costTotal: 6,
+          grossProfit: -1
+        })
+      ],
+      refunds: [],
+      products: []
+    });
+
+    expect(model.profitSummary).toEqual({
+      revenueWithCostSnapshot: 45,
+      costAmount: 22,
+      grossProfit: 23,
+      grossMargin: 51.11,
+      giftCostAmount: 0,
+      missingCostItemCount: 3,
+      missingCostOrderCount: 2
+    });
+    expect(model.profitSkuRows.map((row) => row.productId)).toEqual(["sku-valid", "sku-negative-profit"]);
+    expect(model.profitSkuRows.every((row) => Number.isFinite(row.costAmount) && Number.isFinite(row.grossProfit))).toBe(true);
+  });
+
   test("生成 SKU 毛利排行、SPU 毛利排行和低毛利 SKU", () => {
     const model = buildDashboardModel({
       dateRange: todayRange,
@@ -1185,6 +1267,63 @@ describe("buildDashboardModel", () => {
     });
     expect(model.lowProfitSkuRows.map((row) => row.productId)).toEqual(["sku-zero", "sku-low"]);
     expect(model.lowProfitSkuRows[0]).toMatchObject({ productId: "sku-zero", quantity: 2, grossMargin: 0, grossProfit: 0 });
+  });
+
+  test("低毛利 SKU 完全并列时按商品名中文排序，再按 productId 兜底", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [order({ id: "paid-a", payableAmount: 30 })],
+      orderItems: [
+        item({
+          id: "tie-b",
+          orderId: "paid-a",
+          productId: "sku-b",
+          productNameSnapshot: "乙商品",
+          lineTotal: 10,
+          quantity: 1,
+          unitCostSnapshot: 9,
+          costTotal: 9,
+          grossProfit: 1
+        }),
+        item({
+          id: "tie-a",
+          orderId: "paid-a",
+          productId: "sku-a",
+          productNameSnapshot: "甲商品",
+          lineTotal: 10,
+          quantity: 1,
+          unitCostSnapshot: 9,
+          costTotal: 9,
+          grossProfit: 1
+        }),
+        item({
+          id: "tie-same-name-b",
+          orderId: "paid-a",
+          productId: "sku-same-b",
+          productNameSnapshot: "同名商品",
+          lineTotal: 10,
+          quantity: 1,
+          unitCostSnapshot: 9,
+          costTotal: 9,
+          grossProfit: 1
+        }),
+        item({
+          id: "tie-same-name-a",
+          orderId: "paid-a",
+          productId: "sku-same-a",
+          productNameSnapshot: "同名商品",
+          lineTotal: 10,
+          quantity: 1,
+          unitCostSnapshot: 9,
+          costTotal: 9,
+          grossProfit: 1
+        })
+      ],
+      refunds: [],
+      products: []
+    });
+
+    expect(model.lowProfitSkuRows.map((row) => row.productId)).toEqual(["sku-a", "sku-same-a", "sku-same-b", "sku-b"]);
   });
 
   test("日期范围外订单的成本明细不影响毛利概览和毛利排行", () => {
