@@ -188,6 +188,24 @@ test("loads full dashboard data and renders core sections", async () => {
   expect(within(topSellingRow as HTMLElement).getByText("3 件")).toBeVisible();
   expect(within(topSellingRow as HTMLElement).getByText("¥60.00")).toBeVisible();
 
+  const topSellingSpu = screen.getByRole("region", { name: "热销 SPU" });
+  expect(topSellingSpu.querySelector(".dashboardRankList")).not.toBeNull();
+  expect(within(topSellingSpu).getByText("挂件")).toBeVisible();
+  expect(within(topSellingSpu).getByText("3 件")).toBeVisible();
+  expect(within(topSellingSpu).getByText("¥60.00")).toBeVisible();
+  expect(within(topSellingSpu).getByText("纸品")).toBeVisible();
+
+  const topRevenueSpu = screen.getByRole("region", { name: "SPU 销售额" });
+  expect(topRevenueSpu.querySelector(".dashboardRankList")).not.toBeNull();
+  const topRevenueCharmRow = within(topRevenueSpu).getByText("挂件").closest(".dashboardRankRow");
+  expect(topRevenueCharmRow).not.toBeNull();
+  expect(within(topRevenueCharmRow as HTMLElement).getByText("3 件")).toBeVisible();
+  expect(within(topRevenueCharmRow as HTMLElement).getByText("¥60.00")).toBeVisible();
+  const topRevenuePaperRow = within(topRevenueSpu).getByText("纸品").closest(".dashboardRankRow");
+  expect(topRevenuePaperRow).not.toBeNull();
+  expect(within(topRevenuePaperRow as HTMLElement).getByText("1 件")).toBeVisible();
+  expect(within(topRevenuePaperRow as HTMLElement).getByText("¥30.00")).toBeVisible();
+
   const giftConsumption = screen.getByRole("region", { name: "赠品消耗" });
   expect(giftConsumption.querySelector(".dashboardRankList")).not.toBeNull();
   const giftRow = within(giftConsumption).getByText("赠品贴纸").closest(".dashboardRankRow");
@@ -226,6 +244,8 @@ test("shows dashboard empty states after successful empty load", async () => {
   render(<DashboardPage />);
 
   expect(await screen.findByText("当前范围暂无已支付订单。")).toBeVisible();
+  expect(screen.getByText("当前范围暂无 SPU 销售。")).toBeVisible();
+  expect(screen.getByText("当前范围暂无 SPU 销售额。")).toBeVisible();
   expect(screen.getByText("当前范围暂无赠品消耗。")).toBeVisible();
   expect(screen.getByText("暂无低库存商品。")).toBeVisible();
   expect(screen.getByText("当前范围暂无异常订单。")).toBeVisible();
@@ -467,6 +487,8 @@ test("shows sanitized error when dashboard loading fails", async () => {
   expect(screen.queryByLabelText("经营概览")).not.toBeInTheDocument();
   expect(screen.queryByLabelText("售后概览")).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "热销 SKU" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "热销 SPU" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "SPU 销售额" })).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "赠品消耗" })).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "低库存 SKU" })).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "异常订单" })).not.toBeInTheDocument();

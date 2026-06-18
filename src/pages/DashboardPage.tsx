@@ -280,6 +280,70 @@ export default function DashboardPage() {
               </div>
             </section>
 
+            <section className="dashboardSection" aria-labelledby="top-selling-spu-title">
+              <div className="sectionTitle">
+                <BarChart3 size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="top-selling-spu-title">热销 SPU</h2>
+                  <p>当前范围已支付订单中售出件数最高的 SPU。</p>
+                </div>
+              </div>
+
+              {!isLoading && dashboard.topSellingSpuRows.length === 0 ? (
+                <div className="dashboardEmpty">
+                  <PackageX size={24} aria-hidden="true" />
+                  <p>当前范围暂无 SPU 销售。</p>
+                </div>
+              ) : null}
+
+              <div className="dashboardRankList">
+                {dashboard.topSellingSpuRows.map((row) => (
+                  <article className="dashboardRankRow" key={row.spu}>
+                    <div>
+                      <h3>{row.spu}</h3>
+                      <p>SPU</p>
+                    </div>
+                    <div className="dashboardRowMetric">
+                      <span>{row.quantity} 件</span>
+                      <strong>{formatMoney(row.amount)}</strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="dashboardSection" aria-labelledby="top-revenue-spu-title">
+              <div className="sectionTitle">
+                <BarChart3 size={21} aria-hidden="true" />
+                <div>
+                  <h2 id="top-revenue-spu-title">SPU 销售额</h2>
+                  <p>当前范围已支付订单中销售额最高的 SPU。</p>
+                </div>
+              </div>
+
+              {!isLoading && dashboard.topRevenueSpuRows.length === 0 ? (
+                <div className="dashboardEmpty">
+                  <PackageX size={24} aria-hidden="true" />
+                  <p>当前范围暂无 SPU 销售额。</p>
+                </div>
+              ) : null}
+
+              <div className="dashboardRankList">
+                {dashboard.topRevenueSpuRows.map((row) => (
+                  <article className="dashboardRankRow" key={row.spu}>
+                    <div>
+                      <h3>{row.spu}</h3>
+                      <p>SPU</p>
+                    </div>
+                    <div className="dashboardRowMetric">
+                      <span>{row.quantity} 件</span>
+                      <strong>{formatMoney(row.amount)}</strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
             <section className="dashboardSection" aria-labelledby="gift-consumption-title">
               <div className="sectionTitle">
                 <BarChart3 size={21} aria-hidden="true" />
