@@ -8,6 +8,7 @@ import type {
   Product,
   PromotionConfig
 } from "./types";
+import { normalizeMoney } from "./money";
 
 export type BuildPaidOrderInput = {
   products: Product[];
@@ -71,8 +72,8 @@ function makeOrderItem(
 ): OrderItem {
   const product = getProductForLine(line, productById);
   const unitCostSnapshot = product.costPrice;
-  const costTotal = roundMoney(unitCostSnapshot * line.quantity);
-  const grossProfit = roundMoney(line.lineTotal - costTotal);
+  const costTotal = normalizeMoney(unitCostSnapshot * line.quantity);
+  const grossProfit = normalizeMoney(line.lineTotal - costTotal);
 
   return {
     id: makeLineId(),
@@ -90,10 +91,6 @@ function makeOrderItem(
     costTotal,
     grossProfit
   };
-}
-
-function roundMoney(value: number): number {
-  return Math.round(value * 100) / 100;
 }
 
 function deductInventory(
