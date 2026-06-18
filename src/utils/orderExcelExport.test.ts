@@ -1,9 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { exportOrderExcel } from "./orderExcelExport";
 
 const { bookNew, jsonToSheet, bookAppendSheet, write, saveAs } = vi.hoisted(() => ({
   bookNew: vi.fn(() => ({ SheetNames: [], Sheets: {} })),
-  jsonToSheet: vi.fn((rows) => ({ rows })),
+  jsonToSheet: vi.fn((rows) => ({ worksheetRows: rows })),
   bookAppendSheet: vi.fn(),
   write: vi.fn(() => new ArrayBuffer(8)),
   saveAs: vi.fn()
@@ -23,20 +23,32 @@ vi.mock("file-saver", () => ({
 }));
 
 describe("exportOrderExcel", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("把订单导出 sheet 写入 xlsx 并保存文件", () => {
+    const summaryRows = [{ 订单编号: "ECRM-001" }];
+    const detailRows = [{ 商品名称: "徽章 A" }];
+
     exportOrderExcel({
       sheets: [
-        { name: "订单汇总", rows: [{ 订单编号: "ECRM-001" }] },
-        { name: "订单明细", rows: [{ 商品名称: "徽章 A" }] }
+        { name: "订单汇总", rows: summaryRows },
+        { name: "订单明细", rows: detailRows }
       ],
-      exportedAt: "2026-06-18T12:00:00.000Z"
+      exportedAt: "2026-06-17T23:30:00.000Z"
     });
 
-    expect(bookNew).toHaveBeenCalled();
+    expect(bookNew).toHaveBeenCalledOnce();
+    expect(jsonToSheet).toHaveBeenNthCalledWith(1, summaryRows);
+    expect(jsonToSheet).toHaveBeenNthCalledWith(2, detailRows);
     expect(jsonToSheet).toHaveBeenCalledTimes(2);
-    expect(bookAppendSheet).toHaveBeenCalledWith(expect.anything(), expect.anything(), "订单汇总");
-    expect(bookAppendSheet).toHaveBeenCalledWith(expect.anything(), expect.anything(), "订单明细");
+    expect(bookAppendSheet).toHaveBeenNthCalledWith(1, expect.anything(), { worksheetRows: summaryRows }, "订单汇总");
+    expect(bookAppendSheet).toHaveBeenNthCalledWith(2, expect.anything(), { worksheetRows: detailRows }, "订单明细");
     expect(write).toHaveBeenCalledWith(expect.anything(), { bookType: "xlsx", type: "array" });
-    expect(saveAs).toHaveBeenCalledWith(expect.any(Blob), "ecrm-orders-2026-06-18.xlsx");
+    const blob = saveAs.mock.calls[0][0];
+    expect(blob).toBeInstanceOf(Blob);
+    expect(blob.type).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    expect(saveAs).toHaveBeenCalledWith(blob, "ecrm-orders-2026-06-17.xlsx");
   });
 });

@@ -24,9 +24,16 @@ export function exportOrderExcel(input: ExportOrderExcelInput): void {
 }
 
 function formatDateForFilename(value: string): string {
+  const isoDate = value.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+
+  if (isoDate) {
+    return isoDate;
+  }
+
   const date = new Date(value);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+  const year = safeDate.getFullYear();
+  const month = String(safeDate.getMonth() + 1).padStart(2, "0");
+  const day = String(safeDate.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
