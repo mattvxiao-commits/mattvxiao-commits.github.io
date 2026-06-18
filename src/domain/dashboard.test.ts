@@ -626,7 +626,7 @@ describe("buildDashboardModel", () => {
     expect(model.giftConsumptionRows.map((row) => row.productId)).toEqual(["gift-1", "gift-2", "gift-3", "gift-4", "gift-5"]);
   });
 
-  test("低库存按 stockQty 从低到高排序，包含仅赠品商品，排除 inactive 和安全库存", () => {
+  test("低库存按 stockQty 从低到高排序，包含仅赠品商品，排除售罄、inactive 和安全库存", () => {
     const model = buildDashboardModel({
       dateRange: todayRange,
       orders: [],
@@ -640,7 +640,43 @@ describe("buildDashboardModel", () => {
       ]
     });
 
-    expect(model.lowStockRows.map((row) => row.productId)).toEqual(["sold-out", "gift-only"]);
+    expect(model.lowStockRows.map((row) => row.productId)).toEqual(["gift-only"]);
+    expect(model.soldOutRows.map((row) => row.productId)).toEqual(["sold-out"]);
+  });
+
+  test("库存风险支持当前范围估算剩余百分比预警", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [order({ id: "paid-a" })],
+      orderItems: [
+        item({
+          id: "ratio-low-item",
+          orderId: "paid-a",
+          productId: "ratio-low",
+          productNameSnapshot: "百分比低库存",
+          quantity: 91,
+          lineType: "normal"
+        }),
+        item({
+          id: "ratio-safe-item",
+          orderId: "paid-a",
+          productId: "ratio-safe",
+          productNameSnapshot: "百分比安全库存",
+          quantity: 80,
+          lineType: "normal"
+        })
+      ],
+      refunds: [],
+      products: [
+        product({ id: "ratio-low", name: "百分比低库存", stockQty: 9, isSellable: true, status: "active" }),
+        product({ id: "ratio-safe", name: "百分比安全库存", stockQty: 20, isSellable: true, status: "active" })
+      ]
+    });
+
+    expect(model.lowStockRows.map((row) => row.productId)).toEqual(["ratio-low"]);
+    expect(model.lowStockRows[0]).toMatchObject({ productId: "ratio-low", stockQty: 9, soldQuantity: 91, stockRemainingPercent: 9 });
+    expect(model.highRiskRows.map((row) => row.productId)).toEqual(["ratio-low"]);
+    expect(model.highRiskRows[0]).toMatchObject({ productId: "ratio-low", stockQty: 9, soldQuantity: 91, stockRemainingPercent: 9 });
   });
 
   test("统计售罄、高风险、滞销和补货建议 SKU", () => {
@@ -689,7 +725,7 @@ describe("buildDashboardModel", () => {
     expect(model.highRiskRows.map((row) => row.productId)).toEqual(["risk-b", "risk-a"]);
     expect(model.highRiskRows[0]).toMatchObject({ productId: "risk-b", stockQty: 1, soldQuantity: 3 });
     expect(model.highRiskRows[1]).toMatchObject({ productId: "risk-a", stockQty: 2, soldQuantity: 2 });
-    expect(model.restockSuggestionRows).toEqual(model.highRiskRows);
+    expect(model.restockSuggestionRows.map((row) => row.productId)).toEqual(["sold-out", "risk-b", "risk-a"]);
     expect(model.slowMovingRows.map((row) => row.productId)).toEqual(["stale-a", "stale-b", "outside-risk"]);
     expect(model.slowMovingRows[0]).toMatchObject({ productId: "stale-a", stockQty: 8, soldQuantity: 0 });
     expect(model.slowMovingRows[2]).toMatchObject({ productId: "outside-risk", stockQty: 1, soldQuantity: 0 });
@@ -738,7 +774,13 @@ describe("buildDashboardModel", () => {
     expect(model.highRiskRows).toHaveLength(5);
     expect(model.slowMovingRows.map((row) => row.productId)).toEqual(["stale-1", "stale-2", "stale-3", "stale-4", "stale-5"]);
     expect(model.slowMovingRows).toHaveLength(5);
-    expect(model.restockSuggestionRows).toEqual(model.highRiskRows);
+    expect(model.restockSuggestionRows.map((row) => row.productId)).toEqual([
+      "risk-1",
+      "sold-out-a",
+      "sold-out-b",
+      "sold-out-c",
+      "sold-out-d"
+    ]);
   });
 
   test("今日异常订单清单包含作废、部分退款、已退款、备注和赠品异常标签", () => {

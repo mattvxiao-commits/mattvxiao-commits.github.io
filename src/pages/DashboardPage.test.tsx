@@ -164,6 +164,7 @@ test("loads full dashboard data and renders core sections", async () => {
   repositories.listProducts.mockResolvedValue([
     product({ id: "sku-a", name: "热销挂件", spu: "挂件", stockQty: 1, status: "active" }),
     product({ id: "sold-out", name: "售罄商品", spu: "挂件", stockQty: 0, status: "active" }),
+    product({ id: "ratio-low", name: "比例低库存", spu: "纸品", stockQty: 9, isSellable: true, status: "active" }),
     product({ id: "stale-a", name: "滞销库存", spu: "纸品", stockQty: 9, isSellable: true, status: "active" }),
     product({ id: "low-1", name: "低库存商品", spu: "挂件", stockQty: 2, status: "active" }),
     product({ id: "safe", name: "库存充足商品", spu: "卡片", stockQty: 3, status: "active" })
@@ -293,10 +294,12 @@ test("loads full dashboard data and renders core sections", async () => {
 
   const lowStock = screen.getByRole("region", { name: "低库存 SKU" });
   expect(lowStock.querySelector(".dashboardRankList")).not.toBeNull();
+  expect(within(lowStock).getByText("库存少于 3，或按当前范围估算剩余不高于 10%。")).toBeVisible();
   const lowStockRow = within(lowStock).getByText("低库存商品").closest(".dashboardRankRow");
   expect(lowStockRow).not.toBeNull();
   expect(within(lowStockRow as HTMLElement).getByText("NORMAL-BASE")).toBeVisible();
   expect(within(lowStockRow as HTMLElement).getByText("库存 2")).toBeVisible();
+  expect(within(lowStock).queryByText("售罄商品")).not.toBeInTheDocument();
 
   const soldOutSku = screen.getByRole("region", { name: "售罄 SKU" });
   expect(soldOutSku.querySelector(".dashboardRankList")).not.toBeNull();
@@ -306,10 +309,11 @@ test("loads full dashboard data and renders core sections", async () => {
 
   const highRiskSku = screen.getByRole("region", { name: "高风险 SKU" });
   expect(highRiskSku.querySelector(".dashboardRankList")).not.toBeNull();
+  expect(within(highRiskSku).getByText("当前范围有销量，且库存量或剩余比例已偏低。")).toBeVisible();
   const highRiskRow = within(highRiskSku).getByText("热销挂件").closest(".dashboardRankRow");
   expect(highRiskRow).not.toBeNull();
   expect(within(highRiskRow as HTMLElement).getByText("售出 3 件")).toBeVisible();
-  expect(within(highRiskRow as HTMLElement).getByText("库存 1")).toBeVisible();
+  expect(within(highRiskRow as HTMLElement).getByText("库存 1 / 剩余 25%")).toBeVisible();
 
   const slowMovingSku = screen.getByRole("region", { name: "滞销 SKU" });
   expect(slowMovingSku.querySelector(".dashboardRankList")).not.toBeNull();
@@ -319,9 +323,15 @@ test("loads full dashboard data and renders core sections", async () => {
 
   const restockSuggestions = screen.getByRole("region", { name: "补货建议" });
   expect(restockSuggestions.querySelector(".dashboardRankList")).not.toBeNull();
+  expect(within(restockSuggestions).getByText("优先处理可售售罄 SKU，其次处理高风险 SKU。")).toBeVisible();
+  const soldOutRestockRow = within(restockSuggestions).getByText("售罄商品").closest(".dashboardRankRow");
+  expect(soldOutRestockRow).not.toBeNull();
+  expect(within(soldOutRestockRow as HTMLElement).getByText("建议补货")).toBeVisible();
+  expect(within(soldOutRestockRow as HTMLElement).getByText("售出 0 / 库存 0 / 剩余 0%")).toBeVisible();
   const restockRow = within(restockSuggestions).getByText("热销挂件").closest(".dashboardRankRow");
   expect(restockRow).not.toBeNull();
   expect(within(restockRow as HTMLElement).getByText("建议补货")).toBeVisible();
+  expect(within(restockRow as HTMLElement).getByText("售出 3 / 库存 1 / 剩余 25%")).toBeVisible();
 
   const exceptions = screen.getByRole("region", { name: "异常订单" });
   expect(exceptions.querySelector(".dashboardExceptionList")).not.toBeNull();

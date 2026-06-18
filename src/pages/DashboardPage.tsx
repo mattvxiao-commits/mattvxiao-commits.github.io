@@ -462,7 +462,7 @@ export default function DashboardPage() {
                 <AlertTriangle size={21} aria-hidden="true" />
                 <div>
                   <h2 id="low-stock-sku-title">低库存 SKU</h2>
-                  <p>库存低于 3 的启用商品。</p>
+                  <p>库存少于 3，或按当前范围估算剩余不高于 10%。</p>
                 </div>
               </div>
 
@@ -482,6 +482,7 @@ export default function DashboardPage() {
                     </div>
                     <div className={row.stockQty === 0 ? "dashboardRowMetric isOut" : "dashboardRowMetric"}>
                       <span>库存 {row.stockQty}</span>
+                      {row.soldQuantity > 0 ? <strong>剩余 {row.stockRemainingPercent}%</strong> : null}
                     </div>
                   </article>
                 ))}
@@ -524,7 +525,7 @@ export default function DashboardPage() {
                 <AlertTriangle size={21} aria-hidden="true" />
                 <div>
                   <h2 id="high-risk-sku-title">高风险 SKU</h2>
-                  <p>当前范围销量高且库存偏低的可售商品。</p>
+                  <p>当前范围有销量，且库存量或剩余比例已偏低。</p>
                 </div>
               </div>
 
@@ -544,7 +545,9 @@ export default function DashboardPage() {
                     </div>
                     <div className={row.stockQty === 0 ? "dashboardRowMetric isOut" : "dashboardRowMetric"}>
                       <span>售出 {row.soldQuantity} 件</span>
-                      <strong>库存 {row.stockQty}</strong>
+                      <strong>
+                        库存 {row.stockQty} / 剩余 {row.stockRemainingPercent}%
+                      </strong>
                     </div>
                   </article>
                 ))}
@@ -587,7 +590,7 @@ export default function DashboardPage() {
                 <AlertTriangle size={21} aria-hidden="true" />
                 <div>
                   <h2 id="restock-suggestions-title">补货建议</h2>
-                  <p>基于当前范围销量和库存生成的补货提醒。</p>
+                  <p>优先处理可售售罄 SKU，其次处理高风险 SKU。</p>
                 </div>
               </div>
 
@@ -608,7 +611,7 @@ export default function DashboardPage() {
                     <div className={row.stockQty === 0 ? "dashboardRowMetric isOut" : "dashboardRowMetric"}>
                       <span>建议补货</span>
                       <strong>
-                        售出 {row.soldQuantity} / 库存 {row.stockQty}
+                        售出 {row.soldQuantity} / 库存 {row.stockQty} / 剩余 {row.stockRemainingPercent}%
                       </strong>
                     </div>
                   </article>

@@ -91,6 +91,8 @@ export type DashboardLowStockRow = {
   spu: string;
   productCode?: string;
   stockQty: number;
+  soldQuantity: number;
+  stockRemainingPercent: number;
   isSellable: boolean;
   isGiftEligible: boolean;
 };
@@ -102,6 +104,7 @@ export type DashboardInventoryRiskRow = {
   productCode?: string;
   stockQty: number;
   soldQuantity: number;
+  stockRemainingPercent: number;
 };
 
 export type DashboardExceptionBadge = "已作废" | "部分退款" | "已退款" | "有备注" | "赠品异常";
@@ -455,9 +458,23 @@ function buildGiftConsumptionRows(rangePaidOrderIds: Set<string>, orderItems: Or
   return sortByQuantityThenName([...rowsByProduct.values()]).slice(0, 5);
 }
 
-function buildLowStockRows(products: Product[]): DashboardLowStockRow[] {
+function calculateStockRemainingPercent(stockQty: number, soldQuantity: number): number {
+  const estimatedStartQty = stockQty + soldQuantity;
+
+  if (estimatedStartQty <= 0) {
+    return 0;
+  }
+
+  return Math.round((stockQty / estimatedStartQty) * 100);
+}
+
+function buildLowStockRows(products: Product[], soldQuantityByProduct: Map<string, number>): DashboardLowStockRow[] {
   return products
-    .filter((product) => product.status === "active" && product.stockQty < 3)
+    .filter((product) => {
+      const soldQuantity = soldQuantityByProduct.get(product.id) ?? 0;
+      const stockRemainingPercent = calculateStockRemainingPercent(product.stockQty, soldQuantity);
+      return product.status === "active" && product.stockQty > 0 && (product.stockQty < 3 || stockRemainingPercent <= 10);
+    })
     .sort((left, right) => {
       if (left.stockQty !== right.stockQty) {
         return left.stockQty - right.stockQty;
@@ -471,6 +488,8 @@ function buildLowStockRows(products: Product[]): DashboardLowStockRow[] {
       spu: product.spu,
       productCode: product.productCode,
       stockQty: product.stockQty,
+      soldQuantity: soldQuantityByProduct.get(product.id) ?? 0,
+      stockRemainingPercent: calculateStockRemainingPercent(product.stockQty, soldQuantityByProduct.get(product.id) ?? 0),
       isSellable: product.isSellable,
       isGiftEligible: product.isGiftEligible
     }));
@@ -497,7 +516,8 @@ function toInventoryRiskRow(product: Product, soldQuantity: number): DashboardIn
     spu: product.spu,
     productCode: product.productCode,
     stockQty: product.stockQty,
-    soldQuantity
+    soldQuantity,
+    stockRemainingPercent: calculateStockRemainingPercent(product.stockQty, soldQuantity)
   };
 }
 
@@ -531,7 +551,8 @@ function buildInventoryRiskRows(
     activeProducts
       .filter((product) => {
         const soldQuantity = soldQuantityByProduct.get(product.id) ?? 0;
-        return product.isSellable && product.stockQty <= 2 && soldQuantity >= 2;
+        const stockRemainingPercent = calculateStockRemainingPercent(product.stockQty, soldQuantity);
+        return product.isSellable && soldQuantity >= 2 && (product.stockQty <= 2 || stockRemainingPercent <= 10);
       })
       .map((product) => toInventoryRiskRow(product, soldQuantityByProduct.get(product.id) ?? 0))
   ).slice(0, 5);
@@ -548,11 +569,16 @@ function buildInventoryRiskRows(
     })
     .slice(0, 5);
 
+  const restockSuggestionRows = [
+    ...soldOutRows.filter((row) => activeProducts.find((product) => product.id === row.productId)?.isSellable),
+    ...highRiskRows.filter((row) => !soldOutRows.some((soldOutRow) => soldOutRow.productId === row.productId))
+  ].slice(0, 5);
+
   return {
     soldOutRows,
     highRiskRows,
     slowMovingRows,
-    restockSuggestionRows: highRiskRows
+    restockSuggestionRows
   };
 }
 
@@ -629,7 +655,8 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
     refundedAmount: allRefundTotalsByOrder.get(order.id) ?? 0
   }));
   const spuRows = buildSpuRows(rangePaidOrderIds, input.orderItems);
-  const inventoryRiskRows = buildInventoryRiskRows(input.products, buildSoldQuantityByProduct(rangePaidOrderIds, input.orderItems));
+  const soldQuantityByProduct = buildSoldQuantityByProduct(rangePaidOrderIds, input.orderItems);
+  const inventoryRiskRows = buildInventoryRiskRows(input.products, soldQuantityByProduct);
 
   return {
     summary: {
@@ -654,7 +681,7 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
     topSellingSpuRows: sortSpuRowsByQuantity(spuRows).slice(0, 5),
     topRevenueSpuRows: sortSpuRowsByAmount(spuRows).slice(0, 5),
     giftConsumptionRows: buildGiftConsumptionRows(rangePaidOrderIds, input.orderItems),
-    lowStockRows: buildLowStockRows(input.products),
+    lowStockRows: buildLowStockRows(input.products, soldQuantityByProduct),
     ...inventoryRiskRows,
     exceptionRows: buildExceptionRows(input.orders, allRefundTotalsByOrder, rangePaidOrderIds, input.dateRange)
   };
