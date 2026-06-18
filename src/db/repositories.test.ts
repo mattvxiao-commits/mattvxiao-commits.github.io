@@ -2,6 +2,7 @@ import "fake-indexeddb/auto";
 import { afterEach, describe, expect, test } from "vitest";
 import { db } from "./db";
 import {
+  getSettings,
   listInventoryLogsForOrder,
   listOrderRefunds,
   listRefunds,
@@ -10,6 +11,7 @@ import {
   voidPaidOrder
 } from "./repositories";
 import type { InventoryLog, Order, OrderItem, OrderRefund, Product } from "../domain/types";
+import { createDefaultFieldLockSettings } from "../domain/fieldLock";
 import { defaultPromotion, product } from "../test/fixtures";
 
 const now = "2026-06-15T12:00:00.000Z";
@@ -101,6 +103,24 @@ async function clearDb() {
 
 afterEach(async () => {
   await clearDb();
+});
+
+describe("getSettings", () => {
+  test("normalizes legacy settings without field lock", async () => {
+    await db.settings.put({
+      id: "settings",
+      shopName: "旧设置",
+      orderPrefix: "OLD",
+      promotion: defaultPromotion()
+    } as never);
+
+    const settings = await getSettings();
+
+    expect(settings.fieldLock).toEqual(createDefaultFieldLockSettings());
+    await expect(db.settings.get("settings")).resolves.toMatchObject({
+      fieldLock: createDefaultFieldLockSettings()
+    });
+  });
 });
 
 describe("savePaidOrder", () => {

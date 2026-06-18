@@ -9,6 +9,7 @@ import type {
   Product,
   RefundReason
 } from "../domain/types";
+import { normalizeFieldLockSettings } from "../domain/fieldLock";
 import { createDefaultSettings, db, type StoredImage } from "./db";
 
 export function makeId(prefix: string): string {
@@ -51,7 +52,16 @@ export async function getImage(id?: string): Promise<StoredImage | undefined> {
 export async function getSettings(): Promise<AppSettings> {
   const existing = await db.settings.get("settings");
   if (existing) {
-    return existing;
+    const normalizedSettings = {
+      ...existing,
+      fieldLock: normalizeFieldLockSettings(existing.fieldLock)
+    };
+
+    if (JSON.stringify(existing.fieldLock) !== JSON.stringify(normalizedSettings.fieldLock)) {
+      await db.settings.put(normalizedSettings);
+    }
+
+    return normalizedSettings;
   }
 
   const settings = createDefaultSettings();
