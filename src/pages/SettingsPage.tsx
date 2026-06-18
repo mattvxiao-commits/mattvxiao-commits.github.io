@@ -1,9 +1,22 @@
-import { Download, Gift, QrCode, Save, Settings2, TicketPercent, Upload } from "lucide-react";
+import { Download, FileSpreadsheet, Gift, QrCode, Save, Settings2, TicketPercent, Upload } from "lucide-react";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
-import { getSettings, listProducts, saveImage, saveSettings } from "../db/repositories";
+import {
+  getSettings,
+  listInventoryLogsForOrder,
+  listOrderItems,
+  listOrders,
+  listProducts,
+  listRefunds,
+  saveImage,
+  saveSettings
+} from "../db/repositories";
+import { buildOrderExportSheets } from "../domain/orderExport";
 import { displayProductCode } from "../domain/productCode";
 import type { AppSettings, GiftConfig, Product } from "../domain/types";
 import { exportJsonBackup, IMAGE_BACKUP_NOTE, importJsonBackup } from "../utils/backup";
+import { exportOrderExcel } from "../utils/orderExcelExport";
+
+const APP_VERSION = "0.1.0";
 
 type StatusKind = "success" | "error";
 
@@ -119,11 +132,12 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingOrders, setIsExportingOrders] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [status, setStatus] = useState<StatusMessage>();
   const [pendingImportFile, setPendingImportFile] = useState<File>();
   const importInputRef = useRef<HTMLInputElement>(null);
-  const isBusy = isSaving || isExporting || isImporting;
+  const isBusy = isSaving || isExporting || isExportingOrders || isImporting;
 
   useEffect(() => {
     let isCurrent = true;
@@ -259,6 +273,40 @@ export default function SettingsPage() {
       setStatus({ kind: "error", text: "备份导出失败，请稍后重试。" });
     } finally {
       setIsExporting(false);
+    }
+  }
+
+  async function handleOrderExcelExport() {
+    if (isBusy) {
+      return;
+    }
+
+    setIsExportingOrders(true);
+    setStatus(undefined);
+
+    try {
+      const exportedAt = new Date().toISOString();
+      const [orders, refunds, currentProducts] = await Promise.all([listOrders(), listRefunds(), listProducts()]);
+      const [orderItemGroups, inventoryLogGroups] = await Promise.all([
+        Promise.all(orders.map((order) => listOrderItems(order.id))),
+        Promise.all(orders.map((order) => listInventoryLogsForOrder(order.id)))
+      ]);
+      const sheets = buildOrderExportSheets({
+        orders,
+        orderItems: orderItemGroups.flat(),
+        refunds,
+        inventoryLogs: inventoryLogGroups.flat(),
+        products: currentProducts,
+        exportedAt,
+        appVersion: APP_VERSION
+      });
+
+      exportOrderExcel({ sheets, exportedAt });
+      setStatus({ kind: "success", text: "订单 Excel 已导出。" });
+    } catch {
+      setStatus({ kind: "error", text: "订单 Excel 导出失败，请稍后重试。" });
+    } finally {
+      setIsExportingOrders(false);
     }
   }
 
@@ -664,6 +712,27 @@ export default function SettingsPage() {
               <button type="button" className="secondaryButton" disabled={isBusy} onClick={() => importInputRef.current?.click()}>
                 <Upload size={18} aria-hidden="true" />
                 {isImporting ? "导入中..." : "导入备份"}
+              </button>
+            </div>
+          </section>
+
+          <section className="settingsSection wideSection" aria-labelledby="table-export-settings-title">
+            <div className="sectionTitle">
+              <FileSpreadsheet size={21} aria-hidden="true" />
+              <div>
+                <h2 id="table-export-settings-title">表格导出</h2>
+                <p>Excel 用于统计、盘点和复盘，不能用于恢复系统数据。恢复数据请使用 JSON 备份。</p>
+              </div>
+            </div>
+            <div className="backupActions">
+              <button
+                type="button"
+                className="secondaryButton"
+                disabled={isBusy}
+                onClick={() => void handleOrderExcelExport()}
+              >
+                <FileSpreadsheet size={18} aria-hidden="true" />
+                {isExportingOrders ? "导出中..." : "导出订单 Excel"}
               </button>
             </div>
           </section>

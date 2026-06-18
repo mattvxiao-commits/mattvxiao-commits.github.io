@@ -6,7 +6,11 @@ import SettingsPage from "./SettingsPage";
 
 const repositories = vi.hoisted(() => ({
   getSettings: vi.fn(),
+  listInventoryLogsForOrder: vi.fn(),
+  listOrderItems: vi.fn(),
+  listOrders: vi.fn(),
   listProducts: vi.fn(),
+  listRefunds: vi.fn(),
   saveImage: vi.fn(),
   saveSettings: vi.fn()
 }));
@@ -16,6 +20,10 @@ const backupUtils = vi.hoisted(() => ({
   importJsonBackup: vi.fn()
 }));
 
+const orderExcelExportUtils = vi.hoisted(() => ({
+  exportOrderExcel: vi.fn()
+}));
+
 vi.mock("../db/repositories", () => repositories);
 
 vi.mock("../utils/backup", () => ({
@@ -23,6 +31,8 @@ vi.mock("../utils/backup", () => ({
   exportJsonBackup: backupUtils.exportJsonBackup,
   importJsonBackup: backupUtils.importJsonBackup
 }));
+
+vi.mock("../utils/orderExcelExport", () => orderExcelExportUtils);
 
 const settings: AppSettings = {
   id: "settings",
@@ -39,9 +49,14 @@ beforeEach(() => {
     product({ id: "addon-2", name: "优惠商品 2", spu: "优惠SPU" }),
     product({ id: "normal", name: "普通商品", spu: "普通SPU" })
   ]);
+  repositories.listOrders.mockResolvedValue([]);
+  repositories.listOrderItems.mockResolvedValue([]);
+  repositories.listInventoryLogsForOrder.mockResolvedValue([]);
+  repositories.listRefunds.mockResolvedValue([]);
   repositories.saveSettings.mockResolvedValue(undefined);
   backupUtils.exportJsonBackup.mockResolvedValue(undefined);
   backupUtils.importJsonBackup.mockResolvedValue(undefined);
+  orderExcelExportUtils.exportOrderExcel.mockReturnValue(undefined);
 });
 
 test("selects add-on discount SPU from product SPU options and saves it", async () => {
@@ -204,4 +219,70 @@ test("warns when importing a legacy backup without images", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "确认导入并覆盖" }));
 
   expect(await screen.findByText("备份已导入，当前数据已替换。旧版备份不包含图片，商品图需要重新上传。")).toBeVisible();
+});
+
+test("exports order Excel from settings page for analysis only", async () => {
+  repositories.listOrders.mockResolvedValue([
+    {
+      id: "order-1",
+      orderNo: "ECRM-001",
+      status: "paid",
+      paymentMethod: "cash",
+      subtotalBeforeDiscount: 10,
+      discountAmount: 0,
+      payableAmount: 10,
+      promotionSnapshot: defaultPromotion(),
+      giftStockWarning: false,
+      createdAt: "2026-06-18T10:00:00.000Z",
+      paidAt: "2026-06-18T10:01:00.000Z"
+    }
+  ]);
+  repositories.listOrderItems.mockResolvedValue([
+    {
+      id: "item-1",
+      orderId: "order-1",
+      productId: "normal",
+      productNameSnapshot: "普通商品",
+      spuSnapshot: "普通SPU",
+      quantity: 1,
+      originalUnitPrice: 10,
+      finalUnitPrice: 10,
+      lineType: "normal",
+      lineTotal: 10,
+      unitCostSnapshot: 4,
+      costTotal: 4,
+      grossProfit: 6
+    }
+  ]);
+
+  render(<SettingsPage />);
+
+  expect(await screen.findByText("表格导出")).toBeVisible();
+  expect(screen.getByText("Excel 用于统计、盘点和复盘，不能用于恢复系统数据。恢复数据请使用 JSON 备份。")).toBeVisible();
+
+  fireEvent.click(screen.getByRole("button", { name: "导出订单 Excel" }));
+
+  await waitFor(() => expect(orderExcelExportUtils.exportOrderExcel).toHaveBeenCalledTimes(1));
+  const exportInput = orderExcelExportUtils.exportOrderExcel.mock.calls[0][0];
+  expect(exportInput.sheets.map((sheet: { name: string }) => sheet.name)).toEqual([
+    "订单汇总",
+    "订单明细",
+    "退款记录",
+    "库存流水",
+    "商品当前数据",
+    "导出说明"
+  ]);
+  expect(exportInput.sheets[0].rows[0].订单编号).toBe("ECRM-001");
+  expect(await screen.findByText("订单 Excel 已导出。")).toBeVisible();
+});
+
+test("shows sanitized error when order Excel export fails", async () => {
+  repositories.listOrders.mockRejectedValue(new Error("raw indexeddb failure"));
+
+  render(<SettingsPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "导出订单 Excel" }));
+
+  expect(await screen.findByText("订单 Excel 导出失败，请稍后重试。")).toBeVisible();
+  expect(screen.queryByText(/raw indexeddb failure/)).not.toBeInTheDocument();
 });
