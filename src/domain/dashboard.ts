@@ -95,6 +95,15 @@ export type DashboardLowStockRow = {
   isGiftEligible: boolean;
 };
 
+export type DashboardInventoryRiskRow = {
+  productId: string;
+  productName: string;
+  spu: string;
+  productCode?: string;
+  stockQty: number;
+  soldQuantity: number;
+};
+
 export type DashboardExceptionBadge = "已作废" | "部分退款" | "已退款" | "有备注" | "赠品异常";
 
 export type DashboardExceptionRow = {
@@ -117,6 +126,10 @@ export type DashboardModel = {
   topRevenueSpuRows: DashboardSpuRow[];
   giftConsumptionRows: DashboardGiftRow[];
   lowStockRows: DashboardLowStockRow[];
+  soldOutRows: DashboardInventoryRiskRow[];
+  highRiskRows: DashboardInventoryRiskRow[];
+  slowMovingRows: DashboardInventoryRiskRow[];
+  restockSuggestionRows: DashboardInventoryRiskRow[];
   exceptionRows: DashboardExceptionRow[];
 };
 
@@ -463,6 +476,86 @@ function buildLowStockRows(products: Product[]): DashboardLowStockRow[] {
     }));
 }
 
+function buildSoldQuantityByProduct(rangePaidOrderIds: Set<string>, orderItems: OrderItem[]): Map<string, number> {
+  const soldQuantityByProduct = new Map<string, number>();
+
+  for (const item of orderItems) {
+    if (!rangePaidOrderIds.has(item.orderId) || item.lineType === "gift") {
+      continue;
+    }
+
+    soldQuantityByProduct.set(item.productId, (soldQuantityByProduct.get(item.productId) ?? 0) + item.quantity);
+  }
+
+  return soldQuantityByProduct;
+}
+
+function toInventoryRiskRow(product: Product, soldQuantity: number): DashboardInventoryRiskRow {
+  return {
+    productId: product.id,
+    productName: product.name,
+    spu: product.spu,
+    productCode: product.productCode,
+    stockQty: product.stockQty,
+    soldQuantity
+  };
+}
+
+function sortInventoryRiskRows(rows: DashboardInventoryRiskRow[]): DashboardInventoryRiskRow[] {
+  return [...rows].sort((left, right) => {
+    if (left.stockQty !== right.stockQty) {
+      return left.stockQty - right.stockQty;
+    }
+
+    if (right.soldQuantity !== left.soldQuantity) {
+      return right.soldQuantity - left.soldQuantity;
+    }
+
+    return left.productName.localeCompare(right.productName, "zh-Hans-CN");
+  });
+}
+
+function buildInventoryRiskRows(
+  products: Product[],
+  soldQuantityByProduct: Map<string, number>
+): Pick<DashboardModel, "soldOutRows" | "highRiskRows" | "slowMovingRows" | "restockSuggestionRows"> {
+  const activeProducts = products.filter((product) => product.status === "active");
+
+  const soldOutRows = activeProducts
+    .filter((product) => product.stockQty === 0)
+    .map((product) => toInventoryRiskRow(product, soldQuantityByProduct.get(product.id) ?? 0))
+    .sort((left, right) => left.productName.localeCompare(right.productName, "zh-Hans-CN"))
+    .slice(0, 5);
+
+  const highRiskRows = sortInventoryRiskRows(
+    activeProducts
+      .filter((product) => {
+        const soldQuantity = soldQuantityByProduct.get(product.id) ?? 0;
+        return product.isSellable && product.stockQty <= 2 && soldQuantity >= 2;
+      })
+      .map((product) => toInventoryRiskRow(product, soldQuantityByProduct.get(product.id) ?? 0))
+  ).slice(0, 5);
+
+  const slowMovingRows = activeProducts
+    .filter((product) => product.isSellable && product.stockQty > 0 && (soldQuantityByProduct.get(product.id) ?? 0) === 0)
+    .map((product) => toInventoryRiskRow(product, 0))
+    .sort((left, right) => {
+      if (right.stockQty !== left.stockQty) {
+        return right.stockQty - left.stockQty;
+      }
+
+      return left.productName.localeCompare(right.productName, "zh-Hans-CN");
+    })
+    .slice(0, 5);
+
+  return {
+    soldOutRows,
+    highRiskRows,
+    slowMovingRows,
+    restockSuggestionRows: highRiskRows
+  };
+}
+
 function isRangeCancelledOrder(order: Order, range: DashboardDateRange): boolean {
   return order.status === "cancelled" && isInDateRange(order.cancelledAt, range);
 }
@@ -536,6 +629,7 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
     refundedAmount: allRefundTotalsByOrder.get(order.id) ?? 0
   }));
   const spuRows = buildSpuRows(rangePaidOrderIds, input.orderItems);
+  const inventoryRiskRows = buildInventoryRiskRows(input.products, buildSoldQuantityByProduct(rangePaidOrderIds, input.orderItems));
 
   return {
     summary: {
@@ -561,6 +655,7 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
     topRevenueSpuRows: sortSpuRowsByAmount(spuRows).slice(0, 5),
     giftConsumptionRows: buildGiftConsumptionRows(rangePaidOrderIds, input.orderItems),
     lowStockRows: buildLowStockRows(input.products),
+    ...inventoryRiskRows,
     exceptionRows: buildExceptionRows(input.orders, allRefundTotalsByOrder, rangePaidOrderIds, input.dateRange)
   };
 }

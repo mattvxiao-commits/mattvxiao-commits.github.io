@@ -643,6 +643,104 @@ describe("buildDashboardModel", () => {
     expect(model.lowStockRows.map((row) => row.productId)).toEqual(["sold-out", "gift-only"]);
   });
 
+  test("统计售罄、高风险、滞销和补货建议 SKU", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [
+        order({ id: "paid-a" }),
+        order({ id: "paid-b", paidAt: "2026-06-15T10:00:00.000Z" }),
+        order({ id: "outside", paidAt: "2026-06-14T10:00:00.000Z" })
+      ],
+      orderItems: [
+        item({
+          id: "risk-a-normal",
+          orderId: "paid-a",
+          productId: "risk-a",
+          productNameSnapshot: "热卖低库存 A",
+          quantity: 2,
+          lineType: "normal"
+        }),
+        item({
+          id: "risk-b-addon",
+          orderId: "paid-b",
+          productId: "risk-b",
+          productNameSnapshot: "热卖低库存 B",
+          quantity: 3,
+          lineType: "discount_addon"
+        }),
+        item({ id: "gift-only", orderId: "paid-a", productId: "gift-only", quantity: 9, lineType: "gift" }),
+        item({ id: "outside-risk", orderId: "outside", productId: "outside-risk", quantity: 9, lineType: "normal" })
+      ],
+      refunds: [],
+      products: [
+        product({ id: "sold-out", name: "售罄商品", stockQty: 0, isSellable: true, status: "active" }),
+        product({ id: "risk-a", name: "热卖低库存 A", stockQty: 2, isSellable: true, status: "active" }),
+        product({ id: "risk-b", name: "热卖低库存 B", stockQty: 1, isSellable: true, status: "active" }),
+        product({ id: "stale-a", name: "滞销 A", stockQty: 8, isSellable: true, status: "active" }),
+        product({ id: "stale-b", name: "滞销 B", stockQty: 3, isSellable: true, status: "active" }),
+        product({ id: "gift-only", name: "仅赠品", stockQty: 1, isSellable: false, isGiftEligible: true, status: "active" }),
+        product({ id: "inactive", name: "停用商品", stockQty: 0, status: "inactive" }),
+        product({ id: "outside-risk", name: "范围外商品", stockQty: 1, isSellable: true, status: "active" })
+      ]
+    });
+
+    expect(model.soldOutRows.map((row) => row.productId)).toEqual(["sold-out"]);
+    expect(model.soldOutRows[0]).toMatchObject({ productId: "sold-out", stockQty: 0, soldQuantity: 0 });
+    expect(model.highRiskRows.map((row) => row.productId)).toEqual(["risk-b", "risk-a"]);
+    expect(model.highRiskRows[0]).toMatchObject({ productId: "risk-b", stockQty: 1, soldQuantity: 3 });
+    expect(model.highRiskRows[1]).toMatchObject({ productId: "risk-a", stockQty: 2, soldQuantity: 2 });
+    expect(model.restockSuggestionRows).toEqual(model.highRiskRows);
+    expect(model.slowMovingRows.map((row) => row.productId)).toEqual(["stale-a", "stale-b", "outside-risk"]);
+    expect(model.slowMovingRows[0]).toMatchObject({ productId: "stale-a", stockQty: 8, soldQuantity: 0 });
+    expect(model.slowMovingRows[2]).toMatchObject({ productId: "outside-risk", stockQty: 1, soldQuantity: 0 });
+  });
+
+  test("库存风险排行最多 5 条并按库存、销量和商品名排序", () => {
+    const products = [
+      product({ id: "risk-1", name: "风险 1", stockQty: 0 }),
+      product({ id: "risk-2", name: "风险 2", stockQty: 1 }),
+      product({ id: "risk-3", name: "风险 3", stockQty: 1 }),
+      product({ id: "risk-4", name: "风险 4", stockQty: 2 }),
+      product({ id: "risk-5", name: "风险 5", stockQty: 2 }),
+      product({ id: "risk-6", name: "风险 6", stockQty: 2 }),
+      product({ id: "stale-1", name: "滞销 1", stockQty: 9 }),
+      product({ id: "stale-2", name: "滞销 2", stockQty: 8 }),
+      product({ id: "stale-3", name: "滞销 3", stockQty: 7 }),
+      product({ id: "stale-4", name: "滞销 4", stockQty: 6 }),
+      product({ id: "stale-5", name: "滞销 5", stockQty: 5 }),
+      product({ id: "stale-6", name: "滞销 6", stockQty: 4 }),
+      product({ id: "sold-out-a", name: "售罄 A", stockQty: 0 }),
+      product({ id: "sold-out-b", name: "售罄 B", stockQty: 0 }),
+      product({ id: "sold-out-c", name: "售罄 C", stockQty: 0 }),
+      product({ id: "sold-out-d", name: "售罄 D", stockQty: 0 }),
+      product({ id: "sold-out-e", name: "售罄 E", stockQty: 0 }),
+      product({ id: "sold-out-f", name: "售罄 F", stockQty: 0 })
+    ];
+
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [order({ id: "paid-a" })],
+      orderItems: [
+        item({ id: "risk-1-item", orderId: "paid-a", productId: "risk-1", quantity: 2 }),
+        item({ id: "risk-2-item", orderId: "paid-a", productId: "risk-2", quantity: 4 }),
+        item({ id: "risk-3-item", orderId: "paid-a", productId: "risk-3", quantity: 2 }),
+        item({ id: "risk-4-item", orderId: "paid-a", productId: "risk-4", quantity: 5 }),
+        item({ id: "risk-5-item", orderId: "paid-a", productId: "risk-5", quantity: 3 }),
+        item({ id: "risk-6-item", orderId: "paid-a", productId: "risk-6", quantity: 2 })
+      ],
+      refunds: [],
+      products
+    });
+
+    expect(model.soldOutRows.map((row) => row.productId)).toEqual(["risk-1", "sold-out-a", "sold-out-b", "sold-out-c", "sold-out-d"]);
+    expect(model.soldOutRows).toHaveLength(5);
+    expect(model.highRiskRows.map((row) => row.productId)).toEqual(["risk-1", "risk-2", "risk-3", "risk-4", "risk-5"]);
+    expect(model.highRiskRows).toHaveLength(5);
+    expect(model.slowMovingRows.map((row) => row.productId)).toEqual(["stale-1", "stale-2", "stale-3", "stale-4", "stale-5"]);
+    expect(model.slowMovingRows).toHaveLength(5);
+    expect(model.restockSuggestionRows).toEqual(model.highRiskRows);
+  });
+
   test("今日异常订单清单包含作废、部分退款、已退款、备注和赠品异常标签", () => {
     const model = buildDashboardModel({
       dateRange: todayRange,
