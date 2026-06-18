@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { exportOrderExcel } from "./orderExcelExport";
 
-const { bookNew, jsonToSheet, bookAppendSheet, write, saveAs } = vi.hoisted(() => ({
-  bookNew: vi.fn(() => ({ SheetNames: [], Sheets: {} })),
+const { workbook, bookNew, jsonToSheet, bookAppendSheet, write, saveAs } = vi.hoisted(() => ({
+  workbook: { SheetNames: [], Sheets: {} },
+  bookNew: vi.fn(),
   jsonToSheet: vi.fn((rows) => ({ worksheetRows: rows })),
   bookAppendSheet: vi.fn(),
   write: vi.fn(() => new ArrayBuffer(8)),
@@ -25,6 +26,7 @@ vi.mock("file-saver", () => ({
 describe("exportOrderExcel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    bookNew.mockReturnValue(workbook);
   });
 
   it("把订单导出 sheet 写入 xlsx 并保存文件", () => {
@@ -40,12 +42,13 @@ describe("exportOrderExcel", () => {
     });
 
     expect(bookNew).toHaveBeenCalledOnce();
+    expect(bookNew).toHaveReturnedWith(workbook);
     expect(jsonToSheet).toHaveBeenNthCalledWith(1, summaryRows);
     expect(jsonToSheet).toHaveBeenNthCalledWith(2, detailRows);
     expect(jsonToSheet).toHaveBeenCalledTimes(2);
-    expect(bookAppendSheet).toHaveBeenNthCalledWith(1, expect.anything(), { worksheetRows: summaryRows }, "订单汇总");
-    expect(bookAppendSheet).toHaveBeenNthCalledWith(2, expect.anything(), { worksheetRows: detailRows }, "订单明细");
-    expect(write).toHaveBeenCalledWith(expect.anything(), { bookType: "xlsx", type: "array" });
+    expect(bookAppendSheet).toHaveBeenNthCalledWith(1, workbook, { worksheetRows: summaryRows }, "订单汇总");
+    expect(bookAppendSheet).toHaveBeenNthCalledWith(2, workbook, { worksheetRows: detailRows }, "订单明细");
+    expect(write).toHaveBeenCalledWith(workbook, { bookType: "xlsx", type: "array" });
     const blob = saveAs.mock.calls[0][0];
     expect(blob).toBeInstanceOf(Blob);
     expect(blob.type).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
