@@ -779,7 +779,7 @@ p {
   display: grid;
   grid-template-columns: minmax(0, auto) auto;
   gap: 8px;
-  align-items: start;
+  align-items: end;
   justify-content: end;
   max-width: min(100%, 680px);
 }
@@ -793,11 +793,18 @@ p {
   min-width: 0;
 }
 
-.dashboardRangeSwitch .secondaryButton,
-.dashboardRefreshButton {
+.dashboardRangeSwitch .secondaryButton {
   min-height: 34px;
   padding: 0 11px;
   font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.dashboardRefreshButton {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 14px;
   line-height: 1;
   white-space: nowrap;
 }

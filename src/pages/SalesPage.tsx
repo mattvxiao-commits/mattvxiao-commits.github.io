@@ -10,6 +10,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import CartPanel from "../components/CartPanel";
 import CheckoutPanel from "../components/CheckoutPanel";
+import FieldLockDialog from "../components/FieldLockDialog";
 import FieldLockStatus from "../components/FieldLockStatus";
 import OrderDetailDialog from "../components/OrderDetailDialog";
 import {
@@ -26,6 +27,7 @@ import {
   voidPaidOrder
 } from "../db/repositories";
 import { resolveGiftLines, type GiftSelections } from "../domain/giftSelection";
+import { requiresFieldLockUnlock, verifyFieldLockPin } from "../domain/fieldLock";
 import { formatMoney } from "../domain/money";
 import { buildPaidOrder } from "../domain/order";
 import {
@@ -248,6 +250,8 @@ export default function SalesPage() {
   const [selectedOrderInventoryLogs, setSelectedOrderInventoryLogs] = useState<InventoryLog[]>([]);
   const [selectedOrderRefunds, setSelectedOrderRefunds] = useState<OrderRefund[]>([]);
   const [isOrderDetailLoading, setIsOrderDetailLoading] = useState(false);
+  const [orderPendingUnlock, setOrderPendingUnlock] = useState<Order>();
+  const [isOrderUnlockOpen, setIsOrderUnlockOpen] = useState(false);
   const [isVoidingOrder, setIsVoidingOrder] = useState(false);
   const [isSavingRefund, setIsSavingRefund] = useState(false);
   const [giftSelections, setGiftSelections] = useState<GiftSelections>({});
@@ -410,6 +414,47 @@ export default function SalesPage() {
     } finally {
       setIsOrderDetailLoading(false);
     }
+  }
+
+  function requestOrderDetail(order: Order) {
+    if (settings && requiresFieldLockUnlock(settings.fieldLock)) {
+      setOrderPendingUnlock(order);
+      setIsOrderUnlockOpen(true);
+      return;
+    }
+
+    void openOrderDetail(order);
+  }
+
+  async function handleVerifyOrderUnlock(pin: string) {
+    if (!settings) {
+      return { success: false, message: "设置尚未加载完成，请稍后重试。" };
+    }
+
+    const result = await verifyFieldLockPin(settings.fieldLock, pin);
+    const nextSettings = {
+      ...settings,
+      fieldLock: result.settings
+    };
+
+    setSettings(nextSettings);
+    await saveSettings(nextSettings);
+    notifySettingsUpdated(nextSettings);
+    return { success: result.success, message: result.message };
+  }
+
+  function handleOrderUnlockVerified() {
+    const nextOrder = orderPendingUnlock;
+    setIsOrderUnlockOpen(false);
+    setOrderPendingUnlock(undefined);
+    if (nextOrder) {
+      void openOrderDetail(nextOrder);
+    }
+  }
+
+  function handleCancelOrderUnlock() {
+    setIsOrderUnlockOpen(false);
+    setOrderPendingUnlock(undefined);
   }
 
   function closeOrderDetail() {
@@ -784,7 +829,7 @@ export default function SalesPage() {
                     className="orderHistoryOpenButton"
                     aria-label={`查看订单 ${order.orderNo}`}
                     disabled={isOrderDetailLoading}
-                    onClick={() => void openOrderDetail(order)}
+                    onClick={() => requestOrderDetail(order)}
                   >
                     <span>
                       <strong>{order.orderNo}</strong>
@@ -832,6 +877,12 @@ export default function SalesPage() {
           isSavingRefund={isSavingRefund}
         />
       ) : null}
+      <FieldLockDialog
+        isOpen={isOrderUnlockOpen}
+        onCancel={handleCancelOrderUnlock}
+        onVerify={handleVerifyOrderUnlock}
+        onVerified={handleOrderUnlockVerified}
+      />
     </section>
   );
 }

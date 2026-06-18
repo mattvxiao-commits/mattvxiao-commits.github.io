@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, expect, test, vi } from "vitest";
+import { setFieldLockPin } from "../domain/fieldLock";
 import type { AppSettings, InventoryLog, Order, OrderItem } from "../domain/types";
 import { useCartStore } from "../state/cartStore";
 import { appSettings, defaultPromotion, product } from "../test/fixtures";
@@ -476,6 +477,44 @@ test("opens order detail dialog with order items and inventory logs", async () =
   expect(within(inventoryList).getByText("HIS-BASE / 历史SPU")).toBeVisible();
   expect(within(inventoryList).getByText("库存 10 -> 8")).toBeVisible();
   expect(within(dialog).queryByRole("button", { name: "退款" })).not.toBeInTheDocument();
+});
+
+test("requires field lock PIN before opening order detail when field mode is locked", async () => {
+  repositories.getSettings.mockResolvedValue({
+    ...settings,
+    fieldLock: await setFieldLockPin(settings.fieldLock, "2580", "2580")
+  });
+  repositories.listOrders.mockResolvedValue([
+    order({
+      id: "order-detail",
+      orderNo: "ECRM-DETAIL",
+      paymentMethod: "alipay",
+      payableAmount: 42.5,
+      createdAt: localIsoDateTime(0, 9, 20),
+      paidAt: localIsoDateTime(0, 9, 25)
+    })
+  ]);
+  repositories.listOrderItems.mockResolvedValue([orderItem({ orderId: "order-detail" })]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
+
+  expect(await screen.findByRole("dialog", { name: "管理页面已锁定" })).toBeVisible();
+  expect(screen.queryByRole("dialog", { name: "订单详情 ECRM-DETAIL" })).not.toBeInTheDocument();
+  expect(repositories.listOrderItems).not.toHaveBeenCalledWith("order-detail");
+  expect(repositories.listInventoryLogsForOrder).not.toHaveBeenCalledWith("order-detail");
+  expect(repositories.listOrderRefunds).not.toHaveBeenCalledWith("order-detail");
+
+  fireEvent.change(screen.getByLabelText("4 位数字密码"), { target: { value: "2580" } });
+  fireEvent.click(screen.getByRole("button", { name: "解锁" }));
+
+  expect(await screen.findByRole("dialog", { name: "订单详情 ECRM-DETAIL" })).toBeVisible();
+  expect(repositories.listOrderItems).toHaveBeenCalledWith("order-detail");
+  await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalled());
+  const savedSettings = repositories.saveSettings.mock.calls.at(-1)?.[0] as AppSettings;
+  expect(savedSettings.fieldLock.unlockExpiresAt).toBeDefined();
 });
 
 test("opens order detail dialog with refund records", async () => {
