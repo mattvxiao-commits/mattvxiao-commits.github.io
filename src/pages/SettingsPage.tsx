@@ -1,4 +1,4 @@
-import { Download, FileSpreadsheet, Gift, QrCode, Save, Settings2, TicketPercent, Upload } from "lucide-react";
+import { Download, FileSpreadsheet, Gift, Info, QrCode, Save, Settings2, TicketPercent, Upload } from "lucide-react";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import FieldLockSettingsPanel from "../components/FieldLockSettingsPanel";
 import {
@@ -18,7 +18,7 @@ import { exportJsonBackup, IMAGE_BACKUP_NOTE, importJsonBackup } from "../utils/
 import { exportOrderExcel } from "../utils/orderExcelExport";
 import { notifySettingsUpdated } from "../utils/settingsEvents";
 
-const APP_VERSION = "0.1.0";
+const APP_VERSION = __APP_VERSION__;
 
 type StatusKind = "success" | "error";
 
@@ -767,6 +767,30 @@ export default function SettingsPage() {
                 {isExportingOrders ? "导出中..." : "导出订单 Excel"}
               </button>
             </div>
+          </section>
+
+          <section className="settingsSection wideSection" aria-labelledby="system-info-settings-title">
+            <div className="sectionTitle">
+              <Info size={21} aria-hidden="true" />
+              <div>
+                <h2 id="system-info-settings-title">系统信息</h2>
+                <p>用于确认当前运行版本、部署方式和本机数据存储位置。</p>
+              </div>
+            </div>
+            <dl className="systemInfoList">
+              <div>
+                <dt>当前版本</dt>
+                <dd>v{APP_VERSION}</dd>
+              </div>
+              <div>
+                <dt>部署方式</dt>
+                <dd>GitHub Pages / PWA</dd>
+              </div>
+              <div>
+                <dt>数据存储</dt>
+                <dd>当前设备浏览器 IndexedDB</dd>
+              </div>
+            </dl>
           </section>
         </div>
       ) : null}

@@ -62,6 +62,16 @@ test("renders the app shell navigation and redirects to products by default", as
   ).toBeVisible();
 });
 
+test("shows the running app version in the top bar", async () => {
+  render(
+    <MemoryRouter initialEntries={["/sales"]}>
+      <App />
+    </MemoryRouter>
+  );
+
+  expect(await screen.findByText("v1.5.4")).toBeVisible();
+});
+
 test("shows shop name in the top bar subtitle and refreshes it after settings update", async () => {
   repositories.getSettings.mockResolvedValue({
     ...createDefaultSettings(),

@@ -56,6 +56,19 @@ beforeEach(() => {
   orderExcelExportUtils.exportOrderExcel.mockReturnValue(undefined);
 });
 
+test("shows system version information for support and cache checks", async () => {
+  render(<SettingsPage />);
+
+  const systemInfo = await screen.findByRole("region", { name: "系统信息" });
+
+  expect(within(systemInfo).getByText("当前版本")).toBeVisible();
+  expect(within(systemInfo).getByText("v1.5.4")).toBeVisible();
+  expect(within(systemInfo).getByText("部署方式")).toBeVisible();
+  expect(within(systemInfo).getByText("GitHub Pages / PWA")).toBeVisible();
+  expect(within(systemInfo).getByText("数据存储")).toBeVisible();
+  expect(within(systemInfo).getByText("当前设备浏览器 IndexedDB")).toBeVisible();
+});
+
 test("selects add-on discount SPU from product SPU options and saves it", async () => {
   render(<SettingsPage />);
 

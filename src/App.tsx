@@ -247,7 +247,10 @@ export default function App() {
             <Store size={21} strokeWidth={2.4} />
           </div>
           <div>
-            <div className="brand">ECRM</div>
+            <div className="brandLine">
+              <div className="brand">ECRM</div>
+              <span className="versionBadge">v{__APP_VERSION__}</span>
+            </div>
             <div className="subtitle">{brandSubtitle}</div>
           </div>
         </div>
