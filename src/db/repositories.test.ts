@@ -2,6 +2,8 @@ import "fake-indexeddb/auto";
 import { afterEach, describe, expect, test } from "vitest";
 import { db } from "./db";
 import {
+  adjustOrderAccounting,
+  adjustOrderItemAccounting,
   getSettings,
   listInventoryLogsForOrder,
   listOrderRefunds,
@@ -106,6 +108,17 @@ afterEach(async () => {
 });
 
 describe("getSettings", () => {
+  test("creates default settings with campaign gift disabled", async () => {
+    const settings = await getSettings();
+
+    expect(settings.campaignGift).toEqual({
+      enabled: false,
+      activityName: "运营赠礼",
+      defaultProductId: "",
+      requireSaleLine: true
+    });
+  });
+
   test("normalizes legacy settings without field lock", async () => {
     await db.settings.put({
       id: "settings",
@@ -117,7 +130,19 @@ describe("getSettings", () => {
     const settings = await getSettings();
 
     expect(settings.fieldLock).toEqual(createDefaultFieldLockSettings());
+    expect(settings.campaignGift).toEqual({
+      enabled: false,
+      activityName: "运营赠礼",
+      defaultProductId: "",
+      requireSaleLine: true
+    });
     await expect(db.settings.get("settings")).resolves.toMatchObject({
+      campaignGift: {
+        enabled: false,
+        activityName: "运营赠礼",
+        defaultProductId: "",
+        requireSaleLine: true
+      },
       fieldLock: createDefaultFieldLockSettings()
     });
   });
@@ -178,6 +203,70 @@ describe("savePaidOrder", () => {
     expect(await db.inventoryLogs.count()).toBe(0);
     expect((await db.products.get("normal"))?.stockQty).toBe(0);
   });
+
+  test("saves paid orders with non-sales outbound inventory logs", async () => {
+    await db.products.bulkPut([
+      product({ id: "normal", name: "普通商品", stockQty: 5 }),
+      product({ id: "manual-gift", name: "人工赠品", stockQty: 3 })
+    ]);
+
+    await savePaidOrder({
+      order: {
+        ...paidOrder(),
+        orderNature: "mixed",
+        nonSalesQuantity: 1,
+        nonSalesCost: 2,
+        nonOperatingOutboundCost: 2
+      },
+      orderItems: [
+        ...orderItems(),
+        {
+          id: "line-manual-gift",
+          orderId: "order-1",
+          productId: "manual-gift",
+          productNameSnapshot: "人工赠品",
+          spuSnapshot: "赠品SPU",
+          quantity: 1,
+          originalUnitPrice: 9,
+          finalUnitPrice: 0,
+          lineType: "gift",
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "manual_gift",
+          nonSalesNote: "好友赠送",
+          statisticalUnitPrice: 0,
+          statisticalSubtotal: 0,
+          discountGiveawayAmount: 0,
+          costTotal: 2,
+          grossProfit: -2
+        }
+      ],
+      inventoryLogs: [
+        ...inventoryLogs(),
+        {
+          id: "inventory-manual-gift",
+          productId: "manual-gift",
+          orderId: "order-1",
+          changeQty: -1,
+          reason: "non_sales_outbound",
+          beforeQty: 3,
+          afterQty: 2,
+          createdAt: now
+        }
+      ],
+      updatedProducts: [
+        product({ id: "normal", stockQty: 4 }),
+        product({ id: "manual-gift", stockQty: 2 })
+      ]
+    });
+
+    await expect(db.products.get("normal")).resolves.toEqual(expect.objectContaining({ stockQty: 4 }));
+    await expect(db.products.get("manual-gift")).resolves.toEqual(expect.objectContaining({ stockQty: 2 }));
+    await expect(db.inventoryLogs.where("orderId").equals("order-1").sortBy("productId")).resolves.toEqual([
+      expect.objectContaining({ productId: "manual-gift", reason: "non_sales_outbound", beforeQty: 3, afterQty: 2 }),
+      expect.objectContaining({ productId: "normal", reason: "order_paid", beforeQty: 5, afterQty: 4 })
+    ]);
+  });
 });
 
 describe("listInventoryLogsForOrder", () => {
@@ -219,6 +308,199 @@ describe("listInventoryLogsForOrder", () => {
       expect.objectContaining({ id: "log-early" }),
       expect.objectContaining({ id: "log-late" })
     ]);
+  });
+});
+
+describe("order item accounting adjustments", () => {
+  async function seedAccountingOrder() {
+    await db.products.bulkPut([
+      product({ id: "normal", name: "普通商品", stockQty: 9 }),
+      product({ id: "addon", name: "加购商品", stockQty: 4 })
+    ]);
+    await db.orders.put(paidOrder());
+    await db.orderItems.bulkPut([
+      {
+        ...orderItems()[0],
+        revenueType: "sale",
+        statisticalUnitPrice: 20,
+        statisticalSubtotal: 20,
+        discountGiveawayAmount: 0
+      },
+      {
+        id: "line-addon",
+        orderId: "order-1",
+        productId: "addon",
+        productNameSnapshot: "加购商品",
+        spuSnapshot: "加购SPU",
+        quantity: 2,
+        originalUnitPrice: 10,
+        finalUnitPrice: 4,
+        lineType: "discount_addon",
+        lineTotal: 8,
+        revenueType: "sale",
+        statisticalUnitPrice: 4,
+        statisticalSubtotal: 8,
+        discountGiveawayAmount: 12
+      }
+    ]);
+    await db.inventoryLogs.bulkPut([
+      ...inventoryLogs(),
+      {
+        id: "inventory-addon",
+        productId: "addon",
+        orderId: "order-1",
+        changeQty: -2,
+        reason: "order_paid",
+        beforeQty: 6,
+        afterQty: 4,
+        createdAt: "2026-06-15T12:00:01.000Z"
+      }
+    ]);
+  }
+
+  test("adjusts one item to manual gift without changing inventory logs", async () => {
+    await seedAccountingOrder();
+    const beforeLogs = await listInventoryLogsForOrder("order-1");
+
+    await expect(
+      adjustOrderItemAccounting(
+        {
+          orderId: "order-1",
+          itemId: "line-1",
+          revenueType: "non_sales",
+          nonSalesReason: "manual_gift",
+          nonSalesNote: "补登记人工赠送",
+          adjustmentNote: "历史统计修正"
+        },
+        new Date("2026-06-18T10:00:00.000Z")
+      )
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: "line-1",
+        revenueType: "non_sales",
+        nonSalesReason: "manual_gift",
+        nonSalesNote: "补登记人工赠送",
+        statisticalUnitPrice: 0,
+        statisticalSubtotal: 0,
+        discountGiveawayAmount: 0,
+        originalRevenueType: "sale",
+        adjustedAt: "2026-06-18T10:00:00.000Z",
+        adjustmentNote: "历史统计修正"
+      })
+    );
+
+    await expect(listInventoryLogsForOrder("order-1")).resolves.toEqual(beforeLogs);
+  });
+
+  test("adjusts one item back to sale and recalculates discount giveaway for discount add-ons", async () => {
+    await seedAccountingOrder();
+    await adjustOrderItemAccounting(
+      {
+        orderId: "order-1",
+        itemId: "line-addon",
+        revenueType: "non_sales",
+        nonSalesReason: "campaign_gift",
+        campaignNameSnapshot: "关注赠礼"
+      },
+      new Date("2026-06-18T10:00:00.000Z")
+    );
+
+    await expect(
+      adjustOrderItemAccounting(
+        {
+          orderId: "order-1",
+          itemId: "line-addon",
+          revenueType: "sale",
+          adjustmentNote: "改回销售"
+        },
+        new Date("2026-06-18T10:05:00.000Z")
+      )
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: "line-addon",
+        revenueType: "sale",
+        nonSalesReason: undefined,
+        nonSalesNote: undefined,
+        campaignNameSnapshot: undefined,
+        statisticalUnitPrice: 4,
+        statisticalSubtotal: 8,
+        discountGiveawayAmount: 12,
+        originalRevenueType: "sale",
+        originalNonSalesReason: undefined,
+        adjustedAt: "2026-06-18T10:05:00.000Z",
+        adjustmentNote: "改回销售"
+      })
+    );
+  });
+
+  test("adjusts a whole order to other non-sales", async () => {
+    await seedAccountingOrder();
+
+    await expect(
+      adjustOrderAccounting(
+        {
+          orderId: "order-1",
+          revenueType: "non_sales",
+          nonSalesReason: "other_non_sales",
+          nonSalesNote: "样品出库",
+          adjustmentNote: "整单修正"
+        },
+        new Date("2026-06-18T11:00:00.000Z")
+      )
+    ).resolves.toHaveLength(2);
+
+    await expect(db.orderItems.where("orderId").equals("order-1").sortBy("id")).resolves.toEqual([
+      expect.objectContaining({
+        id: "line-1",
+        revenueType: "non_sales",
+        nonSalesReason: "other_non_sales",
+        nonSalesNote: "样品出库",
+        statisticalSubtotal: 0,
+        adjustedAt: "2026-06-18T11:00:00.000Z"
+      }),
+      expect.objectContaining({
+        id: "line-addon",
+        revenueType: "non_sales",
+        nonSalesReason: "other_non_sales",
+        nonSalesNote: "样品出库",
+        statisticalSubtotal: 0,
+        adjustedAt: "2026-06-18T11:00:00.000Z"
+      })
+    ]);
+  });
+
+  test("rejects manual and other non-sales adjustments without notes", async () => {
+    await seedAccountingOrder();
+
+    await expect(
+      adjustOrderItemAccounting({
+        orderId: "order-1",
+        itemId: "line-1",
+        revenueType: "non_sales",
+        nonSalesReason: "manual_gift"
+      })
+    ).rejects.toThrow("人工赠送和其他出库必须填写备注。");
+
+    await expect(
+      adjustOrderAccounting({
+        orderId: "order-1",
+        revenueType: "non_sales",
+        nonSalesReason: "other_non_sales",
+        nonSalesNote: "   "
+      })
+    ).rejects.toThrow("人工赠送和其他出库必须填写备注。");
+  });
+
+  test("rejects adjustment when the item does not exist", async () => {
+    await seedAccountingOrder();
+
+    await expect(
+      adjustOrderItemAccounting({
+        orderId: "order-1",
+        itemId: "missing-line",
+        revenueType: "sale"
+      })
+    ).rejects.toThrow("订单明细不存在，无法修正统计口径。");
   });
 });
 
@@ -430,6 +712,56 @@ describe("voidPaidOrder", () => {
         afterQty: 6,
         createdAt: voidedAt
       })
+    ]);
+  });
+
+  test("voids a paid order and rolls back non-sales outbound inventory", async () => {
+    const voidedAt = "2026-06-17T10:10:00.000Z";
+
+    await db.products.bulkPut([
+      product({ id: "normal", name: "普通商品", stockQty: 4, updatedAt: "2026-06-17T09:00:00.000Z" }),
+      product({ id: "manual-gift", name: "人工赠品", stockQty: 2, updatedAt: "2026-06-17T09:00:00.000Z" })
+    ]);
+    await db.orders.put({ ...paidOrder(), id: "mixed-order", orderNo: "ECRM-MIXED", orderNature: "mixed" });
+    await db.inventoryLogs.bulkPut([
+      {
+        id: "normal-deduct",
+        productId: "normal",
+        orderId: "mixed-order",
+        changeQty: -1,
+        reason: "order_paid",
+        beforeQty: 5,
+        afterQty: 4,
+        createdAt: "2026-06-15T12:00:01.000Z"
+      },
+      {
+        id: "manual-gift-deduct",
+        productId: "manual-gift",
+        orderId: "mixed-order",
+        changeQty: -1,
+        reason: "non_sales_outbound",
+        beforeQty: 3,
+        afterQty: 2,
+        createdAt: "2026-06-15T12:00:02.000Z"
+      }
+    ]);
+
+    await expect(voidPaidOrder("mixed-order", new Date(voidedAt))).resolves.toEqual(
+      expect.objectContaining({ id: "mixed-order", status: "cancelled", cancelledAt: voidedAt })
+    );
+
+    await expect(db.products.get("normal")).resolves.toEqual(expect.objectContaining({ stockQty: 5, updatedAt: voidedAt }));
+    await expect(db.products.get("manual-gift")).resolves.toEqual(expect.objectContaining({ stockQty: 3, updatedAt: voidedAt }));
+
+    const rollbackLogs = await db.inventoryLogs
+      .where("orderId")
+      .equals("mixed-order")
+      .filter((log) => log.reason === "order_cancelled_rollback")
+      .sortBy("productId");
+
+    expect(rollbackLogs).toEqual([
+      expect.objectContaining({ productId: "manual-gift", changeQty: 1, beforeQty: 2, afterQty: 3 }),
+      expect.objectContaining({ productId: "normal", changeQty: 1, beforeQty: 4, afterQty: 5 })
     ]);
   });
 

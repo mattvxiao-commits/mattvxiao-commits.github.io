@@ -2,6 +2,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, test, vi } from "vitest";
 import { db } from "../db/db";
 import { createDefaultFieldLockSettings } from "../domain/fieldLock";
+import { createDefaultCampaignGiftConfig } from "../domain/settings";
 import { exportJsonBackup, importJsonBackupFromText, replaceAllDataInTransaction } from "./backup";
 import emptyInventoryOrderBackup from "../../docs/manual-test-data/ecrm-empty-inventory-order-backup.json";
 
@@ -74,6 +75,7 @@ function validPayload(overrides: Record<string, unknown> = {}) {
             },
             giftTiers: []
           },
+          campaignGift: createDefaultCampaignGiftConfig(),
           fieldLock: createDefaultFieldLockSettings()
         }
       ],
@@ -86,7 +88,7 @@ function validPayload(overrides: Record<string, unknown> = {}) {
 }
 
 describe("backup utilities", () => {
-  test("exports images, refunds, and order item costs in version 4 JSON backup", async () => {
+  test("exports images, refunds, and order item costs in version 5 JSON backup", async () => {
     const saveAsModule = await import("file-saver");
     const saveAsMock = vi.mocked(saveAsModule.saveAs);
     const tableSpies = [
@@ -139,7 +141,7 @@ describe("backup utilities", () => {
     const blob = saveAsMock.mock.calls[0][0] as Blob;
     const payload = JSON.parse(await blob.text());
 
-    expect(payload.version).toBe(4);
+    expect(payload.version).toBe(5);
     expect(payload.note).toBe("图片已包含在 JSON 备份中");
     expect(payload.data.orderItems).toEqual([
       expect.objectContaining({
@@ -232,6 +234,12 @@ describe("backup utilities", () => {
     await importJsonBackupFromText(JSON.stringify(payload), { importData });
 
     expect(importData.mock.calls[0][0].settings[0].fieldLock).toEqual(createDefaultFieldLockSettings());
+    expect(importData.mock.calls[0][0].settings[0].campaignGift).toEqual({
+      enabled: false,
+      activityName: "运营赠礼",
+      defaultProductId: "",
+      requireSaleLine: true
+    });
   });
 
   test("imports backup with field lock secrets stripped", async () => {
@@ -256,6 +264,58 @@ describe("backup utilities", () => {
     expect(importData.mock.calls[0][0].settings[0].fieldLock).toEqual(createDefaultFieldLockSettings());
   });
 
+  test("imports backup settings with campaign gift configuration", async () => {
+    const importData = vi.fn();
+    const payload = validPayload({
+      settings: [
+        {
+          ...validPayload().data.settings[0],
+          campaignGift: {
+            enabled: true,
+            activityName: "关注小红书赠礼",
+            defaultProductId: "gift-active",
+            requireSaleLine: false
+          }
+        }
+      ]
+    });
+
+    await importJsonBackupFromText(JSON.stringify(payload), { importData });
+
+    expect(importData.mock.calls[0][0].settings[0].campaignGift).toEqual({
+      enabled: true,
+      activityName: "关注小红书赠礼",
+      defaultProductId: "gift-active",
+      requireSaleLine: false
+    });
+  });
+
+  test("rejects malformed campaign gift settings before replacing data", async () => {
+    const importData = vi.fn();
+
+    await expect(
+      importJsonBackupFromText(
+        JSON.stringify(
+          validPayload({
+            settings: [
+              {
+                ...validPayload().data.settings[0],
+                campaignGift: {
+                  enabled: true,
+                  activityName: "关注小红书赠礼",
+                  defaultProductId: "gift-active"
+                }
+              }
+            ]
+          })
+        ),
+        { importData }
+      )
+    ).rejects.toThrow("备份文件格式不正确");
+
+    expect(importData).not.toHaveBeenCalled();
+  });
+
   test("imports version 2 images into the image table", async () => {
     const imageBulkPut = vi.spyOn(db.images, "bulkPut").mockResolvedValue(["image-1"] as never);
 
@@ -276,6 +336,7 @@ describe("backup utilities", () => {
             },
             giftTiers: []
           },
+          campaignGift: createDefaultCampaignGiftConfig(),
           fieldLock: createDefaultFieldLockSettings()
         }
       ],
@@ -314,7 +375,7 @@ describe("backup utilities", () => {
     await expect(
       importJsonBackupFromText(
         JSON.stringify({
-          version: 5,
+          version: 6,
           exportedAt: "2026-06-15T00:00:00.000Z",
           note: "图片暂不包含在 JSON 备份中",
           data: {
@@ -383,6 +444,192 @@ describe("backup utilities", () => {
         ]
       })
     );
+  });
+
+  test("imports V1.6a order item revenue and adjustment fields", async () => {
+    const importData = vi.fn();
+
+    await importJsonBackupFromText(
+      JSON.stringify({
+        version: 4,
+        exportedAt: "2026-06-18T10:00:00.000Z",
+        note: "图片已包含在 JSON 备份中",
+        data: {
+          products: [],
+          settings: validPayload().data.settings,
+          orders: [],
+          orderItems: [
+            {
+              id: "order-item-1",
+              orderId: "order-1",
+              productId: "product-1",
+              productNameSnapshot: "运营赠礼",
+              spuSnapshot: "赠礼",
+              quantity: 1,
+              originalUnitPrice: 0,
+              finalUnitPrice: 0,
+              lineType: "gift",
+              lineTotal: 0,
+              revenueType: "non_sales",
+              nonSalesReason: "campaign_gift",
+              nonSalesNote: "关注小红书",
+              campaignNameSnapshot: "关注小红书赠礼",
+              statisticalUnitPrice: 0,
+              statisticalSubtotal: 0,
+              discountGiveawayAmount: 0,
+              originalRevenueType: "sale",
+              originalNonSalesReason: "manual_gift",
+              adjustedAt: "2026-06-18T10:05:00.000Z",
+              adjustmentNote: "改为运营赠礼"
+            }
+          ],
+          inventoryLogs: [],
+          images: [],
+          orderRefunds: []
+        }
+      }),
+      { importData }
+    );
+
+    expect(importData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderItems: [
+          expect.objectContaining({
+            revenueType: "non_sales",
+            nonSalesReason: "campaign_gift",
+            nonSalesNote: "关注小红书",
+            campaignNameSnapshot: "关注小红书赠礼",
+            statisticalUnitPrice: 0,
+            statisticalSubtotal: 0,
+            discountGiveawayAmount: 0,
+            originalRevenueType: "sale",
+            originalNonSalesReason: "manual_gift",
+            adjustedAt: "2026-06-18T10:05:00.000Z",
+            adjustmentNote: "改为运营赠礼"
+          })
+        ]
+      })
+    );
+  });
+
+  test("imports version 5 V1.6a backup with non-sales outbound inventory logs", async () => {
+    const importData = vi.fn();
+
+    const result = await importJsonBackupFromText(
+      JSON.stringify({
+        version: 5,
+        exportedAt: "2026-06-18T10:00:00.000Z",
+        note: "图片已包含在 JSON 备份中",
+        data: {
+          products: [],
+          settings: validPayload().data.settings,
+          orders: [],
+          orderItems: [],
+          inventoryLogs: [
+            {
+              id: "inventory-log-1",
+              productId: "product-1",
+              orderId: "order-1",
+              changeQty: -1,
+              reason: "non_sales_outbound",
+              beforeQty: 5,
+              afterQty: 4,
+              createdAt: "2026-06-18T10:02:00.000Z"
+            }
+          ],
+          images: [],
+          orderRefunds: []
+        }
+      }),
+      { importData }
+    );
+
+    expect(result.version).toBe(5);
+    expect(importData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inventoryLogs: [
+          expect.objectContaining({
+            reason: "non_sales_outbound"
+          })
+        ]
+      })
+    );
+  });
+
+  test.each([
+    ["revenueType", "gift"],
+    ["nonSalesReason", "wrong_reason"]
+  ])("rejects malformed V1.6a order item %s before replacing data", async (field, value) => {
+    const importData = vi.fn();
+
+    await expect(
+      importJsonBackupFromText(
+        JSON.stringify({
+          version: 4,
+          exportedAt: "2026-06-18T10:00:00.000Z",
+          note: "图片已包含在 JSON 备份中",
+          data: {
+            products: [],
+            settings: validPayload().data.settings,
+            orders: [],
+            orderItems: [
+              {
+                id: "order-item-1",
+                orderId: "order-1",
+                productId: "product-1",
+                productNameSnapshot: "口红",
+                spuSnapshot: "SPU-1",
+                quantity: 1,
+                originalUnitPrice: 10,
+                finalUnitPrice: 8,
+                lineType: "normal",
+                lineTotal: 8,
+                revenueType: "sale",
+                nonSalesReason: "manual_gift",
+                [field]: value
+              }
+            ],
+            inventoryLogs: [],
+            images: [],
+            orderRefunds: []
+          }
+        }),
+        { importData }
+      )
+    ).rejects.toThrow("备份文件格式不正确");
+
+    expect(importData).not.toHaveBeenCalled();
+  });
+
+  test("imports old backup order items without V1.6a optional fields", async () => {
+    const importData = vi.fn();
+
+    await importJsonBackupFromText(
+      JSON.stringify(
+        validPayload({
+          orderItems: [
+            {
+              id: "order-item-1",
+              orderId: "order-1",
+              productId: "product-1",
+              productNameSnapshot: "口红",
+              spuSnapshot: "SPU-1",
+              quantity: 1,
+              originalUnitPrice: 10,
+              finalUnitPrice: 8,
+              lineType: "normal",
+              lineTotal: 8
+            }
+          ]
+        })
+      ),
+      { importData }
+    );
+
+    const importedOrderItem = importData.mock.calls[0][0].orderItems[0];
+    expect(importedOrderItem.revenueType).toBeUndefined();
+    expect(importedOrderItem.nonSalesReason).toBeUndefined();
+    expect(importData).toHaveBeenCalledOnce();
   });
 
   test.each([
@@ -692,6 +939,7 @@ describe("backup utilities", () => {
             },
             giftTiers: []
           },
+          campaignGift: createDefaultCampaignGiftConfig(),
           fieldLock: createDefaultFieldLockSettings()
         }
       ],
@@ -1143,6 +1391,7 @@ describe("backup utilities", () => {
             },
             giftTiers: []
           },
+          campaignGift: createDefaultCampaignGiftConfig(),
           fieldLock: createDefaultFieldLockSettings()
         }
       ],
@@ -1217,6 +1466,7 @@ describe("backup utilities", () => {
               },
               giftTiers: []
             },
+            campaignGift: createDefaultCampaignGiftConfig(),
             fieldLock: createDefaultFieldLockSettings()
           }
         ],

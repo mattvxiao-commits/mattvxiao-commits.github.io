@@ -1,6 +1,6 @@
 import { Minus, PauseCircle, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { CalculatedCart, CartItem, Product } from "../domain/types";
+import type { CalculatedCart, CartItem, NonSalesReason, Product } from "../domain/types";
 import { getImageUrl } from "../utils/image";
 
 type CartPanelProps = {
@@ -13,6 +13,10 @@ type CartPanelProps = {
   checkout: () => void;
   hold: () => void;
   close?: () => void;
+  campaignGiftEnabled?: boolean;
+  addCampaignGift?: () => void;
+  addManualGift?: () => void;
+  addOtherOutbound?: () => void;
 };
 
 const lineTypeLabels = {
@@ -20,6 +24,13 @@ const lineTypeLabels = {
   discount_addon: "加购优惠",
   gift: "赠品"
 } as const;
+
+const nonSalesReasonLabels: Record<NonSalesReason, string> = {
+  tier_gift: "满赠赠品",
+  campaign_gift: "运营赠礼",
+  manual_gift: "人工赠送",
+  other_non_sales: "其他出库"
+};
 
 function formatMoney(value: number): string {
   return `¥${value.toFixed(2)}`;
@@ -34,7 +45,11 @@ export default function CartPanel({
   clear,
   checkout,
   hold,
-  close
+  close,
+  campaignGiftEnabled = true,
+  addCampaignGift = () => undefined,
+  addManualGift = () => undefined,
+  addOtherOutbound = () => undefined
 }: CartPanelProps) {
   const productById = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
   const imageProductIds = useMemo(
@@ -42,10 +57,23 @@ export default function CartPanel({
     [calculated.lines, productById]
   );
   const [imageUrlsByProductId, setImageUrlsByProductId] = useState<Record<string, string | undefined>>({});
-  const cartQuantityByProduct = new Map(cartItems.map((item) => [item.productId, item.quantity]));
+  const cartQuantityByProduct = cartItems.reduce((quantityByProduct, item) => {
+    quantityByProduct.set(item.productId, (quantityByProduct.get(item.productId) ?? 0) + item.quantity);
+    return quantityByProduct;
+  }, new Map<string, number>());
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const hasCartItems = itemCount > 0;
   const hasGiftStockWarnings = calculated.giftStockWarnings.length > 0;
+  const hasSaleLine = cartItems.some((item) => item.revenueType !== "non_sales" && item.quantity > 0);
+  const hasCampaignGiftLine = cartItems.some(
+    (item) => item.revenueType === "non_sales" && item.nonSalesReason === "campaign_gift" && item.quantity > 0
+  );
+  const hasCampaignGiftWithoutSaleLine = hasCampaignGiftLine && !hasSaleLine;
+  const checkoutLabel = hasGiftStockWarnings
+    ? "赠品库存不足，无法去收款"
+    : hasCampaignGiftWithoutSaleLine
+      ? "运营赠礼需要正常消费商品"
+      : "去收款";
   const giftSummaryText =
     calculated.triggeredGiftTier && calculated.giftEntitlements.length > 0
       ? `已触发满 ${calculated.triggeredGiftTier.threshold}：${calculated.giftEntitlements
@@ -98,6 +126,20 @@ export default function CartPanel({
         </div>
       </div>
 
+      <div className="nonSalesQuickActions" role="group" aria-label="非销售出库">
+        {campaignGiftEnabled ? (
+          <button type="button" className="secondaryButton" onClick={addCampaignGift}>
+            运营赠礼
+          </button>
+        ) : null}
+        <button type="button" className="secondaryButton" onClick={addManualGift}>
+          人工赠送
+        </button>
+        <button type="button" className="secondaryButton" onClick={addOtherOutbound}>
+          其他出库
+        </button>
+      </div>
+
       {calculated.lines.length > 0 ? (
         <div className="cartLineList" aria-label="购物车明细">
           {calculated.lines.map((line, index) => (
@@ -115,9 +157,12 @@ export default function CartPanel({
               <div className="lineMain">
                 <div className="lineTitleRow">
                   <h3>{line.productName}</h3>
-                  <span>{lineTypeLabels[line.lineType]}</span>
+                  <span>{line.revenueType === "non_sales" && line.nonSalesReason ? nonSalesReasonLabels[line.nonSalesReason] : lineTypeLabels[line.lineType]}</span>
                 </div>
                 <p>{line.spu}</p>
+                {line.revenueType === "non_sales" && (line.nonSalesNote || line.campaignNameSnapshot) ? (
+                  <p className="lineNote">{line.nonSalesNote ?? line.campaignNameSnapshot}</p>
+                ) : null}
                 <div className="lineMeta">
                   <span className="unitPrice">单价 {formatMoney(line.finalUnitPrice)}</span>
                   {line.originalUnitPrice !== line.finalUnitPrice ? (
@@ -128,7 +173,7 @@ export default function CartPanel({
                       type="button"
                       className="iconButton"
                       aria-label={`减少 ${line.productName}`}
-                      onClick={() => decrement(line.productId)}
+                      onClick={() => decrement(line.id ?? line.productId)}
                     >
                       <Minus size={16} aria-hidden="true" />
                     </button>
@@ -138,7 +183,7 @@ export default function CartPanel({
                       className="iconButton"
                       aria-label={`增加 ${line.productName}`}
                       disabled={(cartQuantityByProduct.get(line.productId) ?? 0) >= (productById.get(line.productId)?.stockQty ?? 0)}
-                      onClick={() => increment(line.productId)}
+                      onClick={() => increment(line.id ?? line.productId)}
                     >
                       <Plus size={16} aria-hidden="true" />
                     </button>
@@ -194,11 +239,11 @@ export default function CartPanel({
         <button
           type="button"
           className="primaryButton"
-          disabled={!hasCartItems || hasGiftStockWarnings}
+          disabled={!hasCartItems || hasGiftStockWarnings || hasCampaignGiftWithoutSaleLine}
           onClick={checkout}
         >
           <ShoppingCart size={18} aria-hidden="true" />
-          {hasGiftStockWarnings ? "赠品库存不足，无法去收款" : "去收款"}
+          {checkoutLabel}
         </button>
       </div>
     </aside>

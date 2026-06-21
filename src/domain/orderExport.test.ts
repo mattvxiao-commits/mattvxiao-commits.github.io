@@ -140,7 +140,7 @@ describe("buildOrderExportSheets", () => {
       refunds: [makeRefund({ amount: 5 }), makeRefund({ id: "refund_2", amount: 3, method: "wechat" })]
     });
 
-    expect(sheets[0].rows[0]).toEqual({
+    expect(sheets[0].rows[0]).toMatchObject({
       订单编号: "ECRM-001",
       订单ID: "order_1",
       订单状态: "已支付",
@@ -182,6 +182,114 @@ describe("buildOrderExportSheets", () => {
       毛利: 24,
       毛利率: 60,
       是否缺少成本快照: "否"
+    });
+  });
+
+  it("订单明细导出包含 V1.6a 明细口径、成本归属和经营归属字段", () => {
+    const sheets = buildSheets({
+      orderItems: [
+        makeOrderItem({
+          lineType: "discount_addon",
+          originalUnitPrice: 20,
+          finalUnitPrice: 15,
+          lineTotal: 30,
+          statisticalUnitPrice: 15,
+          statisticalSubtotal: 30,
+          discountGiveawayAmount: 10,
+          originalRevenueType: "sale",
+          adjustedAt: "2026-06-18T10:05:00.000Z",
+          adjustmentNote: "确认优惠加购"
+        }),
+        makeOrderItem({
+          id: "line_gift",
+          productId: "gift_1",
+          productNameSnapshot: "运营赠礼",
+          lineType: "gift",
+          originalUnitPrice: 0,
+          finalUnitPrice: 0,
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "campaign_gift",
+          nonSalesNote: "已关注社媒",
+          campaignNameSnapshot: "关注社媒赠礼",
+          statisticalUnitPrice: 0,
+          statisticalSubtotal: 0,
+          discountGiveawayAmount: 0,
+          unitCostSnapshot: 2,
+          costTotal: 4,
+          grossProfit: -4
+        })
+      ]
+    });
+
+    expect(sheets[1].rows[0]).toMatchObject({
+      明细收入类型: "销售",
+      非销售原因: "",
+      非销售备注: "",
+      运营活动名称快照: "",
+      是否统计修正: "是",
+      原始销售小计: 30,
+      统计销售小计: 30,
+      优惠让利金额: 10,
+      成本归属: "销售成本",
+      经营归属: "销售 + 优惠让利",
+      统计修正时间: "2026-06-18T10:05:00.000Z",
+      统计修正备注: "确认优惠加购"
+    });
+    expect(sheets[1].rows[1]).toMatchObject({
+      明细收入类型: "非销售出库",
+      非销售原因: "运营赠礼",
+      非销售备注: "已关注社媒",
+      运营活动名称快照: "关注社媒赠礼",
+      是否统计修正: "否",
+      原始销售小计: 0,
+      统计销售小计: 0,
+      优惠让利金额: 0,
+      成本归属: "运营赠礼成本",
+      经营归属: "运营活动成本"
+    });
+  });
+
+  it("订单汇总导出包含 V1.6a 经营口径字段", () => {
+    const sheets = buildSheets({
+      orders: [
+        makeOrder({
+          orderNature: "mixed",
+          salesAmount: 40,
+          nonSalesQuantity: 2,
+          nonSalesCost: 4,
+          operatingActivityCost: 4,
+          nonOperatingOutboundCost: 0
+        })
+      ],
+      orderItems: [
+        makeOrderItem(),
+        makeOrderItem({
+          id: "line_gift",
+          productId: "gift_1",
+          lineType: "gift",
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "campaign_gift",
+          costTotal: 4,
+          grossProfit: -4,
+          adjustedAt: "2026-06-18T10:05:00.000Z"
+        })
+      ]
+    });
+
+    expect(sheets[0].rows[0]).toMatchObject({
+      订单整体性质: "销售 + 赠送",
+      销售金额: 40,
+      优惠让利: 0,
+      销售成本: 16,
+      基础销售毛利: 24,
+      运营活动成本: 4,
+      活动后毛利: 20,
+      非经营出库成本: 0,
+      非销售出库件数: 2,
+      非销售出库成本: 4,
+      是否含统计修正: "是"
     });
   });
 
@@ -308,6 +416,10 @@ describe("buildOrderExportSheets", () => {
         expect.objectContaining({
           项目: "退款退货入库说明",
           说明: expect.stringMatching(/人工退款.*不会自动.*退货入库|人工退款.*不会自动.*库存回补/)
+        }),
+        expect.objectContaining({
+          项目: "V1.6a 统计口径说明",
+          说明: expect.stringContaining("非销售明细不计入销售额")
         })
       ])
     );

@@ -47,3 +47,28 @@ test("clear removes persisted cart items", async () => {
 
   expect(secondModule.useCartStore.getState().items).toEqual([]);
 });
+
+test("同一商品可以同时存在销售行和非销售出库行", async () => {
+  const { useCartStore } = await loadCartStore();
+  const store = useCartStore.getState();
+
+  store.clear();
+  store.addProduct("product-a");
+  store.addNonSalesProduct({
+    productId: "product-a",
+    reason: "manual_gift",
+    note: "好友赠送"
+  });
+
+  expect(useCartStore.getState().items).toMatchObject([
+    { productId: "product-a", quantity: 1, revenueType: "sale" },
+    {
+      productId: "product-a",
+      quantity: 1,
+      revenueType: "non_sales",
+      nonSalesReason: "manual_gift",
+      nonSalesNote: "好友赠送"
+    }
+  ]);
+  expect(useCartStore.getState().items[1].id).toEqual(expect.any(String));
+});

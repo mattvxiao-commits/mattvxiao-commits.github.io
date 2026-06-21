@@ -123,6 +123,49 @@ describe("calculateCart", () => {
     ]);
   });
 
+  it("keeps statistical subtotal in sync when compacting normal quantities", () => {
+    const result = calculateCart({
+      items: cart("normal", 3),
+      products: [normal],
+      promotion: { ...defaultPromotion(), enabled: false, giftTiers: [] }
+    });
+
+    expect(result.lines).toEqual([
+      expect.objectContaining({
+        productId: "normal",
+        quantity: 3,
+        finalUnitPrice: 20,
+        lineTotal: 60,
+        statisticalSubtotal: 60
+      })
+    ]);
+  });
+
+  it("keeps discount giveaway amount in sync when compacting discount addon quantities", () => {
+    const result = calculateCart({
+      items: [
+        { productId: "normal", quantity: 1, addedAt: "2026-06-15T00:00:00.000Z" },
+        { productId: "addon", quantity: 2, addedAt: "2026-06-15T00:01:00.000Z" }
+      ],
+      products: [normal, addon],
+      promotion: defaultPromotion()
+    });
+
+    expect(result.lines).toEqual([
+      expect.objectContaining({ productId: "normal" }),
+      expect.objectContaining({
+        productId: "addon",
+        quantity: 2,
+        originalUnitPrice: 5,
+        finalUnitPrice: 3,
+        lineType: "discount_addon",
+        lineTotal: 6,
+        statisticalSubtotal: 6,
+        discountGiveawayAmount: 4
+      })
+    ]);
+  });
+
   it("uses final payable amount after discount for gift threshold", () => {
     const result = calculateCart({
       items: [
@@ -313,5 +356,89 @@ describe("calculateCart", () => {
         lineTotal: 5
       })
     ]);
+  });
+
+  it("非销售明细不参与加购优惠和满赠门槛", () => {
+    const saleA = product({
+      id: "sale-a",
+      name: "销售商品",
+      spu: "普通SPU",
+      salePrice: 5,
+      costPrice: 2
+    });
+    const manualGift = product({
+      id: "manual-gift",
+      name: "人工赠品",
+      spu: "优惠SPU",
+      salePrice: 50,
+      costPrice: 4,
+      isGiftEligible: true
+    });
+
+    const calculated = calculateCart({
+      items: [
+        { productId: "sale-a", quantity: 1, addedAt: "2026-06-21T10:00:00.000Z", revenueType: "sale" },
+        {
+          id: "manual-gift-line",
+          productId: "manual-gift",
+          quantity: 3,
+          addedAt: "2026-06-21T10:01:00.000Z",
+          revenueType: "non_sales",
+          nonSalesReason: "manual_gift",
+          nonSalesNote: "好友赠送"
+        }
+      ],
+      products: [saleA, manualGift, giftA],
+      promotion: {
+        ...defaultPromotion(),
+        giftTiers: [{ threshold: 35, gifts: [{ productId: "gift-a", quantity: 1 }] }]
+      }
+    });
+
+    expect(calculated.payableAmount).toBe(5);
+    expect(calculated.salesSubtotal).toBe(5);
+    expect(calculated.nonSalesQuantity).toBe(3);
+    expect(calculated.nonSalesCost).toBe(12);
+    expect(calculated.appliedDiscountQty).toBe(0);
+    expect(calculated.triggeredGiftTier).toBeUndefined();
+    expect(calculated.lines).toEqual([
+      expect.objectContaining({ productId: "sale-a", lineTotal: 5, revenueType: "sale" }),
+      expect.objectContaining({
+        productId: "manual-gift",
+        quantity: 3,
+        finalUnitPrice: 0,
+        lineTotal: 0,
+        lineType: "gift",
+        revenueType: "non_sales",
+        nonSalesReason: "manual_gift",
+        nonSalesNote: "好友赠送"
+      })
+    ]);
+  });
+
+  it("自动满赠赠品标记为非销售满赠明细", () => {
+    const expensive = product({ id: "expensive", name: "高价商品", salePrice: 68 });
+
+    const result = calculateCart({
+      items: cart("expensive", 1),
+      products: [expensive, giftA, giftB],
+      promotion: {
+        ...defaultPromotion(),
+        giftTiers: [{ threshold: 68, gifts: [{ productId: "gift-a", quantity: 2 }] }]
+      }
+    });
+
+    expect(result.giftLines).toEqual([
+      expect.objectContaining({
+        productId: "gift-a",
+        quantity: 2,
+        finalUnitPrice: 0,
+        lineTotal: 0,
+        lineType: "gift",
+        revenueType: "non_sales",
+        nonSalesReason: "tier_gift"
+      })
+    ]);
+    expect(result.nonSalesQuantity).toBe(2);
   });
 });

@@ -870,7 +870,25 @@ p {
   min-width: 0;
 }
 
+.dashboardScopeSwitch {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 5px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .dashboardRangeSwitch .secondaryButton {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.dashboardScopeSwitch .secondaryButton {
   min-height: 34px;
   padding: 0 11px;
   font-size: 12px;
@@ -887,6 +905,12 @@ p {
 }
 
 .dashboardRangeSwitch .secondaryButton.isActive {
+  border-color: rgba(47, 111, 94, 0.55);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.dashboardScopeSwitch .secondaryButton.isActive {
   border-color: rgba(47, 111, 94, 0.55);
   background: var(--accent-soft);
   color: var(--accent-strong);
@@ -947,6 +971,10 @@ p {
 
 .dashboardProfitStrip {
   grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.dashboardActivityCostStrip {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .dashboardMetricStrip div,
@@ -1598,6 +1626,19 @@ p {
   line-height: 1.12;
 }
 
+.nonSalesQuickActions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.nonSalesQuickActions .secondaryButton {
+  min-height: 32px;
+  padding: 0 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .cartCount {
   min-height: 30px;
   display: inline-flex;
@@ -1663,6 +1704,11 @@ p {
   background: #f6fbf8;
 }
 
+.cartLine-gift {
+  border-color: rgba(168, 95, 24, 0.26);
+  background: #fffaf1;
+}
+
 .lineMain {
   min-width: 0;
   display: grid;
@@ -1708,6 +1754,15 @@ p {
 .cartLine-discount_addon .lineTitleRow span {
   background: var(--accent-soft);
   color: var(--accent-strong);
+}
+
+.cartLine-gift .lineTitleRow span {
+  background: rgba(168, 95, 24, 0.12);
+  color: #8b4f17;
+}
+
+.lineMain .lineNote {
+  color: #8b4f17;
 }
 
 .lineMeta {
@@ -2018,6 +2073,61 @@ p {
   color: var(--ink);
   font-size: 22px;
   line-height: 1.15;
+}
+
+.nonSalesPickerDialog {
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(86vh, 720px);
+  overflow: auto;
+}
+
+.nonSalesProductList {
+  display: grid;
+  gap: 6px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.nonSalesProductOption {
+  width: 100%;
+  min-height: 54px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  text-align: left;
+}
+
+.nonSalesProductOption.isSelected {
+  border-color: rgba(47, 111, 94, 0.4);
+  background: var(--accent-soft);
+}
+
+.nonSalesProductOption span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.nonSalesProductOption strong,
+.nonSalesProductOption em {
+  overflow-wrap: anywhere;
+}
+
+.nonSalesProductOption strong {
+  font-size: 13px;
+}
+
+.nonSalesProductOption em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
 }
 
 .fieldLockCopy {

@@ -57,6 +57,12 @@ export function appSettings(overrides: Partial<AppSettings> = {}): AppSettings {
     shopName: "ECRM 摊位",
     orderPrefix: "ECRM",
     promotion: defaultPromotion(),
+    campaignGift: {
+      enabled: false,
+      activityName: "运营赠礼",
+      defaultProductId: "",
+      requireSaleLine: true
+    },
     fieldLock: createDefaultFieldLockSettings(),
     ...overrides
   };

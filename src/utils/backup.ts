@@ -1,9 +1,10 @@
 import { saveAs } from "file-saver";
 import { db, type StoredImage } from "../db/db";
 import { createDefaultFieldLockSettings, sanitizeFieldLockForBackup } from "../domain/fieldLock";
+import { normalizeCampaignGiftConfig } from "../domain/settings";
 import type { AppSettings, InventoryLog, Order, OrderItem, OrderRefund, Product } from "../domain/types";
 
-const BACKUP_VERSION = 4;
+const BACKUP_VERSION = 5;
 const IMAGE_BACKUP_NOTE = "图片已包含在 JSON 备份中";
 const LEGACY_IMAGE_BACKUP_NOTE = "图片暂不包含在 JSON 备份中";
 
@@ -25,22 +26,22 @@ type BackupData = {
   images: BackupImage[];
 };
 
-type BackupPayloadV4 = {
-  version: 4;
+type BackupPayloadV5 = {
+  version: 5;
   exportedAt: string;
   note: typeof IMAGE_BACKUP_NOTE;
   data: BackupData;
 };
 
 type ParsedBackupPayload = {
-  version: 1 | 2 | 3 | 4;
+  version: 1 | 2 | 3 | 4 | 5;
   exportedAt: string;
   note: typeof IMAGE_BACKUP_NOTE | typeof LEGACY_IMAGE_BACKUP_NOTE;
   data: BackupData;
 };
 
 export type BackupImportResult = {
-  version: 1 | 2 | 3 | 4;
+  version: 1 | 2 | 3 | 4 | 5;
   includedImages: boolean;
   imageCount: number;
 };
@@ -52,8 +53,16 @@ type ImportDeps = {
 const ORDER_STATUSES = new Set(["pending_payment", "paid", "cancelled"]);
 const PAYMENT_METHODS = new Set(["wechat", "alipay", "cash", "other"]);
 const ORDER_LINE_TYPES = new Set(["normal", "discount_addon", "gift"]);
+const ORDER_LINE_REVENUE_TYPES = new Set(["sale", "non_sales"]);
+const NON_SALES_REASONS = new Set(["tier_gift", "campaign_gift", "manual_gift", "other_non_sales"]);
 const ORDER_CANCEL_REASONS = new Set(["mistake", "customer_cancelled", "duplicate_order", "inventory_issue", "payment_issue", "other"]);
-const INVENTORY_REASONS = new Set(["order_paid", "gift_order_paid", "order_cancelled_rollback", "manual_adjust"]);
+const INVENTORY_REASONS = new Set([
+  "order_paid",
+  "gift_order_paid",
+  "non_sales_outbound",
+  "order_cancelled_rollback",
+  "manual_adjust"
+]);
 const PRODUCT_STATUSES = new Set(["active", "inactive"]);
 const REFUND_REASONS = new Set(["customer_return", "overcharge", "product_issue", "manual_adjustment", "other"]);
 
@@ -191,6 +200,20 @@ function validatePromotion(value: unknown): void {
   }
 }
 
+function assertOptionalEnum(record: Record<string, unknown>, key: string, allowed: Set<string>): void {
+  if (record[key] !== undefined) {
+    assertEnum(record, key, allowed);
+  }
+}
+
+function validateCampaignGift(value: unknown): void {
+  assertRecord(value, "备份文件格式不正确。");
+  assertBoolean(value, "enabled");
+  assertString(value, "activityName");
+  assertString(value, "defaultProductId");
+  assertBoolean(value, "requireSaleLine");
+}
+
 function validateSettings(settings: unknown[]): asserts settings is AppSettings[] {
   if (settings.length !== 1) {
     throw new Error("备份文件格式不正确。");
@@ -204,6 +227,10 @@ function validateSettings(settings: unknown[]): asserts settings is AppSettings[
   }
 
   validatePromotion(setting.promotion);
+
+  if (setting.campaignGift !== undefined) {
+    validateCampaignGift(setting.campaignGift);
+  }
 
   if (setting.fieldLock !== undefined) {
     assertRecord(setting.fieldLock, "备份文件格式不正确。");
@@ -321,6 +348,17 @@ function validateOrderItems(orderItems: unknown[]): asserts orderItems is OrderI
     assertOptionalNonNegativeNumber(item, "unitCostSnapshot");
     assertOptionalNonNegativeNumber(item, "costTotal");
     assertOptionalFiniteNumber(item, "grossProfit");
+    assertOptionalEnum(item, "revenueType", ORDER_LINE_REVENUE_TYPES);
+    assertOptionalEnum(item, "nonSalesReason", NON_SALES_REASONS);
+    assertOptionalString(item, "nonSalesNote");
+    assertOptionalString(item, "campaignNameSnapshot");
+    assertOptionalNonNegativeNumber(item, "statisticalUnitPrice");
+    assertOptionalNonNegativeNumber(item, "statisticalSubtotal");
+    assertOptionalNonNegativeNumber(item, "discountGiveawayAmount");
+    assertOptionalEnum(item, "originalRevenueType", ORDER_LINE_REVENUE_TYPES);
+    assertOptionalEnum(item, "originalNonSalesReason", NON_SALES_REASONS);
+    assertOptionalString(item, "adjustedAt");
+    assertOptionalString(item, "adjustmentNote");
   }
 }
 
@@ -410,7 +448,13 @@ function parseBackupPayload(text: string): ParsedBackupPayload {
 
   assertRecord(parsed, "备份文件格式不正确。");
 
-  if (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== 3 && parsed.version !== BACKUP_VERSION) {
+  if (
+    parsed.version !== 1 &&
+    parsed.version !== 2 &&
+    parsed.version !== 3 &&
+    parsed.version !== 4 &&
+    parsed.version !== BACKUP_VERSION
+  ) {
     throw new Error("不支持的备份版本。");
   }
 
@@ -422,7 +466,7 @@ function parseBackupPayload(text: string): ParsedBackupPayload {
     orders: readArray(parsed.data, "orders"),
     orderItems: readArray(parsed.data, "orderItems"),
     inventoryLogs: readArray(parsed.data, "inventoryLogs"),
-    orderRefunds: parsed.version === 3 || parsed.version === 4 ? readArray(parsed.data, "orderRefunds") : [],
+    orderRefunds: parsed.version >= 3 ? readArray(parsed.data, "orderRefunds") : [],
     images: parsed.version === 1 ? [] : readArray(parsed.data, "images")
   };
 
@@ -441,6 +485,7 @@ function normalizeBackupData(data: BackupData): BackupData {
     ...data,
     settings: data.settings.map((setting) => ({
       ...setting,
+      campaignGift: normalizeCampaignGiftConfig(setting.campaignGift),
       fieldLock: createDefaultFieldLockSettings()
     }))
   };
@@ -564,7 +609,7 @@ export async function replaceAllDataInTransaction(data: BackupData): Promise<voi
 
 export async function exportJsonBackup(): Promise<void> {
   const images = await db.images.toArray();
-  const payload: BackupPayloadV4 = {
+  const payload: BackupPayloadV5 = {
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     note: IMAGE_BACKUP_NOTE,
@@ -572,6 +617,7 @@ export async function exportJsonBackup(): Promise<void> {
       products: await db.products.toArray(),
       settings: (await db.settings.toArray()).map((setting) => ({
         ...setting,
+        campaignGift: normalizeCampaignGiftConfig(setting.campaignGift),
         fieldLock: sanitizeFieldLockForBackup(setting.fieldLock)
       })),
       orders: await db.orders.toArray(),
