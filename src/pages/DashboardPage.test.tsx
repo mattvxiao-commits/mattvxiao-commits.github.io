@@ -505,16 +505,19 @@ test("shows dashboard empty states after successful empty load", async () => {
   expectMetricValue(profitOverview, "赠品成本", "¥0.00");
 });
 
-test("uses compact dashboard time range control structure", async () => {
+test("groups dashboard filters by time range, custom dates, and accounting scope", async () => {
   render(<DashboardPage />);
 
   expect(await screen.findByText("统计范围：今日")).toBeVisible();
 
-  const controls = screen.getByLabelText("仪表盘时间范围");
-  expect(controls).toHaveClass("dashboardHeaderControls");
-  expect(within(controls).getByRole("button", { name: "刷新" })).toBeVisible();
+  const filterPanel = screen.getByRole("group", { name: "仪表盘筛选" });
+  expect(filterPanel).toHaveClass("dashboardFilterPanel");
 
-  const rangeSwitch = screen.getByRole("group", { name: "时间范围" });
+  const timeRow = within(filterPanel).getByRole("group", { name: "时间范围" });
+  expect(timeRow).toHaveClass("dashboardFilterRow");
+  expect(within(timeRow).getByRole("button", { name: "刷新" })).toHaveClass("dashboardRefreshButton");
+
+  const rangeSwitch = within(timeRow).getByRole("group", { name: "日期范围" });
   expect(rangeSwitch).toHaveClass("dashboardRangeSwitch");
   expect(within(rangeSwitch).getAllByRole("button").map((button) => button.textContent)).toEqual([
     "今日",
@@ -526,7 +529,7 @@ test("uses compact dashboard time range control structure", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "自定义" }));
 
-  const customRange = screen.getByLabelText("开始日期").closest(".dashboardCustomRange");
+  const customRange = within(filterPanel).getByRole("group", { name: "自定义日期" });
   expect(customRange).not.toBeNull();
   expect(customRange).toHaveClass("dashboardCustomRange");
 
@@ -541,6 +544,10 @@ test("uses compact dashboard time range control structure", async () => {
   expect(startDate).toHaveValue("2026-06-12");
   expect(endDate).toHaveValue("2026-06-12");
   expect(screen.getByText("统计范围：2026-06-12 至 2026-06-12")).toBeVisible();
+
+  const scopeRow = within(filterPanel).getByRole("group", { name: "统计口径" });
+  expect(scopeRow).toHaveClass("dashboardFilterRow");
+  expect(within(scopeRow).getByRole("group", { name: "口径选项" })).toHaveClass("dashboardScopeSwitch");
 });
 
 test("switches dashboard accounting scope and shows activity cost metrics", async () => {
@@ -588,7 +595,7 @@ test("switches dashboard accounting scope and shows activity cost metrics", asyn
   render(<DashboardPage />);
 
   expect(await screen.findByText("统计范围：今日")).toBeVisible();
-  const scopeSwitch = screen.getByRole("group", { name: "统计口径" });
+  const scopeSwitch = screen.getByRole("group", { name: "口径选项" });
   expect(scopeSwitch).toHaveClass("dashboardScopeSwitch");
   expect(within(scopeSwitch).getAllByRole("button").map((button) => button.textContent)).toEqual([
     "正常销售",
