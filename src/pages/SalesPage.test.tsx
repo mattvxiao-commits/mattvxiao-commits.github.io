@@ -20,6 +20,8 @@ const settings: AppSettings = {
 };
 
 const repositories = vi.hoisted(() => ({
+  adjustOrderAccounting: vi.fn(),
+  adjustOrderItemAccounting: vi.fn(),
   getSettings: vi.fn(),
   listInventoryLogsForOrder: vi.fn(),
   listOrderItems: vi.fn(),
@@ -49,6 +51,8 @@ function localIsoDateTime(dayOffset: number, hours: number, minutes: number): st
 beforeEach(() => {
   vi.resetAllMocks();
   repositories.getSettings.mockResolvedValue(settings);
+  repositories.adjustOrderAccounting.mockResolvedValue([]);
+  repositories.adjustOrderItemAccounting.mockResolvedValue(undefined);
   repositories.listInventoryLogsForOrder.mockResolvedValue([]);
   repositories.listOrderItems.mockResolvedValue([]);
   repositories.listOrders.mockResolvedValue([]);
@@ -1295,6 +1299,63 @@ test("voids an order from the detail dialog and refreshes the order detail", asy
   expect(within(dialog).queryByRole("button", { name: "作废订单" })).not.toBeInTheDocument();
   expect(repositories.listProducts.mock.calls.length).toBeGreaterThanOrEqual(2);
   expect(repositories.listOrders.mock.calls.length).toBeGreaterThanOrEqual(2);
+});
+
+test("adjusts order item accounting from the detail dialog and refreshes selected order items and logs", async () => {
+  const paidOrder = order({
+    id: "order-detail",
+    orderNo: "ECRM-DETAIL",
+    createdAt: localIsoDateTime(0, 9, 20),
+    paidAt: localIsoDateTime(0, 9, 25)
+  });
+  const originalItem = orderItem({ id: "item-detail", orderId: "order-detail" });
+  const adjustedItem = {
+    ...originalItem,
+    revenueType: "non_sales" as const,
+    nonSalesReason: "manual_gift" as const,
+    nonSalesNote: "老客赠送",
+    statisticalSubtotal: 0,
+    discountGiveawayAmount: 0,
+    adjustedAt: localIsoDateTime(0, 10, 0)
+  };
+  const originalLog = inventoryLog({ orderId: "order-detail" });
+
+  repositories.listOrders.mockResolvedValue([paidOrder]);
+  repositories.listOrderItems
+    .mockResolvedValueOnce([originalItem])
+    .mockResolvedValueOnce([adjustedItem]);
+  repositories.listInventoryLogsForOrder
+    .mockResolvedValueOnce([originalLog])
+    .mockResolvedValueOnce([originalLog]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
+  const itemList = await screen.findByRole("list", { name: "订单商品明细" });
+  fireEvent.click(within(within(itemList).getAllByRole("listitem")[0]).getByRole("button", { name: "修正统计口径" }));
+
+  const adjustDialog = await screen.findByRole("dialog", { name: "修正单行统计口径" });
+  fireEvent.change(within(adjustDialog).getByLabelText("修正为"), { target: { value: "manual_gift" } });
+  fireEvent.change(within(adjustDialog).getByLabelText("非销售备注"), { target: { value: "老客赠送" } });
+  fireEvent.click(within(adjustDialog).getByRole("button", { name: "确认修正" }));
+
+  await waitFor(() =>
+    expect(repositories.adjustOrderItemAccounting).toHaveBeenCalledWith({
+      orderId: "order-detail",
+      itemId: "item-detail",
+      revenueType: "non_sales",
+      nonSalesReason: "manual_gift",
+      nonSalesNote: "老客赠送",
+      campaignNameSnapshot: undefined,
+      adjustmentNote: undefined
+    })
+  );
+  expect(repositories.listOrderItems).toHaveBeenLastCalledWith("order-detail");
+  expect(repositories.listInventoryLogsForOrder).toHaveBeenLastCalledWith("order-detail");
+  expect(await screen.findByText("订单统计口径已修正，原始支付、退款和库存流水未改动。")).toBeVisible();
+  expect((await screen.findAllByText("非销售出库")).length).toBeGreaterThan(0);
+  expect(await screen.findByText("老客赠送")).toBeVisible();
 });
 
 test("shows sanitized error when order void fails", async () => {

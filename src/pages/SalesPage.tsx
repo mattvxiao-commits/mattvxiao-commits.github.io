@@ -14,6 +14,8 @@ import FieldLockDialog from "../components/FieldLockDialog";
 import FieldLockStatus from "../components/FieldLockStatus";
 import OrderDetailDialog from "../components/OrderDetailDialog";
 import {
+  adjustOrderAccounting,
+  adjustOrderItemAccounting,
   getSettings,
   listInventoryLogsForOrder,
   listOrderItems,
@@ -45,10 +47,11 @@ import { calculateCart } from "../domain/promotions";
 import type {
   AppSettings,
   InventoryLog,
+  NonSalesReason,
   Order,
   OrderCancelReason,
   OrderItem,
-  NonSalesReason,
+  OrderLineRevenueType,
   OrderRefund,
   PaymentMethod,
   Product,
@@ -69,6 +72,17 @@ type SaveRefundInput = {
   method: PaymentMethod;
   reason: RefundReason;
   note?: string;
+};
+type AdjustOrderAccountingInput = {
+  orderId: string;
+  revenueType: OrderLineRevenueType;
+  nonSalesReason?: NonSalesReason;
+  nonSalesNote?: string;
+  campaignNameSnapshot?: string;
+  adjustmentNote?: string;
+};
+type AdjustOrderItemAccountingInput = AdjustOrderAccountingInput & {
+  itemId: string;
 };
 type StatusMessage = {
   kind: "success" | "error";
@@ -397,6 +411,7 @@ export default function SalesPage() {
   const [isOrderUnlockOpen, setIsOrderUnlockOpen] = useState(false);
   const [isVoidingOrder, setIsVoidingOrder] = useState(false);
   const [isSavingRefund, setIsSavingRefund] = useState(false);
+  const [isAdjustingAccounting, setIsAdjustingAccounting] = useState(false);
   const [giftSelections, setGiftSelections] = useState<GiftSelections>({});
   const [nonSalesPickerMode, setNonSalesPickerMode] = useState<NonSalesPickerMode>();
   const [nonSalesProductId, setNonSalesProductId] = useState("");
@@ -831,6 +846,64 @@ export default function SalesPage() {
     }
   }
 
+  async function refreshSelectedOrderAccountingDetails(orderId: string) {
+    const [items, inventoryLogs, refunds] = await Promise.all([
+      listOrderItems(orderId),
+      listInventoryLogsForOrder(orderId),
+      listOrderRefunds(orderId)
+    ]);
+
+    setSelectedOrderItems(items);
+    setSelectedOrderInventoryLogs(inventoryLogs);
+    setSelectedOrderRefunds(refunds);
+  }
+
+  async function handleAdjustSelectedOrderItem(input: AdjustOrderItemAccountingInput) {
+    if (!selectedOrder) {
+      return;
+    }
+
+    setIsAdjustingAccounting(true);
+    setStatus(undefined);
+
+    try {
+      await adjustOrderItemAccounting(input);
+      await refreshSelectedOrderAccountingDetails(selectedOrder.id);
+      setStatus({ kind: "success", text: "订单统计口径已修正，原始支付、退款和库存流水未改动。" });
+      await refreshSalesData({ preserveStatus: true });
+    } catch {
+      setStatus({ kind: "error", text: "订单统计口径修正失败，请刷新后重试。" });
+      throw new Error("order-accounting-adjustment-failed");
+    } finally {
+      setIsAdjustingAccounting(false);
+    }
+  }
+
+  async function handleAdjustSelectedWholeOrder(input: AdjustOrderAccountingInput) {
+    if (!selectedOrder) {
+      return;
+    }
+
+    setIsAdjustingAccounting(true);
+    setStatus(undefined);
+
+    try {
+      await adjustOrderAccounting(input);
+      await refreshSelectedOrderAccountingDetails(selectedOrder.id);
+      setStatus({ kind: "success", text: "订单统计口径已修正，原始支付、退款和库存流水未改动。" });
+      await refreshSalesData({ preserveStatus: true });
+    } catch {
+      setStatus({ kind: "error", text: "订单统计口径修正失败，请刷新后重试。" });
+      throw new Error("order-accounting-adjustment-failed");
+    } finally {
+      setIsAdjustingAccounting(false);
+    }
+  }
+
+  function canAdjustItemToCampaignGift(item: OrderItem): boolean {
+    return products.find((product) => product.id === item.productId)?.isGiftEligible ?? true;
+  }
+
   async function handleConfirmPaid() {
     if (!settings || calculated.lines.length === 0) {
       setStatus({ kind: "error", text: "购物车为空，无法保存订单。" });
@@ -1202,6 +1275,10 @@ export default function SalesPage() {
           isVoiding={isVoidingOrder}
           onSaveRefund={handleSaveSelectedRefund}
           isSavingRefund={isSavingRefund}
+          onAdjustOrderItem={handleAdjustSelectedOrderItem}
+          onAdjustWholeOrder={handleAdjustSelectedWholeOrder}
+          isAdjustingAccounting={isAdjustingAccounting}
+          canAdjustItemToCampaignGift={canAdjustItemToCampaignGift}
         />
       ) : null}
       <FieldLockDialog

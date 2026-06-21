@@ -1,4 +1,14 @@
-import type { Order, OrderCancelReason, OrderRefund, OrderStatus, PaymentMethod } from "./types";
+import type {
+  NonSalesReason,
+  Order,
+  OrderCancelReason,
+  OrderItem,
+  OrderLineRevenueType,
+  OrderNature,
+  OrderRefund,
+  OrderStatus,
+  PaymentMethod
+} from "./types";
 
 export type OrderDateRange = "today" | "yesterday" | "last7" | "last30" | "all";
 export type OrderHistoryStatusFilter = OrderStatus | "all";
@@ -40,6 +50,60 @@ export const orderCancelReasonLabels: Record<OrderCancelReason, string> = {
   payment_issue: "收款异常",
   other: "其他"
 };
+
+export const orderNatureLabels: Record<OrderNature, string> = {
+  sale: "正常销售",
+  mixed: "销售 + 赠送",
+  non_sales: "非销售出库"
+};
+
+export const orderLineRevenueTypeLabels: Record<OrderLineRevenueType, string> = {
+  sale: "销售",
+  non_sales: "非销售出库"
+};
+
+export const nonSalesReasonLabels: Record<NonSalesReason, string> = {
+  tier_gift: "满赠赠品",
+  campaign_gift: "运营赠礼",
+  manual_gift: "人工赠送",
+  other_non_sales: "其他出库"
+};
+
+export type NormalizedOrderLine = OrderItem & {
+  revenueType: OrderLineRevenueType;
+  statisticalUnitPrice: number;
+  statisticalSubtotal: number;
+  discountGiveawayAmount: number;
+};
+
+export function getNormalizedOrderLine(item: OrderItem): NormalizedOrderLine {
+  const revenueType: OrderLineRevenueType = item.revenueType ?? (item.lineType === "gift" ? "non_sales" : "sale");
+  const isNonSales = revenueType === "non_sales";
+
+  return {
+    ...item,
+    revenueType,
+    nonSalesReason: isNonSales ? item.nonSalesReason ?? "tier_gift" : item.nonSalesReason,
+    statisticalUnitPrice: item.statisticalUnitPrice ?? (isNonSales ? 0 : item.finalUnitPrice),
+    statisticalSubtotal: item.statisticalSubtotal ?? (isNonSales ? 0 : item.lineTotal),
+    discountGiveawayAmount:
+      item.discountGiveawayAmount ??
+      (isNonSales || item.lineType !== "discount_addon"
+        ? 0
+        : Math.max(0, (item.originalUnitPrice - item.finalUnitPrice) * item.quantity))
+  };
+}
+
+export function deriveOrderNature(items: Array<Pick<OrderItem, "lineType" | "revenueType">>): OrderNature {
+  const hasSale = items.some((item) => (item.revenueType ?? (item.lineType === "gift" ? "non_sales" : "sale")) === "sale");
+  const hasNonSales = items.some((item) => (item.revenueType ?? (item.lineType === "gift" ? "non_sales" : "sale")) === "non_sales");
+
+  if (hasSale && hasNonSales) {
+    return "mixed";
+  }
+
+  return hasNonSales ? "non_sales" : "sale";
+}
 
 export type OrderAfterSalesBadgeTone = "danger" | "neutral";
 

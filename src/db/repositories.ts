@@ -1,9 +1,11 @@
 import type {
   AppSettings,
   InventoryLog,
+  NonSalesReason,
   Order,
   OrderCancelReason,
   OrderItem,
+  OrderLineRevenueType,
   OrderRefund,
   PaymentMethod,
   Product,
@@ -200,6 +202,119 @@ export async function listInventoryLogsForOrder(orderId: string): Promise<Invent
     .where("orderId")
     .equals(orderId)
     .sortBy("createdAt");
+}
+
+export type AdjustOrderAccountingInput = {
+  orderId: string;
+  revenueType: OrderLineRevenueType;
+  nonSalesReason?: NonSalesReason;
+  nonSalesNote?: string;
+  campaignNameSnapshot?: string;
+  adjustmentNote?: string;
+};
+
+export type AdjustOrderItemAccountingInput = AdjustOrderAccountingInput & {
+  itemId: string;
+};
+
+function normalizeOptionalText(value?: string): string | undefined {
+  return value?.trim() || undefined;
+}
+
+function discountGiveawayAmountForSale(item: OrderItem): number {
+  if (item.lineType !== "discount_addon") {
+    return 0;
+  }
+
+  return roundMoney(Math.max(0, (item.originalUnitPrice - item.finalUnitPrice) * item.quantity));
+}
+
+function validateAccountingAdjustmentInput(input: AdjustOrderAccountingInput): void {
+  if (input.revenueType === "sale") {
+    return;
+  }
+
+  if (!input.nonSalesReason) {
+    throw new Error("非销售出库必须选择原因。");
+  }
+
+  if ((input.nonSalesReason === "manual_gift" || input.nonSalesReason === "other_non_sales") && !normalizeOptionalText(input.nonSalesNote)) {
+    throw new Error("人工赠送和其他出库必须填写备注。");
+  }
+}
+
+function adjustOrderItemSnapshot(item: OrderItem, input: AdjustOrderAccountingInput, adjustedAt: string): OrderItem {
+  validateAccountingAdjustmentInput(input);
+  const adjustmentNote = normalizeOptionalText(input.adjustmentNote);
+  const hasAdjustmentHistory =
+    Boolean(item.adjustedAt) || item.originalRevenueType !== undefined || item.originalNonSalesReason !== undefined;
+
+  const base: OrderItem = {
+    ...item,
+    originalRevenueType: item.originalRevenueType ?? item.revenueType ?? (item.lineType === "gift" ? "non_sales" : "sale"),
+    originalNonSalesReason: hasAdjustmentHistory ? item.originalNonSalesReason : item.nonSalesReason,
+    adjustedAt,
+    adjustmentNote
+  };
+
+  if (input.revenueType === "sale") {
+    return {
+      ...base,
+      revenueType: "sale",
+      nonSalesReason: undefined,
+      nonSalesNote: undefined,
+      campaignNameSnapshot: undefined,
+      statisticalUnitPrice: item.finalUnitPrice,
+      statisticalSubtotal: item.lineTotal,
+      discountGiveawayAmount: discountGiveawayAmountForSale(item)
+    };
+  }
+
+  return {
+    ...base,
+    revenueType: "non_sales",
+    nonSalesReason: input.nonSalesReason,
+    nonSalesNote: normalizeOptionalText(input.nonSalesNote),
+    campaignNameSnapshot: input.nonSalesReason === "campaign_gift" ? normalizeOptionalText(input.campaignNameSnapshot) : undefined,
+    statisticalUnitPrice: 0,
+    statisticalSubtotal: 0,
+    discountGiveawayAmount: 0
+  };
+}
+
+export async function adjustOrderItemAccounting(
+  input: AdjustOrderItemAccountingInput,
+  now = new Date()
+): Promise<OrderItem> {
+  const adjustedAt = now.toISOString();
+
+  return db.transaction("rw", db.orderItems, async () => {
+    const item = await db.orderItems.get(input.itemId);
+
+    if (!item || item.orderId !== input.orderId) {
+      throw new Error("订单明细不存在，无法修正统计口径。");
+    }
+
+    const adjustedItem = adjustOrderItemSnapshot(item, input, adjustedAt);
+    await db.orderItems.put(adjustedItem);
+    return adjustedItem;
+  });
+}
+
+export async function adjustOrderAccounting(input: AdjustOrderAccountingInput, now = new Date()): Promise<OrderItem[]> {
+  const adjustedAt = now.toISOString();
+
+  return db.transaction("rw", db.orderItems, async () => {
+    const items = await db.orderItems.where("orderId").equals(input.orderId).toArray();
+
+    if (items.length === 0) {
+      throw new Error("订单明细不存在，无法修正统计口径。");
+    }
+
+    const adjustedItems = items.map((item) => adjustOrderItemSnapshot(item, input, adjustedAt));
+    await db.orderItems.bulkPut(adjustedItems);
+    return adjustedItems;
+  });
 }
 
 export type SaveOrderRefundInput = {

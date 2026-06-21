@@ -179,6 +179,122 @@ test("shows a read-only order detail dialog with order, item snapshot, and inven
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
+test("shows order nature, normalized revenue labels, non-sales reason, campaign snapshot, and accounting metrics", () => {
+  render(
+    <OrderDetailDialog
+      order={{ ...order, orderNature: undefined }}
+      orderItems={[
+        {
+          ...orderItems[0],
+          revenueType: "sale",
+          statisticalSubtotal: 100,
+          discountGiveawayAmount: 20
+        },
+        {
+          ...orderItems[1],
+          revenueType: "non_sales",
+          nonSalesReason: "campaign_gift",
+          campaignNameSnapshot: "关注小红书赠礼",
+          statisticalSubtotal: 0,
+          discountGiveawayAmount: 0,
+          adjustedAt: "2026-06-18T10:00:00.000Z",
+          adjustmentNote: "补登记运营赠礼"
+        }
+      ]}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
+      onClose={() => undefined}
+    />
+  );
+
+  const dialog = screen.getByRole("dialog", { name: "订单详情 ECRM-20260617-001" });
+  expect(within(dialog).getByText("订单性质")).toBeVisible();
+  expect(within(dialog).getByText("销售 + 赠送")).toBeVisible();
+
+  const itemList = within(dialog).getByRole("list", { name: "订单商品明细" });
+  const rows = within(itemList).getAllByRole("listitem");
+  expect(within(rows[0]).getByText("销售")).toBeVisible();
+  expect(within(rows[0]).getByText("统计小计 ¥100.00")).toBeVisible();
+  expect(within(rows[0]).getByText("优惠让利 ¥20.00")).toBeVisible();
+  expect(within(rows[0]).getByText("未修正")).toBeVisible();
+  expect(within(rows[1]).getByText("非销售出库")).toBeVisible();
+  expect(within(rows[1]).getByText("运营赠礼")).toBeVisible();
+  expect(within(rows[1]).getByText("关注小红书赠礼")).toBeVisible();
+  expect(within(rows[1]).getByText("统计小计 ¥0.00")).toBeVisible();
+  expect(within(rows[1]).getByText("优惠让利 ¥0.00")).toBeVisible();
+  expect(within(rows[1]).getByText("已修正")).toBeVisible();
+});
+
+test("validates note before adjusting one item to manual gift and then calls the item adjustment handler", async () => {
+  const onAdjustOrderItem = vi.fn().mockResolvedValue(undefined);
+
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
+      onClose={() => undefined}
+      onAdjustOrderItem={onAdjustOrderItem}
+    />
+  );
+
+  const itemList = screen.getByRole("list", { name: "订单商品明细" });
+  const firstRow = within(itemList).getAllByRole("listitem")[0];
+  fireEvent.click(within(firstRow).getByRole("button", { name: "修正统计口径" }));
+
+  const adjustDialog = screen.getByRole("dialog", { name: "修正单行统计口径" });
+  fireEvent.change(within(adjustDialog).getByLabelText("修正为"), { target: { value: "manual_gift" } });
+  fireEvent.click(within(adjustDialog).getByRole("button", { name: "确认修正" }));
+
+  expect(await within(adjustDialog).findByText("人工赠送和其他出库必须填写备注。")).toBeVisible();
+  expect(onAdjustOrderItem).not.toHaveBeenCalled();
+
+  fireEvent.change(within(adjustDialog).getByLabelText("非销售备注"), { target: { value: " 老客赠送 " } });
+  fireEvent.change(within(adjustDialog).getByLabelText("修正备注"), { target: { value: " 历史复核 " } });
+  fireEvent.click(within(adjustDialog).getByRole("button", { name: "确认修正" }));
+
+  expect(onAdjustOrderItem).toHaveBeenCalledWith({
+    orderId: "order-1",
+    itemId: "item-1",
+    revenueType: "non_sales",
+    nonSalesReason: "manual_gift",
+    nonSalesNote: "老客赠送",
+    campaignNameSnapshot: undefined,
+    adjustmentNote: "历史复核"
+  });
+});
+
+test("calls the whole order adjustment handler from the detail action", () => {
+  const onAdjustWholeOrder = vi.fn();
+
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
+      onClose={() => undefined}
+      onAdjustWholeOrder={onAdjustWholeOrder}
+    />
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "整单修正统计口径" }));
+  const adjustDialog = screen.getByRole("dialog", { name: "整单修正统计口径" });
+  fireEvent.change(within(adjustDialog).getByLabelText("修正为"), { target: { value: "campaign_gift" } });
+  fireEvent.change(within(adjustDialog).getByLabelText("运营活动快照"), { target: { value: "关注小红书赠礼" } });
+  fireEvent.click(within(adjustDialog).getByRole("button", { name: "确认修正" }));
+
+  expect(onAdjustWholeOrder).toHaveBeenCalledWith({
+    orderId: "order-1",
+    revenueType: "non_sales",
+    nonSalesReason: "campaign_gift",
+    nonSalesNote: undefined,
+    campaignNameSnapshot: "关注小红书赠礼",
+    adjustmentNote: undefined
+  });
+});
+
 test("shows cost and gross profit for order item snapshots", () => {
   render(
     <OrderDetailDialog

@@ -3,9 +3,12 @@ import { defaultPromotion } from "../test/fixtures";
 import type { Order, OrderRefund } from "./types";
 import {
   dateRangeLabels,
+  deriveOrderNature,
   filterAndSortOrders,
   getOrderAfterSalesBadges,
+  getNormalizedOrderLine,
   orderCancelReasonLabels,
+  orderNatureLabels,
   orderStatusLabels,
   paymentMethodLabels,
   type OrderDateRange,
@@ -228,5 +231,87 @@ describe("order history filters", () => {
       payment_issue: "收款异常",
       other: "其他"
     });
+    expect(orderNatureLabels).toEqual({
+      sale: "正常销售",
+      mixed: "销售 + 赠送",
+      non_sales: "非销售出库"
+    });
+  });
+
+  test("derives order nature from normalized order lines", () => {
+    expect(
+      deriveOrderNature([
+        getNormalizedOrderLine({
+          id: "sale-line",
+          orderId: "order-1",
+          productId: "product-1",
+          productNameSnapshot: "销售商品",
+          spuSnapshot: "SPU",
+          quantity: 1,
+          originalUnitPrice: 20,
+          finalUnitPrice: 20,
+          lineType: "normal",
+          lineTotal: 20
+        }),
+        getNormalizedOrderLine({
+          id: "gift-line",
+          orderId: "order-1",
+          productId: "gift-1",
+          productNameSnapshot: "运营赠品",
+          spuSnapshot: "赠品SPU",
+          quantity: 1,
+          originalUnitPrice: 0,
+          finalUnitPrice: 0,
+          lineType: "gift",
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "campaign_gift"
+        })
+      ])
+    ).toBe("mixed");
+
+    expect(
+      deriveOrderNature([
+        getNormalizedOrderLine({
+          id: "gift-line",
+          orderId: "order-1",
+          productId: "gift-1",
+          productNameSnapshot: "人工赠品",
+          spuSnapshot: "赠品SPU",
+          quantity: 1,
+          originalUnitPrice: 9,
+          finalUnitPrice: 0,
+          lineType: "gift",
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "manual_gift"
+        })
+      ])
+    ).toBe("non_sales");
+  });
+
+  test("normalizes legacy gift lines as non-sales tier gifts", () => {
+    expect(
+      getNormalizedOrderLine({
+        id: "legacy-gift",
+        orderId: "order-1",
+        productId: "gift-1",
+        productNameSnapshot: "满赠赠品",
+        spuSnapshot: "赠品SPU",
+        quantity: 1,
+        originalUnitPrice: 0,
+        finalUnitPrice: 0,
+        lineType: "gift",
+        lineTotal: 0
+      })
+    ).toEqual(
+      expect.objectContaining({
+        revenueType: "non_sales",
+        nonSalesReason: "tier_gift",
+        statisticalUnitPrice: 0,
+        statisticalSubtotal: 0,
+        discountGiveawayAmount: 0
+      })
+    );
   });
 });
