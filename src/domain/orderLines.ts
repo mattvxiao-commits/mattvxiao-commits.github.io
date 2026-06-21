@@ -12,6 +12,8 @@ export type NormalizedOrderLine = OrderItem & {
 export type LineAccounting = {
   revenue: number;
   discountGiveawayAmount: number;
+  hasCostSnapshot: boolean;
+  missingCost: number;
   salesCost: number;
   basicGrossProfit: number;
   tierGiftCost: number;
@@ -26,9 +28,9 @@ export type LineAccounting = {
 export function getNormalizedOrderLine(item: OrderItem): NormalizedOrderLine {
   const revenueType = inferRevenueType(item);
   const statisticalUnitPrice =
-    item.statisticalUnitPrice ?? (revenueType === "sale" ? item.finalUnitPrice : 0);
+    revenueType === "sale" ? item.statisticalUnitPrice ?? item.finalUnitPrice : 0;
   const statisticalSubtotal =
-    item.statisticalSubtotal ?? normalizeMoney(statisticalUnitPrice * item.quantity);
+    revenueType === "sale" ? item.statisticalSubtotal ?? normalizeMoney(statisticalUnitPrice * item.quantity) : 0;
 
   return {
     ...item,
@@ -67,7 +69,10 @@ export function deriveOrderNature(items: OrderItem[]): OrderNature {
 
 export function getLineAccounting(item: OrderItem): LineAccounting {
   const line = getNormalizedOrderLine(item);
-  const costTotal = normalizeMoney(line.costTotal ?? 0);
+  const costSnapshot = line.costTotal;
+  const hasCostSnapshot = isValidCostSnapshot(costSnapshot);
+  const missingCost = hasCostSnapshot ? 0 : 1;
+  const costTotal = hasCostSnapshot ? normalizeMoney(costSnapshot) : 0;
   const revenue = line.revenueType === "sale" ? line.statisticalSubtotal : 0;
   const salesCost = line.revenueType === "sale" ? costTotal : 0;
   const tierGiftCost = line.nonSalesReason === "tier_gift" ? costTotal : 0;
@@ -80,6 +85,8 @@ export function getLineAccounting(item: OrderItem): LineAccounting {
   return {
     revenue,
     discountGiveawayAmount: line.revenueType === "sale" ? line.discountGiveawayAmount : 0,
+    hasCostSnapshot,
+    missingCost,
     salesCost,
     basicGrossProfit: normalizeMoney(revenue - salesCost),
     tierGiftCost,
@@ -114,4 +121,8 @@ function inferDiscountGiveawayAmount(item: OrderItem, revenueType: OrderLineReve
   }
 
   return normalizeMoney(Math.max(0, item.originalUnitPrice - item.finalUnitPrice) * item.quantity);
+}
+
+function isValidCostSnapshot(costTotal: number | undefined): costTotal is number {
+  return typeof costTotal === "number" && Number.isFinite(costTotal) && costTotal >= 0;
 }
