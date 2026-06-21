@@ -48,6 +48,7 @@ import type {
   Order,
   OrderCancelReason,
   OrderItem,
+  NonSalesReason,
   OrderRefund,
   PaymentMethod,
   Product,
@@ -58,6 +59,7 @@ import { getImageUrl } from "../utils/image";
 import { notifySettingsUpdated } from "../utils/settingsEvents";
 
 type SalesMode = "cart" | "checkout";
+type NonSalesPickerMode = Exclude<NonSalesReason, "tier_gift">;
 type VoidOrderInput = {
   cancelReason: OrderCancelReason;
   cancelNote?: string;
@@ -79,6 +81,12 @@ const lineTypeLabels = {
   gift: "赠品"
 } as const;
 
+const nonSalesReasonLabels: Record<NonSalesPickerMode, string> = {
+  campaign_gift: "运营赠礼",
+  manual_gift: "人工赠送",
+  other_non_sales: "其他出库"
+};
+
 function formatPaidTime(value: string): string {
   return new Intl.DateTimeFormat("zh-CN", {
     month: "2-digit",
@@ -86,6 +94,10 @@ function formatPaidTime(value: string): string {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value));
+}
+
+function nonSalesPickerProductExists(productId: string, products: Product[]): boolean {
+  return productId.length > 0 && products.some((product) => product.id === productId);
 }
 
 function SalesProductImage({ product }: { product: Product }) {
@@ -114,6 +126,114 @@ function SalesProductImage({ product }: { product: Product }) {
   return (
     <div className="salesProductImage">
       {imageUrl ? <img src={imageUrl} alt={product.name} /> : <span aria-hidden="true">{product.name.slice(0, 1) || "商"}</span>}
+    </div>
+  );
+}
+
+function NonSalesProductPicker({
+  mode,
+  products,
+  selectedProductId,
+  note,
+  showAllActive,
+  error,
+  setSelectedProductId,
+  setNote,
+  setShowAllActive,
+  onConfirm,
+  onCancel
+}: {
+  mode: NonSalesPickerMode;
+  products: Product[];
+  selectedProductId: string;
+  note: string;
+  showAllActive: boolean;
+  error?: string;
+  setSelectedProductId: (productId: string) => void;
+  setNote: (note: string) => void;
+  setShowAllActive: (showAllActive: boolean) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const requiresNote = mode === "manual_gift" || mode === "other_non_sales";
+  const selectedProduct = products.find((product) => product.id === selectedProductId);
+
+  return (
+    <div className="modalBackdrop">
+      <section
+        className="fieldLockDialog nonSalesPickerDialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="non-sales-picker-title"
+      >
+        <div className="dialogHeader">
+          <div>
+            <p className="eyebrow">Outbound</p>
+            <h2 id="non-sales-picker-title">选择{nonSalesReasonLabels[mode]}商品</h2>
+          </div>
+        </div>
+
+        {mode !== "campaign_gift" ? (
+          <label className="checkControl">
+            <input
+              type="checkbox"
+              checked={showAllActive}
+              onChange={(event) => setShowAllActive(event.target.checked)}
+            />
+            <span>显示全部在售商品</span>
+          </label>
+        ) : null}
+
+        <div className="nonSalesProductList" role="list" aria-label={`${nonSalesReasonLabels[mode]}商品列表`}>
+          {products.length > 0 ? (
+            products.map((product) => (
+              <button
+                type="button"
+                className={selectedProductId === product.id ? "nonSalesProductOption isSelected" : "nonSalesProductOption"}
+                aria-label={`选择 ${product.name}`}
+                key={product.id}
+                onClick={() => setSelectedProductId(product.id)}
+              >
+                <span>
+                  <strong>{product.name}</strong>
+                  <em>{product.spu}</em>
+                </span>
+                <span>{formatMoney(0)}</span>
+              </button>
+            ))
+          ) : (
+            <p className="emptyState">当前没有可选择的商品。</p>
+          )}
+        </div>
+
+        {selectedProduct && !selectedProduct.isGiftEligible && mode !== "campaign_gift" ? (
+          <p className="cartWarning" role="status">
+            当前商品不是赠品商品，将按 0 元非销售出库并扣减库存。
+          </p>
+        ) : null}
+
+        {requiresNote ? (
+          <label className="dialogField">
+            <span>备注</span>
+            <textarea aria-label="备注" value={note} onChange={(event) => setNote(event.target.value)} rows={3} />
+          </label>
+        ) : null}
+
+        {error ? (
+          <p className="errorBanner" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="dialogActions">
+          <button type="button" className="secondaryButton" onClick={onCancel}>
+            取消
+          </button>
+          <button type="button" className="primaryButton" onClick={onConfirm}>
+            确认添加
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
@@ -183,7 +303,11 @@ function CheckoutOrderReview({ calculated, products }: { calculated: ReturnType<
               <div className="lineMain">
                 <div className="lineTitleRow">
                   <h3>{line.productName}</h3>
-                  <span>{lineTypeLabels[line.lineType]}</span>
+                  <span>
+                    {line.revenueType === "non_sales" && line.nonSalesReason && line.nonSalesReason !== "tier_gift"
+                      ? nonSalesReasonLabels[line.nonSalesReason]
+                      : lineTypeLabels[line.lineType]}
+                  </span>
                 </div>
                 <p>{line.spu}</p>
                 <div className="lineMeta">
@@ -255,11 +379,17 @@ export default function SalesPage() {
   const [isVoidingOrder, setIsVoidingOrder] = useState(false);
   const [isSavingRefund, setIsSavingRefund] = useState(false);
   const [giftSelections, setGiftSelections] = useState<GiftSelections>({});
+  const [nonSalesPickerMode, setNonSalesPickerMode] = useState<NonSalesPickerMode>();
+  const [nonSalesProductId, setNonSalesProductId] = useState("");
+  const [nonSalesNote, setNonSalesNote] = useState("");
+  const [showAllNonSalesProducts, setShowAllNonSalesProducts] = useState(false);
+  const [nonSalesPickerError, setNonSalesPickerError] = useState<string>();
   const [qrImageUrls, setQrImageUrls] = useState<{ wechat?: string; alipay?: string }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState<StatusMessage>();
   const cartItems = useCartStore((state) => state.items);
   const addProduct = useCartStore((state) => state.addProduct);
+  const addNonSalesProduct = useCartStore((state) => state.addNonSalesProduct);
   const increment = useCartStore((state) => state.increment);
   const decrement = useCartStore((state) => state.decrement);
   const clearCart = useCartStore((state) => state.clear);
@@ -356,8 +486,31 @@ export default function SalesPage() {
     () => sellableProducts.filter((product) => selectedSpu === "全部" || product.spu === selectedSpu),
     [sellableProducts, selectedSpu]
   );
+  const hasSaleCartLine = useMemo(
+    () => cartItems.some((item) => item.revenueType !== "non_sales" && item.quantity > 0),
+    [cartItems]
+  );
+  const giftEligibleProducts = useMemo(
+    () => products.filter((product) => product.status === "active" && product.isGiftEligible),
+    [products]
+  );
+  const nonSalesPickerProducts = useMemo(() => {
+    if (!nonSalesPickerMode) {
+      return [];
+    }
+
+    if (nonSalesPickerMode === "campaign_gift") {
+      return giftEligibleProducts;
+    }
+
+    return (showAllNonSalesProducts ? products.filter((product) => product.status === "active") : giftEligibleProducts);
+  }, [giftEligibleProducts, nonSalesPickerMode, products, showAllNonSalesProducts]);
   const cartQuantityByProduct = useMemo(
-    () => new Map(cartItems.map((item) => [item.productId, item.quantity])),
+    () =>
+      cartItems.reduce((quantityByProduct, item) => {
+        quantityByProduct.set(item.productId, (quantityByProduct.get(item.productId) ?? 0) + item.quantity);
+        return quantityByProduct;
+      }, new Map<string, number>()),
     [cartItems]
   );
 
@@ -383,6 +536,18 @@ export default function SalesPage() {
   useEffect(() => {
     setGiftSelections({});
   }, [cartItems, products, settings?.promotion]);
+
+  useEffect(() => {
+    if (!nonSalesPickerMode) {
+      return;
+    }
+
+    if (nonSalesPickerProductExists(nonSalesProductId, nonSalesPickerProducts)) {
+      return;
+    }
+
+    setNonSalesProductId(nonSalesPickerProducts[0]?.id ?? "");
+  }, [nonSalesPickerMode, nonSalesPickerProducts, nonSalesProductId]);
 
   const filteredOrders = useMemo(
     () =>
@@ -462,6 +627,69 @@ export default function SalesPage() {
     setSelectedOrderItems([]);
     setSelectedOrderInventoryLogs([]);
     setSelectedOrderRefunds([]);
+  }
+
+  function openNonSalesPicker(mode: NonSalesPickerMode) {
+    setNonSalesPickerMode(mode);
+    setNonSalesNote("");
+    setShowAllNonSalesProducts(false);
+    setNonSalesPickerError(undefined);
+    const options = mode === "campaign_gift" ? giftEligibleProducts : giftEligibleProducts;
+    setNonSalesProductId(options[0]?.id ?? "");
+  }
+
+  function addCampaignGift() {
+    if (!hasSaleCartLine) {
+      setStatus({ kind: "error", text: "运营赠礼需要本单存在正常消费商品。" });
+      return;
+    }
+
+    const defaultProduct = products.find(
+      (product) =>
+        product.id === settings?.campaignGift.defaultProductId &&
+        product.status === "active" &&
+        product.isGiftEligible
+    );
+
+    if (settings?.campaignGift.enabled && defaultProduct) {
+      addNonSalesProduct({
+        productId: defaultProduct.id,
+        reason: "campaign_gift",
+        campaignNameSnapshot: settings.campaignGift.activityName
+      });
+      setStatus(undefined);
+      return;
+    }
+
+    openNonSalesPicker("campaign_gift");
+  }
+
+  function confirmNonSalesProduct() {
+    if (!nonSalesPickerMode) {
+      return;
+    }
+
+    if (!nonSalesProductId) {
+      setNonSalesPickerError("请选择商品后再添加。");
+      return;
+    }
+
+    if ((nonSalesPickerMode === "manual_gift" || nonSalesPickerMode === "other_non_sales") && nonSalesNote.trim().length === 0) {
+      setNonSalesPickerError("请填写备注后再添加。");
+      return;
+    }
+
+    addNonSalesProduct({
+      productId: nonSalesProductId,
+      reason: nonSalesPickerMode,
+      note: nonSalesNote,
+      campaignNameSnapshot: nonSalesPickerMode === "campaign_gift" ? settings?.campaignGift.activityName : undefined
+    });
+    setNonSalesPickerMode(undefined);
+    setNonSalesProductId("");
+    setNonSalesNote("");
+    setNonSalesPickerError(undefined);
+    setStatus(undefined);
   }
 
   async function handleVoidSelectedOrder(input: VoidOrderInput) {
@@ -716,6 +944,9 @@ export default function SalesPage() {
             increment={increment}
             decrement={decrement}
             clear={clearCart}
+            addCampaignGift={addCampaignGift}
+            addManualGift={() => openNonSalesPicker("manual_gift")}
+            addOtherOutbound={() => openNonSalesPicker("other_non_sales")}
             checkout={() => {
               setMode("checkout");
               setIsCartOpen(false);
@@ -727,6 +958,34 @@ export default function SalesPage() {
             close={() => setIsCartOpen(false)}
           />
         </div>
+      ) : null}
+
+      {nonSalesPickerMode ? (
+        <NonSalesProductPicker
+          mode={nonSalesPickerMode}
+          products={nonSalesPickerProducts}
+          selectedProductId={nonSalesProductId}
+          note={nonSalesNote}
+          showAllActive={showAllNonSalesProducts}
+          error={nonSalesPickerError}
+          setSelectedProductId={(productId) => {
+            setNonSalesProductId(productId);
+            setNonSalesPickerError(undefined);
+          }}
+          setNote={(note) => {
+            setNonSalesNote(note);
+            setNonSalesPickerError(undefined);
+          }}
+          setShowAllActive={(showAllActive) => {
+            setShowAllNonSalesProducts(showAllActive);
+            setNonSalesPickerError(undefined);
+          }}
+          onConfirm={confirmNonSalesProduct}
+          onCancel={() => {
+            setNonSalesPickerMode(undefined);
+            setNonSalesPickerError(undefined);
+          }}
+        />
       ) : null}
 
       {mode !== "checkout" ? (

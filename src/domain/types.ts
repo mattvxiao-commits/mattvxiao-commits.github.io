@@ -101,6 +101,7 @@ export type GiftConfig =
     };
 
 export type CalculatedCartLine = {
+  id?: string;
   productId: string;
   productName: string;
   spu: string;

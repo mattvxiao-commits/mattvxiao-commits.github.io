@@ -19,6 +19,7 @@ export type CalculateCartInput = {
 
 type CartUnit = {
   index: number;
+  cartItemId?: string;
   product: Product;
   addedAt: string;
 };
@@ -30,7 +31,9 @@ type PricedUnit = CartUnit & {
 
 export function calculateCart(input: CalculateCartInput): CalculatedCart {
   const productMap = new Map(input.products.map((product) => [product.id, product]));
-  const units = expandCartUnits(input.items, productMap);
+  const saleItems = input.items.filter((item) => item.revenueType !== "non_sales");
+  const nonSalesItems = input.items.filter((item) => item.revenueType === "non_sales");
+  const units = expandCartUnits(saleItems, productMap);
   const { promotion } = input;
   const addon = promotion.addonDiscount;
   const discountEnabled =
@@ -66,11 +69,13 @@ export function calculateCart(input: CalculateCartInput): CalculatedCart {
     };
   });
 
-  const lines = compactPricedUnits(pricedUnits);
+  const saleLines = compactPricedUnits(pricedUnits);
+  const nonSalesLines = buildNonSalesLines(nonSalesItems, productMap);
+  const lines = [...saleLines, ...nonSalesLines];
   const subtotalBeforeDiscount = normalizeMoney(
     units.reduce((total, unit) => total + unit.product.salePrice, 0)
   );
-  const payableAmount = normalizeMoney(lines.reduce((total, line) => total + line.lineTotal, 0));
+  const payableAmount = normalizeMoney(saleLines.reduce((total, line) => total + line.lineTotal, 0));
   const discountAmount = normalizeMoney(subtotalBeforeDiscount - payableAmount);
   const triggeredGiftTier = findGiftTier(promotion.enabled ? promotion.giftTiers : [], payableAmount);
   const giftLines = triggeredGiftTier ? buildGiftLines(triggeredGiftTier, productMap) : [];
@@ -89,7 +94,13 @@ export function calculateCart(input: CalculateCartInput): CalculatedCart {
     appliedDiscountQty: discountedUnitIndexes.size,
     maxDiscountQty: discountEnabled ? addon.maxDiscountQty : 0,
     triggeredGiftTier,
-    giftStockWarnings
+    giftStockWarnings,
+    salesSubtotal: payableAmount,
+    nonSalesQuantity: nonSalesLines.reduce((sum, line) => sum + line.quantity, 0) + giftLines.reduce((sum, line) => sum + line.quantity, 0),
+    nonSalesCost: normalizeMoney(
+      nonSalesLines.reduce((sum, line) => sum + (productMap.get(line.productId)?.costPrice ?? 0) * line.quantity, 0) +
+        giftLines.reduce((sum, line) => sum + (productMap.get(line.productId)?.costPrice ?? 0) * line.quantity, 0)
+    )
   };
 }
 
@@ -105,6 +116,7 @@ function expandCartUnits(items: CartItem[], productMap: Map<string, Product>): C
     for (let i = 0; i < item.quantity; i += 1) {
       units.push({
         index: units.length,
+        cartItemId: item.id,
         product,
         addedAt: item.addedAt
       });
@@ -134,9 +146,31 @@ function compactPricedUnits(units: PricedUnit[]): CalculatedCartLine[] {
       return lines;
     }
 
-    lines.push(toLine(unit.product, 1, unit.product.salePrice, unit.finalUnitPrice, unit.lineType));
+    lines.push(toLine(unit.product, 1, unit.product.salePrice, unit.finalUnitPrice, unit.lineType, { id: unit.cartItemId, revenueType: "sale" }));
     return lines;
   }, []);
+}
+
+function buildNonSalesLines(items: CartItem[], productMap: Map<string, Product>): CalculatedCartLine[] {
+  return items
+    .map((item) => {
+      const product = productMap.get(item.productId);
+      if (!product || item.quantity <= 0) {
+        return undefined;
+      }
+
+      return toLine(product, item.quantity, product.salePrice, 0, "gift", {
+        id: item.id,
+        revenueType: "non_sales",
+        nonSalesReason: item.nonSalesReason,
+        nonSalesNote: item.nonSalesNote,
+        campaignNameSnapshot: item.campaignNameSnapshot,
+        statisticalUnitPrice: 0,
+        statisticalSubtotal: 0,
+        discountGiveawayAmount: 0
+      });
+    })
+    .filter((line): line is CalculatedCartLine => line !== undefined);
 }
 
 function findGiftTier(tiers: GiftTierConfig[], payableAmount: number): GiftTierConfig | undefined {
@@ -160,7 +194,13 @@ function buildGiftLines(
         return undefined;
       }
 
-      return toLine(product, gift.quantity, product.salePrice, 0, "gift");
+      return toLine(product, gift.quantity, product.salePrice, 0, "gift", {
+        revenueType: "non_sales",
+        nonSalesReason: "tier_gift",
+        statisticalUnitPrice: 0,
+        statisticalSubtotal: 0,
+        discountGiveawayAmount: 0
+      });
     })
     .filter((line): line is CalculatedCartLine => line !== undefined);
 }
@@ -252,9 +292,11 @@ function toLine(
   quantity: number,
   originalUnitPrice: number,
   finalUnitPrice: number,
-  lineType: CalculatedCartLine["lineType"]
+  lineType: CalculatedCartLine["lineType"],
+  patch: Partial<CalculatedCartLine> = {}
 ): CalculatedCartLine {
   return {
+    ...patch,
     productId: product.id,
     productName: product.name,
     spu: product.spu,
@@ -263,6 +305,11 @@ function toLine(
     originalUnitPrice: normalizeMoney(originalUnitPrice),
     finalUnitPrice: normalizeMoney(finalUnitPrice),
     lineType,
-    lineTotal: normalizeMoney(quantity * finalUnitPrice)
+    lineTotal: normalizeMoney(quantity * finalUnitPrice),
+    statisticalUnitPrice: patch.statisticalUnitPrice ?? normalizeMoney(finalUnitPrice),
+    statisticalSubtotal: patch.statisticalSubtotal ?? normalizeMoney(quantity * finalUnitPrice),
+    discountGiveawayAmount:
+      patch.discountGiveawayAmount ??
+      normalizeMoney(lineType === "discount_addon" ? Math.max(0, originalUnitPrice - finalUnitPrice) * quantity : 0)
   };
 }

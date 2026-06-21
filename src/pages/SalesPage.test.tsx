@@ -256,6 +256,121 @@ test("holding the cart closes the cart drawer and keeps cart items", async () =>
   expect(await screen.findByText("购物车已暂存，可继续选择商品。")).toBeVisible();
 });
 
+test("购物车没有销售商品时不能添加运营赠礼", async () => {
+  const campaignGift = product({
+    id: "campaign-gift",
+    name: "运营赠品",
+    spu: "赠品SPU",
+    stockQty: 5,
+    isSellable: false,
+    isGiftEligible: true
+  });
+  repositories.listProducts.mockResolvedValue([sellableProduct, campaignGift]);
+  repositories.getSettings.mockResolvedValue({
+    ...settings,
+    campaignGift: {
+      enabled: true,
+      activityName: "关注小红书赠礼",
+      defaultProductId: "campaign-gift",
+      requireSaleLine: true
+    }
+  });
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "打开购物车，当前 0 件，应收 ¥0.00" }));
+  fireEvent.click(await screen.findByRole("button", { name: "运营赠礼" }));
+
+  expect(await screen.findByText("运营赠礼需要本单存在正常消费商品。")).toBeVisible();
+  expect(useCartStore.getState().items).toEqual([]);
+});
+
+test("有销售行和默认运营赠礼 SKU 时点击运营赠礼会添加 0 元运营赠礼行", async () => {
+  const campaignGift = product({
+    id: "campaign-gift",
+    name: "运营赠品",
+    spu: "赠品SPU",
+    salePrice: 6,
+    stockQty: 5,
+    isSellable: false,
+    isGiftEligible: true
+  });
+  repositories.listProducts.mockResolvedValue([sellableProduct, campaignGift]);
+  repositories.getSettings.mockResolvedValue({
+    ...settings,
+    campaignGift: {
+      enabled: true,
+      activityName: "关注小红书赠礼",
+      defaultProductId: "campaign-gift",
+      requireSaleLine: true
+    }
+  });
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "加入 普通商品" }));
+  fireEvent.click(screen.getByRole("button", { name: "打开购物车，当前 1 件，应收 ¥20.00" }));
+  fireEvent.click(await screen.findByRole("button", { name: "运营赠礼" }));
+
+  expect(await screen.findByText("运营赠品")).toBeVisible();
+  expect(screen.getByRole("button", { name: "打开购物车，当前 2 件，应收 ¥20.00" })).toBeVisible();
+  expect(useCartStore.getState().items).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ productId: "normal", revenueType: "sale", quantity: 1 }),
+      expect.objectContaining({
+        productId: "campaign-gift",
+        revenueType: "non_sales",
+        nonSalesReason: "campaign_gift",
+        campaignNameSnapshot: "关注小红书赠礼",
+        quantity: 1
+      })
+    ])
+  );
+});
+
+test("人工赠送备注为空不能确认，填写备注后可添加人工赠送行", async () => {
+  const manualGift = product({
+    id: "manual-gift",
+    name: "人工赠品",
+    spu: "赠品SPU",
+    salePrice: 9,
+    stockQty: 5,
+    isSellable: false,
+    isGiftEligible: true
+  });
+  repositories.listProducts.mockResolvedValue([sellableProduct, manualGift]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "打开购物车，当前 0 件，应收 ¥0.00" }));
+  fireEvent.click(await screen.findByRole("button", { name: "人工赠送" }));
+
+  const dialog = await screen.findByRole("dialog", { name: "选择人工赠送商品" });
+  fireEvent.click(within(dialog).getByRole("button", { name: "选择 人工赠品" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "确认添加" }));
+
+  expect(await within(dialog).findByText("请填写备注后再添加。")).toBeVisible();
+  expect(useCartStore.getState().items).toEqual([]);
+
+  fireEvent.change(within(dialog).getByLabelText("备注"), { target: { value: "好友赠送" } });
+  fireEvent.click(within(dialog).getByRole("button", { name: "确认添加" }));
+
+  await waitFor(() =>
+    expect(useCartStore.getState().items).toEqual([
+      expect.objectContaining({
+        productId: "manual-gift",
+        revenueType: "non_sales",
+        nonSalesReason: "manual_gift",
+        nonSalesNote: "好友赠送",
+        quantity: 1
+      })
+    ])
+  );
+  expect(await screen.findByText("人工赠品")).toBeVisible();
+  expect(screen.getAllByText("人工赠送").length).toBeGreaterThanOrEqual(2);
+  expect(screen.getByRole("button", { name: "打开购物车，当前 1 件，应收 ¥0.00" })).toBeVisible();
+});
+
 test("does not let product quantity exceed available stock before checkout", async () => {
   repositories.listProducts.mockResolvedValue([{ ...sellableProduct, stockQty: 1 }]);
 
