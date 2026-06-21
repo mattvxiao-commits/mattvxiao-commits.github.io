@@ -56,6 +56,7 @@ const refundReasonLabels: Record<RefundReason, string> = {
 const inventoryReasonLabels: Record<InventoryLog["reason"], string> = {
   order_paid: "订单扣减",
   gift_order_paid: "赠品扣减",
+  non_sales_outbound: "非销售出库",
   order_cancelled_rollback: "作废回滚",
   manual_adjust: "人工调整"
 };

@@ -19,9 +19,14 @@ export type Product = {
 };
 
 export type CartItem = {
+  id?: string;
   productId: string;
   quantity: number;
   addedAt: string;
+  revenueType?: OrderLineRevenueType;
+  nonSalesReason?: NonSalesReason;
+  nonSalesNote?: string;
+  campaignNameSnapshot?: string;
 };
 
 export type PaymentMethod = "wechat" | "alipay" | "cash" | "other";
@@ -36,6 +41,12 @@ export type RefundReason =
 export type OrderStatus = "pending_payment" | "paid" | "cancelled";
 
 export type OrderLineType = "normal" | "discount_addon" | "gift";
+
+export type OrderLineRevenueType = "sale" | "non_sales";
+
+export type NonSalesReason = "tier_gift" | "campaign_gift" | "manual_gift" | "other_non_sales";
+
+export type OrderNature = "sale" | "mixed" | "non_sales";
 
 export type OrderCancelReason =
   | "mistake"
@@ -65,6 +76,13 @@ export type FieldLockSettings = {
   lockedUntil?: string;
 };
 
+export type CampaignGiftConfig = {
+  enabled: boolean;
+  activityName: string;
+  defaultProductId: string;
+  requireSaleLine: boolean;
+};
+
 export type GiftTierConfig = {
   threshold: number;
   gifts: GiftConfig[];
@@ -92,6 +110,13 @@ export type CalculatedCartLine = {
   finalUnitPrice: number;
   lineType: OrderLineType;
   lineTotal: number;
+  revenueType?: OrderLineRevenueType;
+  nonSalesReason?: NonSalesReason;
+  nonSalesNote?: string;
+  campaignNameSnapshot?: string;
+  statisticalUnitPrice?: number;
+  statisticalSubtotal?: number;
+  discountGiveawayAmount?: number;
 };
 
 export type GiftStockWarning = {
@@ -122,6 +147,9 @@ export type CalculatedCart = {
   maxDiscountQty: number;
   triggeredGiftTier?: GiftTierConfig;
   giftStockWarnings: GiftStockWarning[];
+  salesSubtotal?: number;
+  nonSalesQuantity?: number;
+  nonSalesCost?: number;
 };
 
 export type AppSettings = {
@@ -131,6 +159,7 @@ export type AppSettings = {
   wechatQrImageId?: string;
   alipayQrImageId?: string;
   promotion: PromotionConfig;
+  campaignGift?: CampaignGiftConfig;
   fieldLock: FieldLockSettings;
 };
 
@@ -145,6 +174,12 @@ export type Order = {
   triggeredGiftTier?: number;
   promotionSnapshot: PromotionConfig;
   giftStockWarning: boolean;
+  orderNature?: OrderNature;
+  salesAmount?: number;
+  nonSalesQuantity?: number;
+  nonSalesCost?: number;
+  operatingActivityCost?: number;
+  nonOperatingOutboundCost?: number;
   createdAt: string;
   paidAt?: string;
   cancelledAt?: string;
@@ -177,6 +212,17 @@ export type OrderItem = {
   unitCostSnapshot?: number;
   costTotal?: number;
   grossProfit?: number;
+  revenueType?: OrderLineRevenueType;
+  nonSalesReason?: NonSalesReason;
+  nonSalesNote?: string;
+  campaignNameSnapshot?: string;
+  statisticalUnitPrice?: number;
+  statisticalSubtotal?: number;
+  discountGiveawayAmount?: number;
+  originalRevenueType?: OrderLineRevenueType;
+  originalNonSalesReason?: NonSalesReason;
+  adjustedAt?: string;
+  adjustmentNote?: string;
 };
 
 export type InventoryLog = {
@@ -184,7 +230,7 @@ export type InventoryLog = {
   productId: string;
   orderId: string;
   changeQty: number;
-  reason: "order_paid" | "gift_order_paid" | "order_cancelled_rollback" | "manual_adjust";
+  reason: "order_paid" | "gift_order_paid" | "non_sales_outbound" | "order_cancelled_rollback" | "manual_adjust";
   beforeQty: number;
   afterQty: number;
   createdAt: string;
