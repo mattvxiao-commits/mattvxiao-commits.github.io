@@ -96,12 +96,12 @@ function formatPaidTime(value: string): string {
   }).format(new Date(value));
 }
 
-function nonSalesPickerProductExists(productId: string, products: Product[]): boolean {
-  return productId.length > 0 && products.some((product) => product.id === productId);
-}
-
 function getProductRemainingStock(product: Product, quantityByProduct: Map<string, number>): number {
   return product.stockQty - (quantityByProduct.get(product.id) ?? 0);
+}
+
+function isNonSalesProductSelectable(product: Product, quantityByProduct: Map<string, number>): boolean {
+  return product.status === "active" && getProductRemainingStock(product, quantityByProduct) > 0;
 }
 
 function SalesProductImage({ product }: { product: Product }) {
@@ -568,12 +568,15 @@ export default function SalesPage() {
       return;
     }
 
-    if (nonSalesPickerProductExists(nonSalesProductId, nonSalesPickerProducts)) {
+    const selectedProduct = nonSalesPickerProducts.find((product) => product.id === nonSalesProductId);
+    if (selectedProduct && isNonSalesProductSelectable(selectedProduct, cartQuantityByProduct)) {
       return;
     }
 
-    setNonSalesProductId(nonSalesPickerProducts[0]?.id ?? "");
-  }, [nonSalesPickerMode, nonSalesPickerProducts, nonSalesProductId]);
+    setNonSalesProductId(
+      nonSalesPickerProducts.find((product) => isNonSalesProductSelectable(product, cartQuantityByProduct))?.id ?? ""
+    );
+  }, [cartQuantityByProduct, nonSalesPickerMode, nonSalesPickerProducts, nonSalesProductId]);
 
   const filteredOrders = useMemo(
     () =>
@@ -665,7 +668,7 @@ export default function SalesPage() {
     setNonSalesNote("");
     setShowAllNonSalesProducts(false);
     setNonSalesPickerError(undefined);
-    setNonSalesProductId(giftEligibleProducts.find((product) => getProductRemainingStock(product, cartQuantityByProduct) > 0)?.id ?? "");
+    setNonSalesProductId(giftEligibleProducts.find((product) => isNonSalesProductSelectable(product, cartQuantityByProduct))?.id ?? "");
   }
 
   function addCampaignGift() {
@@ -727,11 +730,7 @@ export default function SalesPage() {
     }
 
     const selectedProduct = nonSalesPickerProducts.find((product) => product.id === nonSalesProductId);
-    if (
-      !selectedProduct ||
-      selectedProduct.status !== "active" ||
-      getProductRemainingStock(selectedProduct, cartQuantityByProduct) <= 0
-    ) {
+    if (!selectedProduct || !isNonSalesProductSelectable(selectedProduct, cartQuantityByProduct)) {
       setNonSalesPickerError("请选择有效商品后再添加。");
       return;
     }

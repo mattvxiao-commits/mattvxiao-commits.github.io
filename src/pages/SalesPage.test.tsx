@@ -472,12 +472,53 @@ test("非销售选择器显示库存并禁用已达购物车库存的商品", as
   fireEvent.click(screen.getByRole("button", { name: "人工赠送" }));
   const secondDialog = await screen.findByRole("dialog", { name: "选择人工赠送商品" });
 
-  expect(within(secondDialog).getByRole("button", { name: "选择 人工赠品，库存 1，已达库存" })).toBeDisabled();
+  const exhaustedOption = within(secondDialog).getByRole("button", { name: "选择 人工赠品，库存 1，已达库存" });
+  expect(exhaustedOption).toBeDisabled();
+  expect(exhaustedOption).not.toHaveClass("isSelected");
   fireEvent.change(within(secondDialog).getByLabelText("备注"), { target: { value: "再次赠送" } });
   fireEvent.click(within(secondDialog).getByRole("button", { name: "确认添加" }));
 
   expect(await within(secondDialog).findByText("请选择有效商品后再添加。")).toBeVisible();
   expect(useCartStore.getState().items.filter((item) => item.productId === "manual-gift")).toHaveLength(1);
+});
+
+test("非销售选择器切换显示全部商品时会替换不可选的旧选择", async () => {
+  const exhaustedGift = product({
+    id: "exhausted-gift",
+    name: "已用完赠品",
+    spu: "赠品SPU",
+    stockQty: 1,
+    isSellable: false,
+    isGiftEligible: true
+  });
+  const activeProduct = product({
+    id: "active-product",
+    name: "可选商品",
+    spu: "普通SPU",
+    stockQty: 2,
+    isSellable: true,
+    isGiftEligible: false
+  });
+  repositories.listProducts.mockResolvedValue([exhaustedGift, activeProduct]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "打开购物车，当前 0 件，应收 ¥0.00" }));
+  fireEvent.click(await screen.findByRole("button", { name: "人工赠送" }));
+  const firstDialog = await screen.findByRole("dialog", { name: "选择人工赠送商品" });
+  fireEvent.click(within(firstDialog).getByRole("button", { name: "选择 已用完赠品，库存 1" }));
+  fireEvent.change(within(firstDialog).getByLabelText("备注"), { target: { value: "样品赠送" } });
+  fireEvent.click(within(firstDialog).getByRole("button", { name: "确认添加" }));
+
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "选择人工赠送商品" })).not.toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole("button", { name: "人工赠送" }));
+  const secondDialog = await screen.findByRole("dialog", { name: "选择人工赠送商品" });
+  expect(within(secondDialog).getByRole("button", { name: "选择 已用完赠品，库存 1，已达库存" })).not.toHaveClass("isSelected");
+
+  fireEvent.click(within(secondDialog).getByRole("checkbox", { name: "显示全部在售商品" }));
+
+  expect(within(secondDialog).getByRole("button", { name: "选择 可选商品，库存 2" })).toHaveClass("isSelected");
 });
 
 test("does not let product quantity exceed available stock before checkout", async () => {
