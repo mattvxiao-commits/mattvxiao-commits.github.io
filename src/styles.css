@@ -157,6 +157,63 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+.pwaUpdatePrompt {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: min(1120px, calc(100vw - 32px));
+  margin: 10px auto 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(47, 111, 94, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 253, 250, 0.96);
+  box-shadow: 0 12px 30px rgba(75, 59, 39, 0.1);
+}
+
+.pwaUpdatePrompt div:first-child {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.pwaUpdatePrompt strong {
+  color: var(--accent-strong);
+  font-size: 14px;
+}
+
+.pwaUpdatePrompt span {
+  color: var(--muted-strong);
+  font-size: 13px;
+}
+
+.pwaUpdateActions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.pwaUpdateActions button {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.primaryButton {
+  border-color: rgba(47, 111, 94, 0.45);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.secondaryButton {
+  background: var(--surface-strong);
+  color: var(--muted-strong);
+}
+
 input,
 select {
   min-height: 40px;

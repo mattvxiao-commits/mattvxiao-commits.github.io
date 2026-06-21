@@ -8,6 +8,7 @@ import {
 import { type MouseEvent, type ReactElement, useEffect, useRef, useState } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import FieldLockDialog from "./components/FieldLockDialog";
+import PwaUpdatePrompt from "./components/PwaUpdatePrompt";
 import { getSettings, saveSettings } from "./db/repositories";
 import { normalizeFieldLockSettings, requiresFieldLockUnlock, verifyFieldLockPin } from "./domain/fieldLock";
 import type { AppSettings } from "./domain/types";
@@ -16,6 +17,7 @@ import ProductsPage from "./pages/ProductsPage";
 import SalesPage from "./pages/SalesPage";
 import SettingsPage from "./pages/SettingsPage";
 import { revokeImageUrls } from "./utils/image";
+import { applyPwaUpdate, subscribePwaUpdateReady } from "./utils/pwaUpdate";
 import { subscribeSettingsUpdated } from "./utils/settingsEvents";
 
 const pages = [
@@ -98,6 +100,7 @@ export default function App() {
   const [settings, setSettings] = useState<AppSettings>();
   const [pendingPath, setPendingPath] = useState<string>();
   const [isLockDialogOpen, setIsLockDialogOpen] = useState(false);
+  const [isUpdatePromptVisible, setIsUpdatePromptVisible] = useState(false);
   const suppressNextUnlockDialogRef = useRef(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -108,6 +111,10 @@ export default function App() {
       revokeImageUrls();
     };
   }, []);
+
+  useEffect(() => subscribePwaUpdateReady(() => {
+    setIsUpdatePromptVisible(true);
+  }), []);
 
   useEffect(() => subscribeSettingsUpdated((updatedSettings, options) => {
     const normalizedSettings = {
@@ -208,6 +215,14 @@ export default function App() {
     setPendingPath(undefined);
   }
 
+  function handleDismissUpdatePrompt() {
+    setIsUpdatePromptVisible(false);
+  }
+
+  function handleApplyUpdate() {
+    void applyPwaUpdate();
+  }
+
   function renderProtectedPage(path: string, element: ReactElement) {
     if (!isProtectedPath(path)) {
       return element;
@@ -248,6 +263,11 @@ export default function App() {
           })}
         </nav>
       </header>
+      <PwaUpdatePrompt
+        isVisible={isUpdatePromptVisible}
+        onApply={handleApplyUpdate}
+        onDismiss={handleDismissUpdatePrompt}
+      />
       <main>
         <Routes>
           <Route path="/" element={<Navigate to="/products" replace />} />
