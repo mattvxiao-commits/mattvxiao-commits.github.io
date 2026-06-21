@@ -60,6 +60,10 @@ function giftGroupLabel(requirement: GiftSelectionRequirement, index: number): s
   return `赠品${String.fromCharCode(65 + index)}：${requirement.label}`;
 }
 
+function hasSaleLine(calculated: CalculatedCart): boolean {
+  return calculated.lines.some((line) => (line.revenueType ?? (line.lineType === "gift" ? "non_sales" : "sale")) === "sale");
+}
+
 export default function CheckoutPanel({
   calculated,
   products = [],
@@ -73,7 +77,7 @@ export default function CheckoutPanel({
 }: CheckoutPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
   const isEmpty = calculated.lines.length === 0;
-  const isZeroPayable = calculated.payableAmount === 0;
+  const isPureNonSalesOutbound = !isEmpty && !hasSaleLine(calculated);
   const hasGiftStockWarnings = calculated.giftStockWarnings.length > 0;
   const giftRequirements = useMemo(
     () => buildGiftSelectionRequirements(calculated, products),
@@ -114,7 +118,7 @@ export default function CheckoutPanel({
         </button>
       </div>
 
-      {isZeroPayable ? null : (
+      {isPureNonSalesOutbound ? null : (
         <>
           <div className="paymentMethods" role="group" aria-label="收款方式">
             {paymentOptions.map((option) => (
@@ -253,9 +257,9 @@ export default function CheckoutPanel({
       ) : null}
 
       <div className="manualConfirm">
-        {hasGiftStockWarnings ? (
+          {hasGiftStockWarnings ? (
           <div className="cartWarning" role="alert">
-            {calculated.giftStockWarnings.map((warning) => (
+          {calculated.giftStockWarnings.map((warning) => (
               <p key={warning.productId}>
                 赠品库存不足：{warning.productName} 需要 {warning.requiredQty}，当前 {warning.availableQty}
               </p>
@@ -263,7 +267,7 @@ export default function CheckoutPanel({
           </div>
         ) : null}
         <p>
-          {isZeroPayable
+          {isPureNonSalesOutbound
             ? "本单无应收金额，保存后会扣减对应库存并记录为非销售出库。"
             : "确认线下已收到对应金额后，再保存为已支付订单并扣减库存。"}
         </p>
@@ -282,7 +286,7 @@ export default function CheckoutPanel({
                 ? "赠品库存不足，无法确认"
                 : hasIncompleteGiftSelections
                   ? "赠品未选择完整，无法确认"
-                  : isZeroPayable
+                  : isPureNonSalesOutbound
                     ? "确认保存非销售出库"
                     : "确认已收款并保存订单"}
         </button>

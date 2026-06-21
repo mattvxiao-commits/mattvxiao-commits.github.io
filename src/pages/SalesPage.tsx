@@ -104,6 +104,10 @@ function isNonSalesProductSelectable(product: Product, quantityByProduct: Map<st
   return product.status === "active" && getProductRemainingStock(product, quantityByProduct) > 0;
 }
 
+function hasSaleCalculatedLine(calculated: ReturnType<typeof calculateCart>): boolean {
+  return calculated.lines.some((line) => (line.revenueType ?? (line.lineType === "gift" ? "non_sales" : "sale")) === "sale");
+}
+
 function SalesProductImage({ product }: { product: Product }) {
   const [imageUrl, setImageUrl] = useState<string>();
 
@@ -852,7 +856,7 @@ export default function SalesPage() {
         resolvedGiftLines: resolveGiftLines({ calculated, products, selections: giftSelections }),
         promotion: settings.promotion,
         orderPrefix: settings.orderPrefix,
-        paymentMethod: calculated.payableAmount > 0 ? paymentMethod : undefined
+        paymentMethod: hasSaleCalculatedLine(calculated) ? paymentMethod : undefined
       });
 
       await savePaidOrder(paidOrder);

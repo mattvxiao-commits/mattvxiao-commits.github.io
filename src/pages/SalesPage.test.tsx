@@ -793,6 +793,55 @@ test("纯人工赠送 0 元订单确认保存不要求支付方式", async () =>
   );
 });
 
+test("0 元可售商品订单仍按销售订单保存支付方式", async () => {
+  const zeroSaleProduct = product({
+    id: "zero-sale",
+    name: "0元可售商品",
+    spu: "普通SPU",
+    salePrice: 0,
+    costPrice: 0,
+    stockQty: 5,
+    isSellable: true,
+    isGiftEligible: false
+  });
+  repositories.listProducts.mockResolvedValue([zeroSaleProduct]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "加入 0元可售商品" }));
+  fireEvent.click(screen.getByRole("button", { name: "打开购物车，当前 1 件，应收 ¥0.00" }));
+  fireEvent.click(screen.getByRole("button", { name: "去收款" }));
+
+  expect(await screen.findByRole("group", { name: "收款方式" })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "确认已收款并保存订单" }));
+
+  await waitFor(() => expect(repositories.savePaidOrder).toHaveBeenCalledTimes(1));
+  const saved = repositories.savePaidOrder.mock.calls[0][0];
+  expect(saved.order).toEqual(
+    expect.objectContaining({
+      payableAmount: 0,
+      paymentMethod: "wechat",
+      orderNature: "sale",
+      salesAmount: 0,
+      nonSalesQuantity: 0,
+      nonSalesCost: 0
+    })
+  );
+  expect(saved.orderItems).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        productId: "zero-sale",
+        revenueType: "sale",
+        finalUnitPrice: 0,
+        lineTotal: 0
+      })
+    ])
+  );
+  expect(saved.inventoryLogs).toEqual(
+    expect.arrayContaining([expect.objectContaining({ productId: "zero-sale", reason: "order_paid" })])
+  );
+});
+
 test("requires selecting actual SKU before saving an SPU gift order", async () => {
   const giftProduct = product({
     id: "gift-a-1",

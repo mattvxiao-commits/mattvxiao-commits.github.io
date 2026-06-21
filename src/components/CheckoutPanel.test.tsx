@@ -172,6 +172,51 @@ test("hides payment controls for zero-payable non-sales outbound orders", () => 
   expect(confirmPaid).toHaveBeenCalledTimes(1);
 });
 
+test("keeps payment controls for zero-payable sale orders", () => {
+  const confirmPaid = vi.fn(() => Promise.resolve());
+
+  render(
+    <CheckoutPanel
+      calculated={{
+        ...calculated,
+        lines: [
+          {
+            productId: "zero-sale",
+            productName: "0元可售商品",
+            spu: "普通SPU",
+            quantity: 1,
+            originalUnitPrice: 0,
+            finalUnitPrice: 0,
+            lineType: "normal",
+            lineTotal: 0,
+            revenueType: "sale",
+            statisticalUnitPrice: 0,
+            statisticalSubtotal: 0,
+            discountGiveawayAmount: 0
+          }
+        ],
+        subtotalBeforeDiscount: 0,
+        discountAmount: 0,
+        payableAmount: 0
+      }}
+      settings={settings}
+      qrImageUrls={{ wechat: "wechat-url" }}
+      paymentMethod="wechat"
+      setPaymentMethod={() => undefined}
+      confirmPaid={confirmPaid}
+      back={() => undefined}
+    />
+  );
+
+  expect(screen.getByRole("group", { name: "收款方式" })).toBeVisible();
+  expect(screen.getByAltText("微信收款码")).toHaveAttribute("src", "wechat-url");
+  expect(screen.queryByText("本单无应收金额，保存后会扣减对应库存并记录为非销售出库。")).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "确认已收款并保存订单" }));
+
+  expect(confirmPaid).toHaveBeenCalledTimes(1);
+});
+
 test("requires SPU gift SKU selection before confirming paid order", () => {
   const confirmPaid = vi.fn();
   const giftProducts: Product[] = [
