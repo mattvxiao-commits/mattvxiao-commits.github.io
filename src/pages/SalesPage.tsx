@@ -867,13 +867,30 @@ export default function SalesPage() {
     setStatus(undefined);
 
     try {
-      await adjustOrderItemAccounting(input);
-      await refreshSelectedOrderAccountingDetails(selectedOrder.id);
-      setStatus({ kind: "success", text: "订单统计口径已修正，原始支付、退款和库存流水未改动。" });
-      await refreshSalesData({ preserveStatus: true });
-    } catch {
-      setStatus({ kind: "error", text: "订单统计口径修正失败，请刷新后重试。" });
-      throw new Error("order-accounting-adjustment-failed");
+      try {
+        const adjustedItem = await adjustOrderItemAccounting(input);
+        if (adjustedItem) {
+          setSelectedOrderItems((items) => items.map((item) => (item.id === adjustedItem.id ? adjustedItem : item)));
+        }
+      } catch {
+        setStatus({ kind: "error", text: "订单统计口径修正失败，请刷新后重试。" });
+        throw new Error("order-accounting-adjustment-failed");
+      }
+
+      try {
+        await refreshSelectedOrderAccountingDetails(selectedOrder.id);
+        setStatus({ kind: "success", text: "订单统计口径已修正，原始支付、退款和库存流水未改动。" });
+      } catch {
+        setStatus({ kind: "error", text: "订单统计口径已修正，但详情刷新失败，请刷新页面查看最新数据。" });
+      }
+
+      await refreshSalesData({
+        preserveStatus: true,
+        failureStatus: {
+          kind: "error",
+          text: "订单统计口径已修正，但售卖数据刷新失败，请刷新页面查看最新订单列表。"
+        }
+      });
     } finally {
       setIsAdjustingAccounting(false);
     }
@@ -888,20 +905,37 @@ export default function SalesPage() {
     setStatus(undefined);
 
     try {
-      await adjustOrderAccounting(input);
-      await refreshSelectedOrderAccountingDetails(selectedOrder.id);
-      setStatus({ kind: "success", text: "订单统计口径已修正，原始支付、退款和库存流水未改动。" });
-      await refreshSalesData({ preserveStatus: true });
-    } catch {
-      setStatus({ kind: "error", text: "订单统计口径修正失败，请刷新后重试。" });
-      throw new Error("order-accounting-adjustment-failed");
+      try {
+        const adjustedItems = await adjustOrderAccounting(input);
+        if (adjustedItems.length > 0) {
+          setSelectedOrderItems(adjustedItems);
+        }
+      } catch {
+        setStatus({ kind: "error", text: "订单统计口径修正失败，请刷新后重试。" });
+        throw new Error("order-accounting-adjustment-failed");
+      }
+
+      try {
+        await refreshSelectedOrderAccountingDetails(selectedOrder.id);
+        setStatus({ kind: "success", text: "订单统计口径已修正，原始支付、退款和库存流水未改动。" });
+      } catch {
+        setStatus({ kind: "error", text: "订单统计口径已修正，但详情刷新失败，请刷新页面查看最新数据。" });
+      }
+
+      await refreshSalesData({
+        preserveStatus: true,
+        failureStatus: {
+          kind: "error",
+          text: "订单统计口径已修正，但售卖数据刷新失败，请刷新页面查看最新订单列表。"
+        }
+      });
     } finally {
       setIsAdjustingAccounting(false);
     }
   }
 
   function canAdjustItemToCampaignGift(item: OrderItem): boolean {
-    return products.find((product) => product.id === item.productId)?.isGiftEligible ?? true;
+    return products.find((product) => product.id === item.productId)?.isGiftEligible ?? false;
   }
 
   async function handleConfirmPaid() {

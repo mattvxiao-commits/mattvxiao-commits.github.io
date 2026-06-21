@@ -1358,6 +1358,87 @@ test("adjusts order item accounting from the detail dialog and refreshes selecte
   expect(await screen.findByText("老客赠送")).toBeVisible();
 });
 
+test("keeps accounting adjustment success when detail refresh fails after the write", async () => {
+  const paidOrder = order({
+    id: "order-detail",
+    orderNo: "ECRM-DETAIL",
+    createdAt: localIsoDateTime(0, 9, 20),
+    paidAt: localIsoDateTime(0, 9, 25)
+  });
+  const originalItem = orderItem({ id: "item-detail", orderId: "order-detail" });
+  const adjustedItem = {
+    ...originalItem,
+    revenueType: "non_sales" as const,
+    nonSalesReason: "manual_gift" as const,
+    nonSalesNote: "老客赠送",
+    statisticalSubtotal: 0,
+    discountGiveawayAmount: 0,
+    adjustedAt: localIsoDateTime(0, 10, 0)
+  };
+
+  repositories.adjustOrderItemAccounting.mockResolvedValue(adjustedItem);
+  repositories.listOrders.mockResolvedValue([paidOrder]);
+  repositories.listOrderItems
+    .mockResolvedValueOnce([originalItem])
+    .mockRejectedValueOnce(new Error("raw detail refresh failure"));
+  repositories.listInventoryLogsForOrder.mockResolvedValue([inventoryLog({ orderId: "order-detail" })]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
+  const itemList = await screen.findByRole("list", { name: "订单商品明细" });
+  fireEvent.click(within(within(itemList).getAllByRole("listitem")[0]).getByRole("button", { name: "修正统计口径" }));
+
+  const adjustDialog = await screen.findByRole("dialog", { name: "修正单行统计口径" });
+  fireEvent.change(within(adjustDialog).getByLabelText("修正为"), { target: { value: "manual_gift" } });
+  fireEvent.change(within(adjustDialog).getByLabelText("非销售备注"), { target: { value: "老客赠送" } });
+  fireEvent.click(within(adjustDialog).getByRole("button", { name: "确认修正" }));
+
+  await waitFor(() => expect(repositories.adjustOrderItemAccounting).toHaveBeenCalledTimes(1));
+  expect(await screen.findByText("订单统计口径已修正，但详情刷新失败，请刷新页面查看最新数据。")).toBeVisible();
+  expect(screen.queryByText("订单统计口径修正失败，请刷新后重试。")).not.toBeInTheDocument();
+  expect(screen.queryByText("raw detail refresh failure")).not.toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "修正单行统计口径" })).not.toBeInTheDocument();
+  expect((await screen.findAllByText("非销售出库")).length).toBeGreaterThan(0);
+  expect(await screen.findByText("老客赠送")).toBeVisible();
+});
+
+test("treats missing products as not eligible for campaign gift accounting adjustment", async () => {
+  repositories.listProducts.mockResolvedValue([sellableProduct]);
+  repositories.listOrders.mockResolvedValue([
+    order({
+      id: "order-detail",
+      orderNo: "ECRM-DETAIL",
+      createdAt: localIsoDateTime(0, 9, 20),
+      paidAt: localIsoDateTime(0, 9, 25)
+    })
+  ]);
+  repositories.listOrderItems.mockResolvedValue([
+    orderItem({
+      id: "missing-gift-item",
+      orderId: "order-detail",
+      productId: "missing-gift",
+      productNameSnapshot: "旧赠品"
+    })
+  ]);
+  repositories.listInventoryLogsForOrder.mockResolvedValue([inventoryLog({ orderId: "order-detail", productId: "missing-gift" })]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" }));
+  const itemList = await screen.findByRole("list", { name: "订单商品明细" });
+  fireEvent.click(within(within(itemList).getAllByRole("listitem")[0]).getByRole("button", { name: "修正统计口径" }));
+
+  const adjustDialog = await screen.findByRole("dialog", { name: "修正单行统计口径" });
+  fireEvent.change(within(adjustDialog).getByLabelText("修正为"), { target: { value: "campaign_gift" } });
+  fireEvent.click(within(adjustDialog).getByRole("button", { name: "确认修正" }));
+
+  expect(await within(adjustDialog).findByText("该商品不是赠品商品，不能修正为运营赠礼。")).toBeVisible();
+  expect(repositories.adjustOrderItemAccounting).not.toHaveBeenCalled();
+});
+
 test("shows sanitized error when order void fails", async () => {
   repositories.listOrders.mockResolvedValue([
     order({

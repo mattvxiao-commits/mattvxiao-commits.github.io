@@ -225,6 +225,34 @@ test("shows order nature, normalized revenue labels, non-sales reason, campaign 
   expect(within(rows[1]).getByText("已修正")).toBeVisible();
 });
 
+test("derives order nature from adjusted item rows even when order snapshot is stale", () => {
+  render(
+    <OrderDetailDialog
+      order={{ ...order, orderNature: "sale" }}
+      orderItems={[
+        {
+          ...orderItems[0],
+          revenueType: "non_sales",
+          nonSalesReason: "manual_gift",
+          nonSalesNote: "好友赠送",
+          statisticalUnitPrice: 0,
+          statisticalSubtotal: 0,
+          discountGiveawayAmount: 0,
+          adjustedAt: "2026-06-18T10:00:00.000Z"
+        }
+      ]}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
+      onClose={() => undefined}
+    />
+  );
+
+  const metrics = screen.getByText("订单性质").closest("dl");
+  expect(metrics).not.toBeNull();
+  expect(within(metrics as HTMLElement).getByText("非销售出库")).toBeVisible();
+  expect(screen.queryByText("正常销售")).not.toBeInTheDocument();
+});
+
 test("validates note before adjusting one item to manual gift and then calls the item adjustment handler", async () => {
   const onAdjustOrderItem = vi.fn().mockResolvedValue(undefined);
 
@@ -293,6 +321,50 @@ test("calls the whole order adjustment handler from the detail action", () => {
     campaignNameSnapshot: "关注小红书赠礼",
     adjustmentNote: undefined
   });
+});
+
+test("blocks whole order campaign gift adjustment when any item is not gift eligible", async () => {
+  const onAdjustWholeOrder = vi.fn();
+
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
+      onClose={() => undefined}
+      onAdjustWholeOrder={onAdjustWholeOrder}
+      canAdjustItemToCampaignGift={(item) => item.productId === "sku-gift"}
+    />
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "整单修正统计口径" }));
+  const adjustDialog = screen.getByRole("dialog", { name: "整单修正统计口径" });
+  fireEvent.change(within(adjustDialog).getByLabelText("修正为"), { target: { value: "campaign_gift" } });
+  fireEvent.change(within(adjustDialog).getByLabelText("运营活动快照"), { target: { value: "关注小红书赠礼" } });
+  fireEvent.click(within(adjustDialog).getByRole("button", { name: "确认修正" }));
+
+  expect(await within(adjustDialog).findByText("整单包含非赠品商品，不能整体修正为运营赠礼。")).toBeVisible();
+  expect(onAdjustWholeOrder).not.toHaveBeenCalled();
+});
+
+test("suppresses the parent modal role while the accounting adjustment dialog is open", () => {
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
+      onClose={() => undefined}
+      onAdjustOrderItem={vi.fn()}
+    />
+  );
+
+  fireEvent.click(screen.getAllByRole("button", { name: "修正统计口径" })[0]);
+
+  expect(screen.getByRole("dialog", { name: "修正单行统计口径" })).toBeVisible();
+  expect(screen.queryByRole("dialog", { name: "订单详情 ECRM-20260617-001" })).not.toBeInTheDocument();
+  expect(screen.getAllByRole("dialog")).toHaveLength(1);
 });
 
 test("shows cost and gross profit for order item snapshots", () => {

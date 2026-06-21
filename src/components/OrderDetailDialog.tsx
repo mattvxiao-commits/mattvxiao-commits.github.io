@@ -207,8 +207,9 @@ export default function OrderDetailDialog({
     [order, inventoryLogs]
   );
   const normalizedOrderItems = useMemo(() => orderItems.map(getNormalizedOrderLine), [orderItems]);
-  const derivedNature = order.orderNature ?? deriveOrderNature(normalizedOrderItems);
+  const derivedNature = deriveOrderNature(normalizedOrderItems);
   const canAdjustAccounting = Boolean(onAdjustOrderItem || onAdjustWholeOrder);
+  const isNestedDialogOpen = isRefundDialogOpen || isVoidConfirmOpen || Boolean(adjustmentTarget);
 
   async function confirmVoidOrder() {
     if (!onVoidOrder) {
@@ -304,9 +305,16 @@ export default function OrderDetailDialog({
       }
     }
 
-    if (adjustmentMode === "campaign_gift" && typeof adjustmentTarget !== "string" && adjustmentTarget && !canAdjustItemToCampaignGift(adjustmentTarget)) {
-      setAdjustmentError("该商品不是赠品商品，不能修正为运营赠礼。");
-      return undefined;
+    if (adjustmentMode === "campaign_gift") {
+      if (adjustmentTarget === "whole" && orderItems.some((item) => !canAdjustItemToCampaignGift(item))) {
+        setAdjustmentError("整单包含非赠品商品，不能整体修正为运营赠礼。");
+        return undefined;
+      }
+
+      if (typeof adjustmentTarget !== "string" && adjustmentTarget && !canAdjustItemToCampaignGift(adjustmentTarget)) {
+        setAdjustmentError("该商品不是赠品商品，不能修正为运营赠礼。");
+        return undefined;
+      }
     }
 
     if (adjustmentMode === "sale") {
@@ -356,8 +364,8 @@ export default function OrderDetailDialog({
     <div className="modalBackdrop" role="presentation">
       <section
         className="orderDetailDialog"
-        role={isRefundDialogOpen || isVoidConfirmOpen ? undefined : "dialog"}
-        aria-modal={isRefundDialogOpen || isVoidConfirmOpen ? undefined : "true"}
+        role={isNestedDialogOpen ? undefined : "dialog"}
+        aria-modal={isNestedDialogOpen ? undefined : "true"}
         aria-label={`订单详情 ${order.orderNo}`}
       >
         <header className="dialogHeader">
