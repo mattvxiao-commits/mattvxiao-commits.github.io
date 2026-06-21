@@ -485,4 +485,265 @@ describe("buildPaidOrder", () => {
       expect.arrayContaining([expect.objectContaining({ id: "selected-gift", stockQty: 1 })])
     );
   });
+
+  it("saves mixed sale and campaign gift lines with V1.6a accounting fields", () => {
+    const mixedProducts = [
+      product({
+        id: "normal",
+        name: "普通商品",
+        spu: "普通SPU",
+        productCode: "NORMAL-BASE",
+        salePrice: 20,
+        costPrice: 8,
+        stockQty: 10
+      }),
+      product({
+        id: "campaign-gift",
+        name: "运营赠品",
+        spu: "赠品SPU",
+        productCode: "GIFT-CAMPAIGN",
+        salePrice: 6,
+        costPrice: 2.5,
+        stockQty: 5,
+        isSellable: false,
+        isGiftEligible: true
+      })
+    ];
+
+    const result = buildPaidOrder({
+      products: mixedProducts,
+      calculated: calculated({
+        lines: [
+          {
+            productId: "normal",
+            productName: "普通商品",
+            spu: "普通SPU",
+            productCode: "NORMAL-BASE",
+            quantity: 1,
+            originalUnitPrice: 20,
+            finalUnitPrice: 20,
+            lineType: "normal",
+            lineTotal: 20,
+            revenueType: "sale",
+            statisticalUnitPrice: 20,
+            statisticalSubtotal: 20,
+            discountGiveawayAmount: 0
+          },
+          {
+            productId: "campaign-gift",
+            productName: "运营赠品",
+            spu: "赠品SPU",
+            productCode: "GIFT-CAMPAIGN",
+            quantity: 2,
+            originalUnitPrice: 6,
+            finalUnitPrice: 0,
+            lineType: "gift",
+            lineTotal: 0,
+            revenueType: "non_sales",
+            nonSalesReason: "campaign_gift",
+            campaignNameSnapshot: "关注小红书赠礼",
+            statisticalUnitPrice: 0,
+            statisticalSubtotal: 0,
+            discountGiveawayAmount: 0
+          }
+        ],
+        giftLines: [],
+        subtotalBeforeDiscount: 20,
+        discountAmount: 0,
+        payableAmount: 20,
+        salesSubtotal: 20,
+        nonSalesQuantity: 2,
+        nonSalesCost: 5
+      }),
+      promotion,
+      orderPrefix: "ECRM",
+      paymentMethod: "wechat",
+      now
+    });
+
+    expect(result.order).toMatchObject({
+      payableAmount: 20,
+      paymentMethod: "wechat",
+      orderNature: "mixed",
+      salesAmount: 20,
+      nonSalesQuantity: 2,
+      nonSalesCost: 5,
+      operatingActivityCost: 5,
+      nonOperatingOutboundCost: 0
+    });
+    expect(result.orderItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: "normal",
+          revenueType: "sale",
+          nonSalesReason: undefined,
+          statisticalUnitPrice: 20,
+          statisticalSubtotal: 20,
+          discountGiveawayAmount: 0,
+          costTotal: 8,
+          grossProfit: 12
+        }),
+        expect.objectContaining({
+          productId: "campaign-gift",
+          revenueType: "non_sales",
+          nonSalesReason: "campaign_gift",
+          campaignNameSnapshot: "关注小红书赠礼",
+          finalUnitPrice: 0,
+          lineTotal: 0,
+          statisticalUnitPrice: 0,
+          statisticalSubtotal: 0,
+          discountGiveawayAmount: 0,
+          unitCostSnapshot: 2.5,
+          costTotal: 5,
+          grossProfit: -5
+        })
+      ])
+    );
+    expect(result.inventoryLogs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ productId: "normal", reason: "order_paid", changeQty: -1 }),
+        expect.objectContaining({ productId: "campaign-gift", reason: "non_sales_outbound", changeQty: -2 })
+      ])
+    );
+  });
+
+  it("saves pure manual gift outbound without requiring a payment method", () => {
+    const result = buildPaidOrder({
+      products: [
+        product({
+          id: "manual-gift",
+          name: "人工赠品",
+          spu: "赠品SPU",
+          productCode: "GIFT-MANUAL",
+          salePrice: 9,
+          costPrice: 3,
+          stockQty: 4,
+          isSellable: false,
+          isGiftEligible: true
+        })
+      ],
+      calculated: calculated({
+        lines: [
+          {
+            productId: "manual-gift",
+            productName: "人工赠品",
+            spu: "赠品SPU",
+            productCode: "GIFT-MANUAL",
+            quantity: 1,
+            originalUnitPrice: 9,
+            finalUnitPrice: 0,
+            lineType: "gift",
+            lineTotal: 0,
+            revenueType: "non_sales",
+            nonSalesReason: "manual_gift",
+            nonSalesNote: "好友赠送",
+            statisticalUnitPrice: 0,
+            statisticalSubtotal: 0,
+            discountGiveawayAmount: 0
+          }
+        ],
+        giftLines: [],
+        subtotalBeforeDiscount: 0,
+        discountAmount: 0,
+        payableAmount: 0,
+        salesSubtotal: 0,
+        nonSalesQuantity: 1,
+        nonSalesCost: 3
+      }),
+      promotion,
+      orderPrefix: "ECRM",
+      now
+    });
+
+    expect(result.order).toMatchObject({
+      payableAmount: 0,
+      paymentMethod: undefined,
+      orderNature: "non_sales",
+      salesAmount: 0,
+      nonSalesQuantity: 1,
+      nonSalesCost: 3,
+      operatingActivityCost: 0,
+      nonOperatingOutboundCost: 3
+    });
+    expect(result.orderItems[0]).toMatchObject({
+      productId: "manual-gift",
+      revenueType: "non_sales",
+      nonSalesReason: "manual_gift",
+      nonSalesNote: "好友赠送",
+      finalUnitPrice: 0,
+      lineTotal: 0,
+      statisticalSubtotal: 0,
+      costTotal: 3,
+      grossProfit: -3
+    });
+    expect(result.inventoryLogs[0]).toEqual(expect.objectContaining({ reason: "non_sales_outbound" }));
+  });
+
+  it("includes resolved SPU tier gifts in order non-sales summaries", () => {
+    const selectedGift = product({
+      id: "selected-gift",
+      name: "手动选择赠品",
+      spu: "赠品SPU",
+      productCode: "GIFT-SELECTED",
+      salePrice: 6,
+      costPrice: 2,
+      stockQty: 2,
+      isSellable: false,
+      isGiftEligible: true
+    });
+
+    const result = buildPaidOrder({
+      products: [...products(), selectedGift],
+      calculated: calculated({
+        giftLines: [],
+        giftEntitlements: [{ targetType: "spu", spu: "赠品SPU", label: "赠品SPU", quantity: 1 }],
+        nonSalesQuantity: 0,
+        nonSalesCost: 0
+      }),
+      resolvedGiftLines: [
+        {
+          productId: "selected-gift",
+          productName: "手动选择赠品",
+          spu: "赠品SPU",
+          productCode: "GIFT-SELECTED",
+          quantity: 1,
+          originalUnitPrice: 6,
+          finalUnitPrice: 0,
+          lineType: "gift",
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "tier_gift",
+          statisticalUnitPrice: 0,
+          statisticalSubtotal: 0,
+          discountGiveawayAmount: 0
+        }
+      ],
+      promotion,
+      orderPrefix: "ECRM",
+      paymentMethod: "cash",
+      now
+    });
+
+    expect(result.order).toMatchObject({
+      orderNature: "mixed",
+      nonSalesQuantity: 1,
+      nonSalesCost: 2,
+      operatingActivityCost: 2,
+      nonOperatingOutboundCost: 0
+    });
+    expect(result.orderItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productId: "selected-gift",
+          revenueType: "non_sales",
+          nonSalesReason: "tier_gift",
+          costTotal: 2,
+          grossProfit: -2
+        })
+      ])
+    );
+    expect(result.inventoryLogs).toEqual(
+      expect.arrayContaining([expect.objectContaining({ productId: "selected-gift", reason: "gift_order_paid" })])
+    );
+  });
 });

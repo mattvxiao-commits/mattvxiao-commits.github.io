@@ -295,7 +295,7 @@ export async function voidPaidOrder(
     }
 
     const deductionLogs = (await db.inventoryLogs.where("orderId").equals(orderId).toArray())
-      .filter((log) => log.reason === "order_paid" || log.reason === "gift_order_paid");
+      .filter((log) => log.reason === "order_paid" || log.reason === "gift_order_paid" || log.reason === "non_sales_outbound");
 
     if (deductionLogs.some((log) => log.changeQty >= 0)) {
       throw new Error("订单库存扣减流水异常，无法回滚库存。");

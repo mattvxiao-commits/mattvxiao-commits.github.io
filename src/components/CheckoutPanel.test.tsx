@@ -125,6 +125,53 @@ test("does not allow confirming an empty cart", () => {
   expect(confirmPaid).not.toHaveBeenCalled();
 });
 
+test("hides payment controls for zero-payable non-sales outbound orders", () => {
+  const confirmPaid = vi.fn(() => Promise.resolve());
+
+  render(
+    <CheckoutPanel
+      calculated={{
+        ...calculated,
+        lines: [
+          {
+            productId: "manual-gift",
+            productName: "人工赠品",
+            spu: "赠品SPU",
+            quantity: 1,
+            originalUnitPrice: 9,
+            finalUnitPrice: 0,
+            lineType: "gift",
+            lineTotal: 0,
+            revenueType: "non_sales",
+            nonSalesReason: "manual_gift",
+            statisticalUnitPrice: 0,
+            statisticalSubtotal: 0,
+            discountGiveawayAmount: 0
+          }
+        ],
+        subtotalBeforeDiscount: 0,
+        discountAmount: 0,
+        payableAmount: 0
+      }}
+      settings={settings}
+      qrImageUrls={{ wechat: "wechat-url", alipay: "alipay-url" }}
+      paymentMethod="wechat"
+      setPaymentMethod={() => undefined}
+      confirmPaid={confirmPaid}
+      back={() => undefined}
+    />
+  );
+
+  expect(screen.queryByRole("group", { name: "收款方式" })).not.toBeInTheDocument();
+  expect(screen.queryByAltText("微信收款码")).not.toBeInTheDocument();
+  expect(screen.queryByAltText("支付宝收款码")).not.toBeInTheDocument();
+  expect(screen.getByText("本单无应收金额，保存后会扣减对应库存并记录为非销售出库。")).toBeVisible();
+
+  fireEvent.click(screen.getByRole("button", { name: "确认保存非销售出库" }));
+
+  expect(confirmPaid).toHaveBeenCalledTimes(1);
+});
+
 test("requires SPU gift SKU selection before confirming paid order", () => {
   const confirmPaid = vi.fn();
   const giftProducts: Product[] = [

@@ -141,6 +141,11 @@ function toGiftLine(product: Product, quantity: number): CalculatedCartLine {
     originalUnitPrice: normalizeMoney(product.salePrice),
     finalUnitPrice: 0,
     lineType: "gift",
-    lineTotal: 0
+    lineTotal: 0,
+    revenueType: "non_sales",
+    nonSalesReason: "tier_gift",
+    statisticalUnitPrice: 0,
+    statisticalSubtotal: 0,
+    discountGiveawayAmount: 0
   };
 }

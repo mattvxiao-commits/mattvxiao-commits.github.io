@@ -505,10 +505,6 @@ export default function SalesPage() {
     () => cartItems.some((item) => item.revenueType !== "non_sales" && item.quantity > 0),
     [cartItems]
   );
-  const hasNonSalesCartLine = useMemo(
-    () => cartItems.some((item) => item.revenueType === "non_sales" && item.quantity > 0),
-    [cartItems]
-  );
   const hasCampaignGiftWithoutSaleLine = useMemo(
     () =>
       cartItems.some(
@@ -847,11 +843,6 @@ export default function SalesPage() {
       return;
     }
 
-    if (hasNonSalesCartLine) {
-      setStatus({ kind: "error", text: "非销售出库订单保存将在下一步启用，请先完成当前开发版本更新。" });
-      return;
-    }
-
     setStatus(undefined);
 
     try {
@@ -861,7 +852,7 @@ export default function SalesPage() {
         resolvedGiftLines: resolveGiftLines({ calculated, products, selections: giftSelections }),
         promotion: settings.promotion,
         orderPrefix: settings.orderPrefix,
-        paymentMethod
+        paymentMethod: calculated.payableAmount > 0 ? paymentMethod : undefined
       });
 
       await savePaidOrder(paidOrder);

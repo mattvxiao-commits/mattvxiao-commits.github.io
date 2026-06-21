@@ -201,6 +201,70 @@ describe("savePaidOrder", () => {
     expect(await db.inventoryLogs.count()).toBe(0);
     expect((await db.products.get("normal"))?.stockQty).toBe(0);
   });
+
+  test("saves paid orders with non-sales outbound inventory logs", async () => {
+    await db.products.bulkPut([
+      product({ id: "normal", name: "普通商品", stockQty: 5 }),
+      product({ id: "manual-gift", name: "人工赠品", stockQty: 3 })
+    ]);
+
+    await savePaidOrder({
+      order: {
+        ...paidOrder(),
+        orderNature: "mixed",
+        nonSalesQuantity: 1,
+        nonSalesCost: 2,
+        nonOperatingOutboundCost: 2
+      },
+      orderItems: [
+        ...orderItems(),
+        {
+          id: "line-manual-gift",
+          orderId: "order-1",
+          productId: "manual-gift",
+          productNameSnapshot: "人工赠品",
+          spuSnapshot: "赠品SPU",
+          quantity: 1,
+          originalUnitPrice: 9,
+          finalUnitPrice: 0,
+          lineType: "gift",
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "manual_gift",
+          nonSalesNote: "好友赠送",
+          statisticalUnitPrice: 0,
+          statisticalSubtotal: 0,
+          discountGiveawayAmount: 0,
+          costTotal: 2,
+          grossProfit: -2
+        }
+      ],
+      inventoryLogs: [
+        ...inventoryLogs(),
+        {
+          id: "inventory-manual-gift",
+          productId: "manual-gift",
+          orderId: "order-1",
+          changeQty: -1,
+          reason: "non_sales_outbound",
+          beforeQty: 3,
+          afterQty: 2,
+          createdAt: now
+        }
+      ],
+      updatedProducts: [
+        product({ id: "normal", stockQty: 4 }),
+        product({ id: "manual-gift", stockQty: 2 })
+      ]
+    });
+
+    await expect(db.products.get("normal")).resolves.toEqual(expect.objectContaining({ stockQty: 4 }));
+    await expect(db.products.get("manual-gift")).resolves.toEqual(expect.objectContaining({ stockQty: 2 }));
+    await expect(db.inventoryLogs.where("orderId").equals("order-1").sortBy("productId")).resolves.toEqual([
+      expect.objectContaining({ productId: "manual-gift", reason: "non_sales_outbound", beforeQty: 3, afterQty: 2 }),
+      expect.objectContaining({ productId: "normal", reason: "order_paid", beforeQty: 5, afterQty: 4 })
+    ]);
+  });
 });
 
 describe("listInventoryLogsForOrder", () => {
@@ -453,6 +517,56 @@ describe("voidPaidOrder", () => {
         afterQty: 6,
         createdAt: voidedAt
       })
+    ]);
+  });
+
+  test("voids a paid order and rolls back non-sales outbound inventory", async () => {
+    const voidedAt = "2026-06-17T10:10:00.000Z";
+
+    await db.products.bulkPut([
+      product({ id: "normal", name: "普通商品", stockQty: 4, updatedAt: "2026-06-17T09:00:00.000Z" }),
+      product({ id: "manual-gift", name: "人工赠品", stockQty: 2, updatedAt: "2026-06-17T09:00:00.000Z" })
+    ]);
+    await db.orders.put({ ...paidOrder(), id: "mixed-order", orderNo: "ECRM-MIXED", orderNature: "mixed" });
+    await db.inventoryLogs.bulkPut([
+      {
+        id: "normal-deduct",
+        productId: "normal",
+        orderId: "mixed-order",
+        changeQty: -1,
+        reason: "order_paid",
+        beforeQty: 5,
+        afterQty: 4,
+        createdAt: "2026-06-15T12:00:01.000Z"
+      },
+      {
+        id: "manual-gift-deduct",
+        productId: "manual-gift",
+        orderId: "mixed-order",
+        changeQty: -1,
+        reason: "non_sales_outbound",
+        beforeQty: 3,
+        afterQty: 2,
+        createdAt: "2026-06-15T12:00:02.000Z"
+      }
+    ]);
+
+    await expect(voidPaidOrder("mixed-order", new Date(voidedAt))).resolves.toEqual(
+      expect.objectContaining({ id: "mixed-order", status: "cancelled", cancelledAt: voidedAt })
+    );
+
+    await expect(db.products.get("normal")).resolves.toEqual(expect.objectContaining({ stockQty: 5, updatedAt: voidedAt }));
+    await expect(db.products.get("manual-gift")).resolves.toEqual(expect.objectContaining({ stockQty: 3, updatedAt: voidedAt }));
+
+    const rollbackLogs = await db.inventoryLogs
+      .where("orderId")
+      .equals("mixed-order")
+      .filter((log) => log.reason === "order_cancelled_rollback")
+      .sortBy("productId");
+
+    expect(rollbackLogs).toEqual([
+      expect.objectContaining({ productId: "manual-gift", changeQty: 1, beforeQty: 2, afterQty: 3 }),
+      expect.objectContaining({ productId: "normal", changeQty: 1, beforeQty: 4, afterQty: 5 })
     ]);
   });
 

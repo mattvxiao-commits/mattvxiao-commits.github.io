@@ -2,6 +2,7 @@ import type {
   CalculatedCart,
   CalculatedCartLine,
   InventoryLog,
+  NonSalesReason,
   Order,
   OrderItem,
   PaymentMethod,
@@ -9,6 +10,7 @@ import type {
   PromotionConfig
 } from "./types";
 import { normalizeMoney } from "./money";
+import { deriveOrderNature, getLineAccounting, getNormalizedOrderLine } from "./orderLines";
 
 export type BuildPaidOrderInput = {
   products: Product[];
@@ -16,7 +18,7 @@ export type BuildPaidOrderInput = {
   resolvedGiftLines?: CalculatedCartLine[];
   promotion: PromotionConfig;
   orderPrefix: string;
-  paymentMethod: PaymentMethod;
+  paymentMethod?: PaymentMethod;
   now?: string;
 };
 
@@ -34,6 +36,8 @@ export function buildPaidOrder(input: BuildPaidOrderInput): BuildPaidOrderResult
   const stockById = new Map(input.products.map((product) => [product.id, product.stockQty]));
   const giftLines = input.resolvedGiftLines ?? input.calculated.giftLines;
   const allLines = [...input.calculated.lines, ...giftLines];
+  const orderItems = allLines.map((line) => makeOrderItem(line, orderId, productById));
+  const summary = summarizeOrderItems(orderItems);
 
   const order: Order = {
     id: orderId,
@@ -46,11 +50,16 @@ export function buildPaidOrder(input: BuildPaidOrderInput): BuildPaidOrderResult
     triggeredGiftTier: input.calculated.triggeredGiftTier?.threshold,
     promotionSnapshot: input.promotion,
     giftStockWarning: input.calculated.giftStockWarnings.length > 0,
+    orderNature: summary.orderNature,
+    salesAmount: summary.salesAmount,
+    nonSalesQuantity: summary.nonSalesQuantity,
+    nonSalesCost: summary.nonSalesCost,
+    operatingActivityCost: summary.operatingActivityCost,
+    nonOperatingOutboundCost: summary.nonOperatingOutboundCost,
     createdAt,
     paidAt: createdAt
   };
 
-  const orderItems = allLines.map((line) => makeOrderItem(line, orderId, productById));
   const inventoryLogs = allLines.map((line) => deductInventory(line, orderId, createdAt, productById, stockById));
   const updatedProducts = input.products.map((product) => ({
     ...product,
@@ -73,7 +82,19 @@ function makeOrderItem(
   const product = getProductForLine(line, productById);
   const unitCostSnapshot = product.costPrice;
   const costTotal = normalizeMoney(unitCostSnapshot * line.quantity);
-  const grossProfit = normalizeMoney(line.lineTotal - costTotal);
+  const revenueType = line.revenueType ?? (line.lineType === "gift" ? "non_sales" : "sale");
+  const nonSalesReason = revenueType === "non_sales" ? line.nonSalesReason ?? "tier_gift" : undefined;
+  const finalUnitPrice = revenueType === "non_sales" ? 0 : line.finalUnitPrice;
+  const lineTotal = revenueType === "non_sales" ? 0 : line.lineTotal;
+  const statisticalUnitPrice = revenueType === "non_sales" ? 0 : line.statisticalUnitPrice ?? finalUnitPrice;
+  const statisticalSubtotal =
+    revenueType === "non_sales" ? 0 : line.statisticalSubtotal ?? normalizeMoney(statisticalUnitPrice * line.quantity);
+  const discountGiveawayAmount =
+    revenueType === "non_sales"
+      ? 0
+      : line.discountGiveawayAmount ??
+        normalizeMoney(line.lineType === "discount_addon" ? Math.max(0, line.originalUnitPrice - finalUnitPrice) * line.quantity : 0);
+  const grossProfit = normalizeMoney(lineTotal - costTotal);
 
   return {
     id: makeLineId(),
@@ -84,12 +105,19 @@ function makeOrderItem(
     productCodeSnapshot: line.productCode,
     quantity: line.quantity,
     originalUnitPrice: line.originalUnitPrice,
-    finalUnitPrice: line.finalUnitPrice,
+    finalUnitPrice,
     lineType: line.lineType,
-    lineTotal: line.lineTotal,
+    lineTotal,
     unitCostSnapshot,
     costTotal,
-    grossProfit
+    grossProfit,
+    revenueType,
+    nonSalesReason,
+    nonSalesNote: revenueType === "non_sales" ? line.nonSalesNote?.trim() || undefined : undefined,
+    campaignNameSnapshot: revenueType === "non_sales" ? line.campaignNameSnapshot?.trim() || undefined : undefined,
+    statisticalUnitPrice: normalizeMoney(statisticalUnitPrice),
+    statisticalSubtotal: normalizeMoney(statisticalSubtotal),
+    discountGiveawayAmount: normalizeMoney(discountGiveawayAmount)
   };
 }
 
@@ -115,10 +143,50 @@ function deductInventory(
     productId: line.productId,
     orderId,
     changeQty: -line.quantity,
-    reason: line.lineType === "gift" ? "gift_order_paid" : "order_paid",
+    reason: getInventoryReason(line),
     beforeQty,
     afterQty,
     createdAt
+  };
+}
+
+function getInventoryReason(line: CalculatedCartLine): InventoryLog["reason"] {
+  const revenueType = line.revenueType ?? (line.lineType === "gift" ? "non_sales" : "sale");
+
+  if (revenueType === "sale") {
+    return "order_paid";
+  }
+
+  return (line.nonSalesReason ?? "tier_gift") === "tier_gift" ? "gift_order_paid" : "non_sales_outbound";
+}
+
+function summarizeOrderItems(orderItems: OrderItem[]): Pick<
+  Order,
+  "orderNature" | "salesAmount" | "nonSalesQuantity" | "nonSalesCost" | "operatingActivityCost" | "nonOperatingOutboundCost"
+> {
+  const normalizedItems = orderItems.map(getNormalizedOrderLine);
+  const accountingRows = normalizedItems.map(getLineAccounting);
+  const nonOperatingReasons: NonSalesReason[] = ["manual_gift", "other_non_sales"];
+
+  return {
+    orderNature: deriveOrderNature(normalizedItems),
+    salesAmount: normalizeMoney(accountingRows.reduce((sum, row) => sum + row.revenue, 0)),
+    nonSalesQuantity: normalizedItems
+      .filter((item) => item.revenueType === "non_sales")
+      .reduce((sum, item) => sum + item.quantity, 0),
+    nonSalesCost: normalizeMoney(
+      accountingRows.reduce((sum, row) => sum + row.operatingActivityCost + row.nonOperatingOutboundCost, 0)
+    ),
+    operatingActivityCost: normalizeMoney(accountingRows.reduce((sum, row) => sum + row.operatingActivityCost, 0)),
+    nonOperatingOutboundCost: normalizeMoney(
+      normalizedItems.reduce((sum, item, index) => {
+        if (item.nonSalesReason && nonOperatingReasons.includes(item.nonSalesReason)) {
+          return sum + accountingRows[index].nonOperatingOutboundCost;
+        }
+
+        return sum;
+      }, 0)
+    )
   };
 }
 

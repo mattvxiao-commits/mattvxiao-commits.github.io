@@ -73,6 +73,7 @@ export default function CheckoutPanel({
 }: CheckoutPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
   const isEmpty = calculated.lines.length === 0;
+  const isZeroPayable = calculated.payableAmount === 0;
   const hasGiftStockWarnings = calculated.giftStockWarnings.length > 0;
   const giftRequirements = useMemo(
     () => buildGiftSelectionRequirements(calculated, products),
@@ -113,50 +114,54 @@ export default function CheckoutPanel({
         </button>
       </div>
 
-      <div className="paymentMethods" role="group" aria-label="收款方式">
-        {paymentOptions.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            className={paymentMethod === option.value ? "isSelected" : ""}
-            aria-pressed={paymentMethod === option.value}
-            onClick={() => setPaymentMethod(option.value)}
-          >
-            {option.value === "cash" ? <Banknote size={17} aria-hidden="true" /> : <QrCode size={17} aria-hidden="true" />}
-            {option.label}
-          </button>
-        ))}
-      </div>
+      {isZeroPayable ? null : (
+        <>
+          <div className="paymentMethods" role="group" aria-label="收款方式">
+            {paymentOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={paymentMethod === option.value ? "isSelected" : ""}
+                aria-pressed={paymentMethod === option.value}
+                onClick={() => setPaymentMethod(option.value)}
+              >
+                {option.value === "cash" ? <Banknote size={17} aria-hidden="true" /> : <QrCode size={17} aria-hidden="true" />}
+                {option.label}
+              </button>
+            ))}
+          </div>
 
-      {paymentMethod === "wechat" ? (
-        <div className="qrGrid">
-          <section className="qrBox" aria-label="微信收款码">
-            {qrImageUrls.wechat ? (
-              <img src={qrImageUrls.wechat} alt="微信收款码" />
-            ) : (
-              <p>微信收款码未设置</p>
-            )}
-          </section>
-        </div>
-      ) : null}
+          {paymentMethod === "wechat" ? (
+            <div className="qrGrid">
+              <section className="qrBox" aria-label="微信收款码">
+                {qrImageUrls.wechat ? (
+                  <img src={qrImageUrls.wechat} alt="微信收款码" />
+                ) : (
+                  <p>微信收款码未设置</p>
+                )}
+              </section>
+            </div>
+          ) : null}
 
-      {paymentMethod === "alipay" ? (
-        <div className="qrGrid">
-          <section className="qrBox" aria-label="支付宝收款码">
-            {qrImageUrls.alipay ? (
-              <img src={qrImageUrls.alipay} alt="支付宝收款码" />
-            ) : (
-              <p>支付宝收款码未设置</p>
-            )}
-          </section>
-        </div>
-      ) : null}
+          {paymentMethod === "alipay" ? (
+            <div className="qrGrid">
+              <section className="qrBox" aria-label="支付宝收款码">
+                {qrImageUrls.alipay ? (
+                  <img src={qrImageUrls.alipay} alt="支付宝收款码" />
+                ) : (
+                  <p>支付宝收款码未设置</p>
+                )}
+              </section>
+            </div>
+          ) : null}
 
-      {paymentMethod === "cash" || paymentMethod === "other" ? (
-        <div className="qrBox singleQrNotice">
-          <p>当前选择{paymentOptions.find((option) => option.value === paymentMethod)?.label}收款，无需展示收款码。</p>
-        </div>
-      ) : null}
+          {paymentMethod === "cash" || paymentMethod === "other" ? (
+            <div className="qrBox singleQrNotice">
+              <p>当前选择{paymentOptions.find((option) => option.value === paymentMethod)?.label}收款，无需展示收款码。</p>
+            </div>
+          ) : null}
+        </>
+      )}
 
       {giftRequirements.length > 0 ? (
         <div className="giftSelectionPanel" aria-label="赠品选择">
@@ -257,7 +262,11 @@ export default function CheckoutPanel({
             ))}
           </div>
         ) : null}
-        <p>确认线下已收到对应金额后，再保存为已支付订单并扣减库存。</p>
+        <p>
+          {isZeroPayable
+            ? "本单无应收金额，保存后会扣减对应库存并记录为非销售出库。"
+            : "确认线下已收到对应金额后，再保存为已支付订单并扣减库存。"}
+        </p>
         <button
           type="button"
           className="primaryButton"
@@ -273,7 +282,9 @@ export default function CheckoutPanel({
                 ? "赠品库存不足，无法确认"
                 : hasIncompleteGiftSelections
                   ? "赠品未选择完整，无法确认"
-                  : "确认已收款并保存订单"}
+                  : isZeroPayable
+                    ? "确认保存非销售出库"
+                    : "确认已收款并保存订单"}
         </button>
       </div>
     </aside>

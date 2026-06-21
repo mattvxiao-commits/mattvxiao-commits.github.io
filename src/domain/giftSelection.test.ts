@@ -99,4 +99,26 @@ describe("gift selection helpers", () => {
       expect.objectContaining({ productId: "gift-a-2", productName: "赠品A白色", quantity: 1, lineType: "gift" })
     ]);
   });
+
+  it("marks selected SPU gifts as tier gift non-sales lines", () => {
+    const resolved = resolveGiftLines({
+      calculated,
+      products: [baseProduct, giftA1, giftA2],
+      selections: { "spu:赠品A": { "gift-a-1": 2 } }
+    });
+
+    expect(resolved).toEqual([
+      expect.objectContaining({
+        productId: "gift-a-1",
+        quantity: 2,
+        revenueType: "non_sales",
+        nonSalesReason: "tier_gift",
+        finalUnitPrice: 0,
+        lineTotal: 0,
+        statisticalUnitPrice: 0,
+        statisticalSubtotal: 0,
+        discountGiveawayAmount: 0
+      })
+    ]);
+  });
 });

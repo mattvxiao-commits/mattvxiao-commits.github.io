@@ -627,12 +627,13 @@ test("saves paid order, clears cart, refreshes products, and includes gift inven
   expect(await screen.findByText("ECRM-SAVED")).toBeVisible();
 });
 
-test("含人工赠送时确认保存不会调用旧保存链路", async () => {
+test("含人工赠送时确认保存会保存混合订单 V1.6a 字段", async () => {
   const manualGift = product({
     id: "manual-gift",
     name: "人工赠品",
     spu: "赠品SPU",
     salePrice: 9,
+    costPrice: 2,
     stockQty: 5,
     isSellable: false,
     isGiftEligible: true
@@ -653,16 +654,48 @@ test("含人工赠送时确认保存不会调用旧保存链路", async () => {
   fireEvent.click(screen.getByRole("button", { name: "去收款" }));
   fireEvent.click(await screen.findByRole("button", { name: "确认已收款并保存订单" }));
 
-  expect(await screen.findByText("非销售出库订单保存将在下一步启用，请先完成当前开发版本更新。")).toBeVisible();
-  expect(repositories.savePaidOrder).not.toHaveBeenCalled();
+  await waitFor(() => expect(repositories.savePaidOrder).toHaveBeenCalledTimes(1));
+  const saved = repositories.savePaidOrder.mock.calls[0][0];
+  expect(saved.order).toEqual(
+    expect.objectContaining({
+      payableAmount: 20,
+      paymentMethod: "wechat",
+      orderNature: "mixed",
+      salesAmount: 20,
+      nonSalesQuantity: 1,
+      nonSalesCost: 2,
+      nonOperatingOutboundCost: 2
+    })
+  );
+  expect(saved.orderItems).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        productId: "manual-gift",
+        revenueType: "non_sales",
+        nonSalesReason: "manual_gift",
+        nonSalesNote: "好友赠送",
+        finalUnitPrice: 0,
+        lineTotal: 0,
+        statisticalSubtotal: 0,
+        discountGiveawayAmount: 0,
+        costTotal: 2,
+        grossProfit: -2
+      })
+    ])
+  );
+  expect(saved.inventoryLogs).toEqual(
+    expect.arrayContaining([expect.objectContaining({ productId: "manual-gift", reason: "non_sales_outbound" })])
+  );
+  expect(screen.queryByText("非销售出库订单保存将在下一步启用，请先完成当前开发版本更新。")).not.toBeInTheDocument();
 });
 
-test("含运营赠礼时确认保存不会调用旧保存链路", async () => {
+test("含运营赠礼时确认保存会保存运营赠礼字段", async () => {
   const campaignGift = product({
     id: "campaign-gift",
     name: "运营赠品",
     spu: "赠品SPU",
     salePrice: 6,
+    costPrice: 1.5,
     stockQty: 5,
     isSellable: false,
     isGiftEligible: true
@@ -686,8 +719,78 @@ test("含运营赠礼时确认保存不会调用旧保存链路", async () => {
   fireEvent.click(screen.getByRole("button", { name: "去收款" }));
   fireEvent.click(await screen.findByRole("button", { name: "确认已收款并保存订单" }));
 
-  expect(await screen.findByText("非销售出库订单保存将在下一步启用，请先完成当前开发版本更新。")).toBeVisible();
-  expect(repositories.savePaidOrder).not.toHaveBeenCalled();
+  await waitFor(() => expect(repositories.savePaidOrder).toHaveBeenCalledTimes(1));
+  const saved = repositories.savePaidOrder.mock.calls[0][0];
+  expect(saved.order).toEqual(
+    expect.objectContaining({
+      orderNature: "mixed",
+      salesAmount: 20,
+      nonSalesQuantity: 1,
+      nonSalesCost: 1.5,
+      operatingActivityCost: 1.5
+    })
+  );
+  expect(saved.orderItems).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        productId: "campaign-gift",
+        revenueType: "non_sales",
+        nonSalesReason: "campaign_gift",
+        campaignNameSnapshot: "关注小红书赠礼",
+        statisticalSubtotal: 0,
+        costTotal: 1.5,
+        grossProfit: -1.5
+      })
+    ])
+  );
+  expect(saved.inventoryLogs).toEqual(
+    expect.arrayContaining([expect.objectContaining({ productId: "campaign-gift", reason: "non_sales_outbound" })])
+  );
+  expect(screen.queryByText("非销售出库订单保存将在下一步启用，请先完成当前开发版本更新。")).not.toBeInTheDocument();
+});
+
+test("纯人工赠送 0 元订单确认保存不要求支付方式", async () => {
+  const manualGift = product({
+    id: "manual-gift",
+    name: "人工赠品",
+    spu: "赠品SPU",
+    salePrice: 9,
+    costPrice: 2,
+    stockQty: 5,
+    isSellable: false,
+    isGiftEligible: true
+  });
+  repositories.listProducts.mockResolvedValue([sellableProduct, manualGift]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "打开购物车，当前 0 件，应收 ¥0.00" }));
+  fireEvent.click(await screen.findByRole("button", { name: "人工赠送" }));
+  const dialog = await screen.findByRole("dialog", { name: "选择人工赠送商品" });
+  fireEvent.click(within(dialog).getByRole("button", { name: "选择 人工赠品，库存 5" }));
+  fireEvent.change(within(dialog).getByLabelText("备注"), { target: { value: "好友赠送" } });
+  fireEvent.click(within(dialog).getByRole("button", { name: "确认添加" }));
+
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "选择人工赠送商品" })).not.toBeInTheDocument());
+  fireEvent.click(screen.getByRole("button", { name: "去收款" }));
+  fireEvent.click(await screen.findByRole("button", { name: "确认保存非销售出库" }));
+
+  await waitFor(() => expect(repositories.savePaidOrder).toHaveBeenCalledTimes(1));
+  const saved = repositories.savePaidOrder.mock.calls[0][0];
+  expect(saved.order).toEqual(
+    expect.objectContaining({
+      payableAmount: 0,
+      paymentMethod: undefined,
+      orderNature: "non_sales",
+      salesAmount: 0,
+      nonSalesQuantity: 1,
+      nonSalesCost: 2,
+      nonOperatingOutboundCost: 2
+    })
+  );
+  expect(saved.inventoryLogs).toEqual(
+    expect.arrayContaining([expect.objectContaining({ productId: "manual-gift", reason: "non_sales_outbound" })])
+  );
 });
 
 test("requires selecting actual SKU before saving an SPU gift order", async () => {
