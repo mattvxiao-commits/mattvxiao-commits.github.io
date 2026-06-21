@@ -193,6 +193,32 @@ test("allows checkout when gift inventory is available", () => {
   expect(onCheckout).toHaveBeenCalledTimes(1);
 });
 
+test("hides campaign gift quick action when campaign gift is disabled", () => {
+  const calculated = calculateCart({
+    items: [],
+    products: [normal],
+    promotion: { ...defaultPromotion(), giftTiers: [] }
+  });
+
+  render(
+    <CartPanel
+      products={[normal]}
+      calculated={calculated}
+      cartItems={[]}
+      increment={() => undefined}
+      decrement={() => undefined}
+      clear={() => undefined}
+      checkout={() => undefined}
+      hold={() => undefined}
+      campaignGiftEnabled={false}
+    />
+  );
+
+  expect(screen.queryByRole("button", { name: "运营赠礼" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "人工赠送" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "其他出库" })).toBeVisible();
+});
+
 test("blocks checkout when triggered gifts do not have enough stock", () => {
   const items: CartItem[] = [{ productId: "normal", quantity: 1, addedAt: "2026-06-15T00:00:00.000Z" }];
   const products = [normal, giftA];
@@ -220,6 +246,51 @@ test("blocks checkout when triggered gifts do not have enough stock", () => {
   );
 
   fireEvent.click(screen.getByRole("button", { name: "赠品库存不足，无法去收款" }));
+
+  expect(onCheckout).not.toHaveBeenCalled();
+});
+
+test("blocks checkout when campaign gift has no sale line", () => {
+  const campaignGift = product({
+    id: "campaign-gift",
+    name: "运营赠品",
+    spu: "运营SPU",
+    salePrice: 6,
+    isGiftEligible: true
+  });
+  const items: CartItem[] = [
+    {
+      id: "campaign-line",
+      productId: "campaign-gift",
+      quantity: 1,
+      addedAt: "2026-06-21T10:01:00.000Z",
+      revenueType: "non_sales",
+      nonSalesReason: "campaign_gift",
+      campaignNameSnapshot: "关注小红书赠礼"
+    }
+  ];
+  const calculated = calculateCart({
+    items,
+    products: [campaignGift],
+    promotion: { ...defaultPromotion(), giftTiers: [] }
+  });
+  const onCheckout = vi.fn();
+
+  render(
+    <CartPanel
+      products={[campaignGift]}
+      calculated={calculated}
+      cartItems={items}
+      increment={() => undefined}
+      decrement={() => undefined}
+      clear={() => undefined}
+      checkout={onCheckout}
+      hold={() => undefined}
+      campaignGiftEnabled
+    />
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "运营赠礼需要正常消费商品" }));
 
   expect(onCheckout).not.toHaveBeenCalled();
 });

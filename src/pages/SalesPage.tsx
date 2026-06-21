@@ -100,6 +100,10 @@ function nonSalesPickerProductExists(productId: string, products: Product[]): bo
   return productId.length > 0 && products.some((product) => product.id === productId);
 }
 
+function getProductRemainingStock(product: Product, quantityByProduct: Map<string, number>): number {
+  return product.stockQty - (quantityByProduct.get(product.id) ?? 0);
+}
+
 function SalesProductImage({ product }: { product: Product }) {
   const [imageUrl, setImageUrl] = useState<string>();
 
@@ -133,6 +137,7 @@ function SalesProductImage({ product }: { product: Product }) {
 function NonSalesProductPicker({
   mode,
   products,
+  cartQuantityByProduct,
   selectedProductId,
   note,
   showAllActive,
@@ -145,6 +150,7 @@ function NonSalesProductPicker({
 }: {
   mode: NonSalesPickerMode;
   products: Product[];
+  cartQuantityByProduct: Map<string, number>;
   selectedProductId: string;
   note: string;
   showAllActive: boolean;
@@ -186,21 +192,30 @@ function NonSalesProductPicker({
 
         <div className="nonSalesProductList" role="list" aria-label={`${nonSalesReasonLabels[mode]}商品列表`}>
           {products.length > 0 ? (
-            products.map((product) => (
-              <button
-                type="button"
-                className={selectedProductId === product.id ? "nonSalesProductOption isSelected" : "nonSalesProductOption"}
-                aria-label={`选择 ${product.name}`}
-                key={product.id}
-                onClick={() => setSelectedProductId(product.id)}
-              >
-                <span>
-                  <strong>{product.name}</strong>
-                  <em>{product.spu}</em>
-                </span>
-                <span>{formatMoney(0)}</span>
-              </button>
-            ))
+            products.map((product) => {
+              const remainingStock = getProductRemainingStock(product, cartQuantityByProduct);
+              const hasReachedStock = remainingStock <= 0;
+
+              return (
+                <button
+                  type="button"
+                  className={selectedProductId === product.id ? "nonSalesProductOption isSelected" : "nonSalesProductOption"}
+                  aria-label={`选择 ${product.name}，库存 ${product.stockQty}${hasReachedStock ? "，已达库存" : ""}`}
+                  disabled={hasReachedStock}
+                  key={product.id}
+                  onClick={() => setSelectedProductId(product.id)}
+                >
+                  <span>
+                    <strong>{product.name}</strong>
+                    <em>{product.spu}</em>
+                  </span>
+                  <span>
+                    库存 {product.stockQty}
+                    {hasReachedStock ? " / 已达库存" : ""}
+                  </span>
+                </button>
+              );
+            })
           ) : (
             <p className="emptyState">当前没有可选择的商品。</p>
           )}
@@ -490,6 +505,17 @@ export default function SalesPage() {
     () => cartItems.some((item) => item.revenueType !== "non_sales" && item.quantity > 0),
     [cartItems]
   );
+  const hasNonSalesCartLine = useMemo(
+    () => cartItems.some((item) => item.revenueType === "non_sales" && item.quantity > 0),
+    [cartItems]
+  );
+  const hasCampaignGiftWithoutSaleLine = useMemo(
+    () =>
+      cartItems.some(
+        (item) => item.revenueType === "non_sales" && item.nonSalesReason === "campaign_gift" && item.quantity > 0
+      ) && !hasSaleCartLine,
+    [cartItems, hasSaleCartLine]
+  );
   const giftEligibleProducts = useMemo(
     () => products.filter((product) => product.status === "active" && product.isGiftEligible),
     [products]
@@ -630,15 +656,24 @@ export default function SalesPage() {
   }
 
   function openNonSalesPicker(mode: NonSalesPickerMode) {
+    if (mode === "campaign_gift" && !settings?.campaignGift.enabled) {
+      setStatus({ kind: "error", text: "请先在设置页启用运营赠礼。" });
+      return;
+    }
+
     setNonSalesPickerMode(mode);
     setNonSalesNote("");
     setShowAllNonSalesProducts(false);
     setNonSalesPickerError(undefined);
-    const options = mode === "campaign_gift" ? giftEligibleProducts : giftEligibleProducts;
-    setNonSalesProductId(options[0]?.id ?? "");
+    setNonSalesProductId(giftEligibleProducts.find((product) => getProductRemainingStock(product, cartQuantityByProduct) > 0)?.id ?? "");
   }
 
   function addCampaignGift() {
+    if (!settings?.campaignGift.enabled) {
+      setStatus({ kind: "error", text: "请先在设置页启用运营赠礼。" });
+      return;
+    }
+
     if (!hasSaleCartLine) {
       setStatus({ kind: "error", text: "运营赠礼需要本单存在正常消费商品。" });
       return;
@@ -651,7 +686,12 @@ export default function SalesPage() {
         product.isGiftEligible
     );
 
-    if (settings?.campaignGift.enabled && defaultProduct) {
+    if (defaultProduct) {
+      if (getProductRemainingStock(defaultProduct, cartQuantityByProduct) <= 0) {
+        setStatus({ kind: "error", text: "该商品库存不足，无法继续添加。" });
+        return;
+      }
+
       addNonSalesProduct({
         productId: defaultProduct.id,
         reason: "campaign_gift",
@@ -669,8 +709,30 @@ export default function SalesPage() {
       return;
     }
 
+    if (nonSalesPickerMode === "campaign_gift") {
+      if (!settings?.campaignGift.enabled) {
+        setNonSalesPickerError("请先在设置页启用运营赠礼。");
+        return;
+      }
+
+      if (!hasSaleCartLine) {
+        setNonSalesPickerError("运营赠礼需要本单存在正常消费商品。");
+        return;
+      }
+    }
+
     if (!nonSalesProductId) {
-      setNonSalesPickerError("请选择商品后再添加。");
+      setNonSalesPickerError("请选择有效商品后再添加。");
+      return;
+    }
+
+    const selectedProduct = nonSalesPickerProducts.find((product) => product.id === nonSalesProductId);
+    if (
+      !selectedProduct ||
+      selectedProduct.status !== "active" ||
+      getProductRemainingStock(selectedProduct, cartQuantityByProduct) <= 0
+    ) {
+      setNonSalesPickerError("请选择有效商品后再添加。");
       return;
     }
 
@@ -778,6 +840,16 @@ export default function SalesPage() {
 
     if (calculated.giftStockWarnings.length > 0) {
       setStatus({ kind: "error", text: "赠品库存不足，无法保存订单。" });
+      return;
+    }
+
+    if (hasCampaignGiftWithoutSaleLine) {
+      setStatus({ kind: "error", text: "运营赠礼需要本单存在正常消费商品。" });
+      return;
+    }
+
+    if (hasNonSalesCartLine) {
+      setStatus({ kind: "error", text: "非销售出库订单保存将在下一步启用，请先完成当前开发版本更新。" });
       return;
     }
 
@@ -944,6 +1016,7 @@ export default function SalesPage() {
             increment={increment}
             decrement={decrement}
             clear={clearCart}
+            campaignGiftEnabled={settings?.campaignGift.enabled ?? false}
             addCampaignGift={addCampaignGift}
             addManualGift={() => openNonSalesPicker("manual_gift")}
             addOtherOutbound={() => openNonSalesPicker("other_non_sales")}
@@ -964,6 +1037,7 @@ export default function SalesPage() {
         <NonSalesProductPicker
           mode={nonSalesPickerMode}
           products={nonSalesPickerProducts}
+          cartQuantityByProduct={cartQuantityByProduct}
           selectedProductId={nonSalesProductId}
           note={nonSalesNote}
           showAllActive={showAllNonSalesProducts}

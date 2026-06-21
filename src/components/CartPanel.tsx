@@ -13,6 +13,7 @@ type CartPanelProps = {
   checkout: () => void;
   hold: () => void;
   close?: () => void;
+  campaignGiftEnabled?: boolean;
   addCampaignGift?: () => void;
   addManualGift?: () => void;
   addOtherOutbound?: () => void;
@@ -45,6 +46,7 @@ export default function CartPanel({
   checkout,
   hold,
   close,
+  campaignGiftEnabled = true,
   addCampaignGift = () => undefined,
   addManualGift = () => undefined,
   addOtherOutbound = () => undefined
@@ -62,6 +64,16 @@ export default function CartPanel({
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const hasCartItems = itemCount > 0;
   const hasGiftStockWarnings = calculated.giftStockWarnings.length > 0;
+  const hasSaleLine = cartItems.some((item) => item.revenueType !== "non_sales" && item.quantity > 0);
+  const hasCampaignGiftLine = cartItems.some(
+    (item) => item.revenueType === "non_sales" && item.nonSalesReason === "campaign_gift" && item.quantity > 0
+  );
+  const hasCampaignGiftWithoutSaleLine = hasCampaignGiftLine && !hasSaleLine;
+  const checkoutLabel = hasGiftStockWarnings
+    ? "赠品库存不足，无法去收款"
+    : hasCampaignGiftWithoutSaleLine
+      ? "运营赠礼需要正常消费商品"
+      : "去收款";
   const giftSummaryText =
     calculated.triggeredGiftTier && calculated.giftEntitlements.length > 0
       ? `已触发满 ${calculated.triggeredGiftTier.threshold}：${calculated.giftEntitlements
@@ -115,9 +127,11 @@ export default function CartPanel({
       </div>
 
       <div className="nonSalesQuickActions" role="group" aria-label="非销售出库">
-        <button type="button" className="secondaryButton" onClick={addCampaignGift}>
-          运营赠礼
-        </button>
+        {campaignGiftEnabled ? (
+          <button type="button" className="secondaryButton" onClick={addCampaignGift}>
+            运营赠礼
+          </button>
+        ) : null}
         <button type="button" className="secondaryButton" onClick={addManualGift}>
           人工赠送
         </button>
@@ -225,11 +239,11 @@ export default function CartPanel({
         <button
           type="button"
           className="primaryButton"
-          disabled={!hasCartItems || hasGiftStockWarnings}
+          disabled={!hasCartItems || hasGiftStockWarnings || hasCampaignGiftWithoutSaleLine}
           onClick={checkout}
         >
           <ShoppingCart size={18} aria-hidden="true" />
-          {hasGiftStockWarnings ? "赠品库存不足，无法去收款" : "去收款"}
+          {checkoutLabel}
         </button>
       </div>
     </aside>

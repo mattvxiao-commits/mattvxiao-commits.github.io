@@ -123,6 +123,49 @@ describe("calculateCart", () => {
     ]);
   });
 
+  it("keeps statistical subtotal in sync when compacting normal quantities", () => {
+    const result = calculateCart({
+      items: cart("normal", 3),
+      products: [normal],
+      promotion: { ...defaultPromotion(), enabled: false, giftTiers: [] }
+    });
+
+    expect(result.lines).toEqual([
+      expect.objectContaining({
+        productId: "normal",
+        quantity: 3,
+        finalUnitPrice: 20,
+        lineTotal: 60,
+        statisticalSubtotal: 60
+      })
+    ]);
+  });
+
+  it("keeps discount giveaway amount in sync when compacting discount addon quantities", () => {
+    const result = calculateCart({
+      items: [
+        { productId: "normal", quantity: 1, addedAt: "2026-06-15T00:00:00.000Z" },
+        { productId: "addon", quantity: 2, addedAt: "2026-06-15T00:01:00.000Z" }
+      ],
+      products: [normal, addon],
+      promotion: defaultPromotion()
+    });
+
+    expect(result.lines).toEqual([
+      expect.objectContaining({ productId: "normal" }),
+      expect.objectContaining({
+        productId: "addon",
+        quantity: 2,
+        originalUnitPrice: 5,
+        finalUnitPrice: 3,
+        lineType: "discount_addon",
+        lineTotal: 6,
+        statisticalSubtotal: 6,
+        discountGiveawayAmount: 4
+      })
+    ]);
+  });
+
   it("uses final payable amount after discount for gift threshold", () => {
     const result = calculateCart({
       items: [

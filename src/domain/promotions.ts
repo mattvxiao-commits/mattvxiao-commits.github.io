@@ -143,6 +143,14 @@ function compactPricedUnits(units: PricedUnit[]): CalculatedCartLine[] {
     ) {
       previous.quantity += 1;
       previous.lineTotal = normalizeMoney(previous.quantity * previous.finalUnitPrice);
+      previous.statisticalSubtotal = normalizeMoney(
+        previous.quantity * (previous.statisticalUnitPrice ?? previous.finalUnitPrice)
+      );
+      previous.discountGiveawayAmount = normalizeMoney(
+        previous.lineType === "discount_addon"
+          ? Math.max(0, previous.originalUnitPrice - previous.finalUnitPrice) * previous.quantity
+          : 0
+      );
       return lines;
     }
 
