@@ -676,7 +676,7 @@ export default function SettingsPage() {
               </label>
             </div>
 
-            <div className="settingsFieldGrid">
+            <div className="settingsFieldGrid threeColumns">
               <label>
                 <span>运营活动名称</span>
                 <input
@@ -694,28 +694,73 @@ export default function SettingsPage() {
                 />
               </label>
               <label>
-                <span>默认运营赠礼 SKU</span>
+                <span>默认运营赠礼目标类型</span>
                 <select
-                  aria-label="默认运营赠礼 SKU"
-                  value={campaignGift.defaultProductId}
+                  aria-label="默认运营赠礼目标类型"
+                  value={campaignGift.targetType}
                   onChange={(event) =>
                     updateSettings((current) => ({
                       ...current,
                       campaignGift: {
                         ...normalizeCampaignGiftConfig(current.campaignGift),
-                        defaultProductId: event.target.value
+                        targetType: event.target.value === "spu" ? "spu" : "sku"
                       }
                     }))
                   }
                 >
+                  <option value="sku">指定 SKU</option>
+                  <option value="spu">指定 SPU</option>
+                </select>
+              </label>
+              {campaignGift.targetType === "spu" ? (
+                <label>
+                  <span>默认运营赠礼 SPU</span>
+                  <select
+                    aria-label="默认运营赠礼 SPU"
+                    value={campaignGift.defaultSpu}
+                    onChange={(event) =>
+                      updateSettings((current) => ({
+                        ...current,
+                        campaignGift: {
+                          ...normalizeCampaignGiftConfig(current.campaignGift),
+                          defaultSpu: event.target.value
+                        }
+                      }))
+                    }
+                  >
+                    <option value="">不选择</option>
+                    {giftSpuOptions.map(([spu, count]) => (
+                      <option key={spu} value={spu}>
+                        {spu}（{count} 个 SKU）
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <label>
+                  <span>默认运营赠礼 SKU</span>
+                  <select
+                    aria-label="默认运营赠礼 SKU"
+                    value={campaignGift.defaultProductId}
+                    onChange={(event) =>
+                      updateSettings((current) => ({
+                        ...current,
+                        campaignGift: {
+                          ...normalizeCampaignGiftConfig(current.campaignGift),
+                          defaultProductId: event.target.value
+                        }
+                      }))
+                    }
+                  >
                   <option value="">不选择</option>
                   {giftProducts.map((product) => (
                     <option key={product.id} value={product.id}>
                       {displayProductCode(product.productCode)} / {product.name} / {product.spu}
                     </option>
                   ))}
-                </select>
-              </label>
+                  </select>
+                </label>
+              )}
             </div>
           </section>
 

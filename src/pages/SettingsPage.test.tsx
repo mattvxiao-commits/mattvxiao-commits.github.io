@@ -84,6 +84,30 @@ test("selects add-on discount SPU from product SPU options and saves it", async 
   expect(repositories.saveSettings.mock.calls[0][0].promotion.addonDiscount.discountSpu).toBe("普通SPU");
 });
 
+test("运营赠礼可以切换指定 SKU 和指定 SPU", async () => {
+  repositories.listProducts.mockResolvedValue([
+    product({ id: "gift-a", name: "赠礼 A", spu: "赠礼SPU", isGiftEligible: true }),
+    product({ id: "gift-b", name: "赠礼 B", spu: "赠礼SPU", isGiftEligible: true }),
+    product({ id: "normal", name: "普通商品", spu: "普通SPU", isGiftEligible: false })
+  ]);
+
+  render(<SettingsPage />);
+
+  const targetTypeSelect = await screen.findByLabelText("默认运营赠礼目标类型");
+  expect(targetTypeSelect).toBeVisible();
+
+  fireEvent.change(targetTypeSelect, { target: { value: "spu" } });
+
+  const spuSelect = screen.getByLabelText("默认运营赠礼 SPU");
+  expect(spuSelect).toBeVisible();
+  expect(within(spuSelect).getByRole("option", { name: "赠礼SPU（2 个 SKU）" })).toBeInTheDocument();
+  expect(within(spuSelect).queryByRole("option", { name: /普通SPU/ })).not.toBeInTheDocument();
+
+  fireEvent.change(targetTypeSelect, { target: { value: "sku" } });
+
+  expect(screen.getByLabelText("默认运营赠礼 SKU")).toBeVisible();
+});
+
 test("enables and saves field mode immediately after setting matching four digit PIN", async () => {
   render(<SettingsPage />);
 
@@ -292,7 +316,9 @@ test("configures campaign gift activity and default eligible SKU", async () => {
   expect(repositories.saveSettings.mock.calls[0][0].campaignGift).toEqual({
     enabled: true,
     activityName: "关注小红书赠礼",
+    targetType: "sku",
     defaultProductId: "gift-active",
+    defaultSpu: "",
     requireSaleLine: true
   });
 });

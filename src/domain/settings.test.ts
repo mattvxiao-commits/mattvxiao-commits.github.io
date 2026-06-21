@@ -6,7 +6,9 @@ describe("campaign gift settings", () => {
     expect(createDefaultCampaignGiftConfig()).toEqual({
       enabled: false,
       activityName: "运营赠礼",
+      targetType: "sku",
       defaultProductId: "",
+      defaultSpu: "",
       requireSaleLine: true
     });
   });
@@ -22,8 +24,28 @@ describe("campaign gift settings", () => {
     ).toEqual({
       enabled: true,
       activityName: "关注小红书赠礼",
+      targetType: "sku",
       defaultProductId: "gift-active",
+      defaultSpu: "",
       requireSaleLine: false
+    });
+  });
+
+  test("补齐旧运营赠礼配置的目标类型和默认 SPU", () => {
+    expect(
+      normalizeCampaignGiftConfig({
+        enabled: true,
+        activityName: "关注社媒赠礼",
+        defaultProductId: "gift-1",
+        requireSaleLine: true
+      })
+    ).toEqual({
+      enabled: true,
+      activityName: "关注社媒赠礼",
+      targetType: "sku",
+      defaultProductId: "gift-1",
+      defaultSpu: "",
+      requireSaleLine: true
     });
   });
 
@@ -35,7 +57,9 @@ describe("campaign gift settings", () => {
     ).toEqual({
       enabled: false,
       activityName: "运营赠礼",
+      targetType: "sku",
       defaultProductId: "",
+      defaultSpu: "",
       requireSaleLine: true
     });
   });
