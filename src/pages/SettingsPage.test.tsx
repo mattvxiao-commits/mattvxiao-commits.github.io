@@ -241,6 +241,62 @@ test("configures gift targets as SKU or SPU and saves generated tiers", async ()
   ]);
 });
 
+test("configures campaign gift activity and default eligible SKU", async () => {
+  repositories.listProducts.mockResolvedValue([
+    product({
+      id: "gift-active",
+      name: "可用赠礼",
+      spu: "赠礼SPU",
+      productCode: "GIFT-ACTIVE",
+      isGiftEligible: true,
+      status: "active"
+    }),
+    product({
+      id: "gift-inactive",
+      name: "停用赠礼",
+      spu: "赠礼SPU",
+      productCode: "GIFT-INACTIVE",
+      isGiftEligible: true,
+      status: "inactive"
+    }),
+    product({
+      id: "normal-active",
+      name: "普通商品",
+      spu: "普通SPU",
+      productCode: "NORMAL-ACTIVE",
+      isGiftEligible: false,
+      status: "active"
+    })
+  ]);
+
+  render(<SettingsPage />);
+
+  expect(await screen.findByRole("heading", { name: "运营赠礼" })).toBeVisible();
+
+  const enabled = screen.getByLabelText("启用运营赠礼");
+  const activityName = screen.getByLabelText("运营活动名称");
+  const defaultSku = screen.getByLabelText("默认运营赠礼 SKU");
+
+  expect(enabled).toBeInTheDocument();
+  expect(activityName).toHaveValue("运营赠礼");
+  expect(within(defaultSku).getByRole("option", { name: "GIFT-ACTIVE / 可用赠礼 / 赠礼SPU" })).toBeVisible();
+  expect(within(defaultSku).queryByRole("option", { name: "GIFT-INACTIVE / 停用赠礼 / 赠礼SPU" })).not.toBeInTheDocument();
+  expect(within(defaultSku).queryByRole("option", { name: "NORMAL-ACTIVE / 普通商品 / 普通SPU" })).not.toBeInTheDocument();
+
+  fireEvent.click(enabled);
+  fireEvent.change(activityName, { target: { value: "关注小红书赠礼" } });
+  fireEvent.change(defaultSku, { target: { value: "gift-active" } });
+  fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
+
+  await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalledTimes(1));
+  expect(repositories.saveSettings.mock.calls[0][0].campaignGift).toEqual({
+    enabled: true,
+    activityName: "关注小红书赠礼",
+    defaultProductId: "gift-active",
+    requireSaleLine: true
+  });
+});
+
 test("requires confirmation before importing a backup that overwrites current data", async () => {
   const { container } = render(<SettingsPage />);
 

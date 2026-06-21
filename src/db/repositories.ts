@@ -10,7 +10,7 @@ import type {
   RefundReason
 } from "../domain/types";
 import { normalizeFieldLockSettings } from "../domain/fieldLock";
-import { createDefaultSettings, db, type StoredImage } from "./db";
+import { createDefaultCampaignGiftConfig, createDefaultSettings, db, type StoredImage } from "./db";
 
 export function makeId(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`;
@@ -52,12 +52,22 @@ export async function getImage(id?: string): Promise<StoredImage | undefined> {
 export async function getSettings(): Promise<AppSettings> {
   const existing = await db.settings.get("settings");
   if (existing) {
+    const defaultCampaignGift = createDefaultCampaignGiftConfig();
     const normalizedSettings = {
       ...existing,
+      campaignGift: {
+        enabled: existing.campaignGift?.enabled ?? defaultCampaignGift.enabled,
+        activityName: existing.campaignGift?.activityName.trim() || defaultCampaignGift.activityName,
+        defaultProductId: existing.campaignGift?.defaultProductId ?? defaultCampaignGift.defaultProductId,
+        requireSaleLine: existing.campaignGift?.requireSaleLine ?? defaultCampaignGift.requireSaleLine
+      },
       fieldLock: normalizeFieldLockSettings(existing.fieldLock)
     };
 
-    if (JSON.stringify(existing.fieldLock) !== JSON.stringify(normalizedSettings.fieldLock)) {
+    if (
+      JSON.stringify(existing.campaignGift) !== JSON.stringify(normalizedSettings.campaignGift) ||
+      JSON.stringify(existing.fieldLock) !== JSON.stringify(normalizedSettings.fieldLock)
+    ) {
       await db.settings.put(normalizedSettings);
     }
 

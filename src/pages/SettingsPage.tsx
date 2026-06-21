@@ -13,7 +13,7 @@ import {
 } from "../db/repositories";
 import { buildOrderExportSheets } from "../domain/orderExport";
 import { displayProductCode } from "../domain/productCode";
-import type { AppSettings, GiftConfig, Product } from "../domain/types";
+import type { AppSettings, CampaignGiftConfig, GiftConfig, Product } from "../domain/types";
 import { exportJsonBackup, IMAGE_BACKUP_NOTE, importJsonBackup } from "../utils/backup";
 import { exportOrderExcel } from "../utils/orderExcelExport";
 import { notifySettingsUpdated } from "../utils/settingsEvents";
@@ -33,6 +33,22 @@ type GiftTargetDraft = {
   targetType: GiftTargetType;
   value: string;
 };
+
+const defaultCampaignGift: CampaignGiftConfig = {
+  enabled: false,
+  activityName: "运营赠礼",
+  defaultProductId: "",
+  requireSaleLine: true
+};
+
+function normalizeCampaignGiftConfig(config?: CampaignGiftConfig): CampaignGiftConfig {
+  return {
+    enabled: config?.enabled ?? defaultCampaignGift.enabled,
+    activityName: config?.activityName ?? defaultCampaignGift.activityName,
+    defaultProductId: config?.defaultProductId ?? defaultCampaignGift.defaultProductId,
+    requireSaleLine: config?.requireSaleLine ?? defaultCampaignGift.requireSaleLine
+  };
+}
 
 function toNumber(value: string, fallback: number): number {
   const parsed = Number(value);
@@ -210,6 +226,7 @@ export default function SettingsPage() {
   const configuredDiscountSpu = settings?.promotion.addonDiscount.discountSpu ?? "";
   const hasMissingDiscountSpu =
     configuredDiscountSpu.trim().length > 0 && !discountSpuOptions.some(([spu]) => spu === configuredDiscountSpu);
+  const campaignGift = settings ? normalizeCampaignGiftConfig(settings.campaignGift) : defaultCampaignGift;
 
   function updateSettings(updater: (current: AppSettings) => AppSettings) {
     setSettings((current) => (current ? updater(current) : current));
@@ -638,6 +655,78 @@ export default function SettingsPage() {
                     }))
                   }
                 />
+              </label>
+            </div>
+          </section>
+
+          <section className="settingsSection wideSection" aria-labelledby="campaign-gift-settings-title">
+            <div className="sectionTitle">
+              <Gift size={21} aria-hidden="true" />
+              <div>
+                <h2 id="campaign-gift-settings-title">运营赠礼</h2>
+                <p>用于记录关注社媒、加入社群、现场互动等运营活动赠品。</p>
+              </div>
+            </div>
+
+            <div className="toggleRow">
+              <label className="checkControl">
+                <input
+                  aria-label="启用运营赠礼"
+                  type="checkbox"
+                  checked={campaignGift.enabled}
+                  onChange={(event) =>
+                    updateSettings((current) => ({
+                      ...current,
+                      campaignGift: {
+                        ...normalizeCampaignGiftConfig(current.campaignGift),
+                        enabled: event.target.checked
+                      }
+                    }))
+                  }
+                />
+                <span>启用运营赠礼</span>
+              </label>
+            </div>
+
+            <div className="settingsFieldGrid">
+              <label>
+                <span>运营活动名称</span>
+                <input
+                  aria-label="运营活动名称"
+                  value={campaignGift.activityName}
+                  onChange={(event) =>
+                    updateSettings((current) => ({
+                      ...current,
+                      campaignGift: {
+                        ...normalizeCampaignGiftConfig(current.campaignGift),
+                        activityName: event.target.value
+                      }
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                <span>默认运营赠礼 SKU</span>
+                <select
+                  aria-label="默认运营赠礼 SKU"
+                  value={campaignGift.defaultProductId}
+                  onChange={(event) =>
+                    updateSettings((current) => ({
+                      ...current,
+                      campaignGift: {
+                        ...normalizeCampaignGiftConfig(current.campaignGift),
+                        defaultProductId: event.target.value
+                      }
+                    }))
+                  }
+                >
+                  <option value="">不选择</option>
+                  {giftProducts.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {displayProductCode(product.productCode)} / {product.name} / {product.spu}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
           </section>

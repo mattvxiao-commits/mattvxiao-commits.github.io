@@ -106,6 +106,17 @@ afterEach(async () => {
 });
 
 describe("getSettings", () => {
+  test("creates default settings with campaign gift disabled", async () => {
+    const settings = await getSettings();
+
+    expect(settings.campaignGift).toEqual({
+      enabled: false,
+      activityName: "运营赠礼",
+      defaultProductId: "",
+      requireSaleLine: true
+    });
+  });
+
   test("normalizes legacy settings without field lock", async () => {
     await db.settings.put({
       id: "settings",
@@ -117,7 +128,19 @@ describe("getSettings", () => {
     const settings = await getSettings();
 
     expect(settings.fieldLock).toEqual(createDefaultFieldLockSettings());
+    expect(settings.campaignGift).toEqual({
+      enabled: false,
+      activityName: "运营赠礼",
+      defaultProductId: "",
+      requireSaleLine: true
+    });
     await expect(db.settings.get("settings")).resolves.toMatchObject({
+      campaignGift: {
+        enabled: false,
+        activityName: "运营赠礼",
+        defaultProductId: "",
+        requireSaleLine: true
+      },
       fieldLock: createDefaultFieldLockSettings()
     });
   });

@@ -2,6 +2,7 @@ import Dexie, { type Table } from "dexie";
 import { createDefaultFieldLockSettings } from "../domain/fieldLock";
 import type {
   AppSettings,
+  CampaignGiftConfig,
   InventoryLog,
   Order,
   OrderItem,
@@ -78,12 +79,24 @@ const defaultPromotion: PromotionConfig = {
   ]
 };
 
+const defaultCampaignGift: CampaignGiftConfig = {
+  enabled: false,
+  activityName: "运营赠礼",
+  defaultProductId: "",
+  requireSaleLine: true
+};
+
+export function createDefaultCampaignGiftConfig(): CampaignGiftConfig {
+  return structuredClone(defaultCampaignGift);
+}
+
 export function createDefaultSettings(): AppSettings {
   return {
     id: "settings",
     shopName: "ECRM 摊位",
     orderPrefix: "ECRM",
     promotion: structuredClone(defaultPromotion),
+    campaignGift: createDefaultCampaignGiftConfig(),
     fieldLock: createDefaultFieldLockSettings()
   };
 }

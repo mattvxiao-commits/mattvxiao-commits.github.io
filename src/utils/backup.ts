@@ -1,5 +1,5 @@
 import { saveAs } from "file-saver";
-import { db, type StoredImage } from "../db/db";
+import { createDefaultCampaignGiftConfig, db, type StoredImage } from "../db/db";
 import { createDefaultFieldLockSettings, sanitizeFieldLockForBackup } from "../domain/fieldLock";
 import type { AppSettings, InventoryLog, Order, OrderItem, OrderRefund, Product } from "../domain/types";
 
@@ -191,6 +191,14 @@ function validatePromotion(value: unknown): void {
   }
 }
 
+function validateCampaignGift(value: unknown): void {
+  assertRecord(value, "备份文件格式不正确。");
+  assertBoolean(value, "enabled");
+  assertString(value, "activityName");
+  assertString(value, "defaultProductId");
+  assertBoolean(value, "requireSaleLine");
+}
+
 function validateSettings(settings: unknown[]): asserts settings is AppSettings[] {
   if (settings.length !== 1) {
     throw new Error("备份文件格式不正确。");
@@ -204,6 +212,10 @@ function validateSettings(settings: unknown[]): asserts settings is AppSettings[
   }
 
   validatePromotion(setting.promotion);
+
+  if (setting.campaignGift !== undefined) {
+    validateCampaignGift(setting.campaignGift);
+  }
 
   if (setting.fieldLock !== undefined) {
     assertRecord(setting.fieldLock, "备份文件格式不正确。");
@@ -441,8 +453,20 @@ function normalizeBackupData(data: BackupData): BackupData {
     ...data,
     settings: data.settings.map((setting) => ({
       ...setting,
+      campaignGift: normalizeCampaignGiftForBackup(setting.campaignGift),
       fieldLock: createDefaultFieldLockSettings()
     }))
+  };
+}
+
+function normalizeCampaignGiftForBackup(campaignGift: AppSettings["campaignGift"]): AppSettings["campaignGift"] {
+  const defaults = createDefaultCampaignGiftConfig();
+
+  return {
+    enabled: campaignGift?.enabled ?? defaults.enabled,
+    activityName: campaignGift?.activityName.trim() || defaults.activityName,
+    defaultProductId: campaignGift?.defaultProductId ?? defaults.defaultProductId,
+    requireSaleLine: campaignGift?.requireSaleLine ?? defaults.requireSaleLine
   };
 }
 
@@ -572,6 +596,7 @@ export async function exportJsonBackup(): Promise<void> {
       products: await db.products.toArray(),
       settings: (await db.settings.toArray()).map((setting) => ({
         ...setting,
+        campaignGift: normalizeCampaignGiftForBackup(setting.campaignGift),
         fieldLock: sanitizeFieldLockForBackup(setting.fieldLock)
       })),
       orders: await db.orders.toArray(),

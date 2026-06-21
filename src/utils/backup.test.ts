@@ -232,6 +232,12 @@ describe("backup utilities", () => {
     await importJsonBackupFromText(JSON.stringify(payload), { importData });
 
     expect(importData.mock.calls[0][0].settings[0].fieldLock).toEqual(createDefaultFieldLockSettings());
+    expect(importData.mock.calls[0][0].settings[0].campaignGift).toEqual({
+      enabled: false,
+      activityName: "运营赠礼",
+      defaultProductId: "",
+      requireSaleLine: true
+    });
   });
 
   test("imports backup with field lock secrets stripped", async () => {
@@ -254,6 +260,58 @@ describe("backup utilities", () => {
     await importJsonBackupFromText(JSON.stringify(payload), { importData });
 
     expect(importData.mock.calls[0][0].settings[0].fieldLock).toEqual(createDefaultFieldLockSettings());
+  });
+
+  test("imports backup settings with campaign gift configuration", async () => {
+    const importData = vi.fn();
+    const payload = validPayload({
+      settings: [
+        {
+          ...validPayload().data.settings[0],
+          campaignGift: {
+            enabled: true,
+            activityName: "关注小红书赠礼",
+            defaultProductId: "gift-active",
+            requireSaleLine: false
+          }
+        }
+      ]
+    });
+
+    await importJsonBackupFromText(JSON.stringify(payload), { importData });
+
+    expect(importData.mock.calls[0][0].settings[0].campaignGift).toEqual({
+      enabled: true,
+      activityName: "关注小红书赠礼",
+      defaultProductId: "gift-active",
+      requireSaleLine: false
+    });
+  });
+
+  test("rejects malformed campaign gift settings before replacing data", async () => {
+    const importData = vi.fn();
+
+    await expect(
+      importJsonBackupFromText(
+        JSON.stringify(
+          validPayload({
+            settings: [
+              {
+                ...validPayload().data.settings[0],
+                campaignGift: {
+                  enabled: true,
+                  activityName: "关注小红书赠礼",
+                  defaultProductId: "gift-active"
+                }
+              }
+            ]
+          })
+        ),
+        { importData }
+      )
+    ).rejects.toThrow("备份文件格式不正确");
+
+    expect(importData).not.toHaveBeenCalled();
   });
 
   test("imports version 2 images into the image table", async () => {
