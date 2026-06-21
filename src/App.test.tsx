@@ -69,7 +69,7 @@ test("shows the running app version in the top bar", async () => {
     </MemoryRouter>
   );
 
-  expect(await screen.findByText("v1.6.0")).toBeVisible();
+  expect(await screen.findByText("v1.6.1")).toBeVisible();
 });
 
 test("shows shop name in the top bar subtitle and refreshes it after settings update", async () => {

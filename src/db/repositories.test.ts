@@ -114,7 +114,9 @@ describe("getSettings", () => {
     expect(settings.campaignGift).toEqual({
       enabled: false,
       activityName: "运营赠礼",
+      targetType: "sku",
       defaultProductId: "",
+      defaultSpu: "",
       requireSaleLine: true
     });
   });
@@ -133,14 +135,18 @@ describe("getSettings", () => {
     expect(settings.campaignGift).toEqual({
       enabled: false,
       activityName: "运营赠礼",
+      targetType: "sku",
       defaultProductId: "",
+      defaultSpu: "",
       requireSaleLine: true
     });
     await expect(db.settings.get("settings")).resolves.toMatchObject({
       campaignGift: {
         enabled: false,
         activityName: "运营赠礼",
+        targetType: "sku",
         defaultProductId: "",
+        defaultSpu: "",
         requireSaleLine: true
       },
       fieldLock: createDefaultFieldLockSettings()
