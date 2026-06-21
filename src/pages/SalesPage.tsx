@@ -44,6 +44,7 @@ import {
   type OrderHistoryStatusFilter
 } from "../domain/orderHistory";
 import { calculateCart } from "../domain/promotions";
+import { createDefaultCampaignGiftConfig, normalizeCampaignGiftConfig } from "../domain/settings";
 import type {
   AppSettings,
   InventoryLog,
@@ -416,6 +417,7 @@ export default function SalesPage() {
   const [nonSalesPickerMode, setNonSalesPickerMode] = useState<NonSalesPickerMode>();
   const [nonSalesProductId, setNonSalesProductId] = useState("");
   const [nonSalesNote, setNonSalesNote] = useState("");
+  const [campaignGiftPickerSpu, setCampaignGiftPickerSpu] = useState<string>();
   const [showAllNonSalesProducts, setShowAllNonSalesProducts] = useState(false);
   const [nonSalesPickerError, setNonSalesPickerError] = useState<string>();
   const [qrImageUrls, setQrImageUrls] = useState<{ wechat?: string; alipay?: string }>({});
@@ -535,17 +537,20 @@ export default function SalesPage() {
     () => products.filter((product) => product.status === "active" && product.isGiftEligible),
     [products]
   );
+  const campaignGift = settings ? normalizeCampaignGiftConfig(settings.campaignGift) : createDefaultCampaignGiftConfig();
   const nonSalesPickerProducts = useMemo(() => {
     if (!nonSalesPickerMode) {
       return [];
     }
 
     if (nonSalesPickerMode === "campaign_gift") {
-      return giftEligibleProducts;
+      return campaignGiftPickerSpu
+        ? giftEligibleProducts.filter((product) => product.spu === campaignGiftPickerSpu)
+        : giftEligibleProducts;
     }
 
     return (showAllNonSalesProducts ? products.filter((product) => product.status === "active") : giftEligibleProducts);
-  }, [giftEligibleProducts, nonSalesPickerMode, products, showAllNonSalesProducts]);
+  }, [campaignGiftPickerSpu, giftEligibleProducts, nonSalesPickerMode, products, showAllNonSalesProducts]);
   const cartQuantityByProduct = useMemo(
     () =>
       cartItems.reduce((quantityByProduct, item) => {
@@ -673,13 +678,14 @@ export default function SalesPage() {
     setSelectedOrderRefunds([]);
   }
 
-  function openNonSalesPicker(mode: NonSalesPickerMode) {
-    if (mode === "campaign_gift" && !settings?.campaignGift.enabled) {
+  function openNonSalesPicker(mode: NonSalesPickerMode, options: { campaignGiftSpu?: string } = {}) {
+    if (mode === "campaign_gift" && !campaignGift.enabled) {
       setStatus({ kind: "error", text: "请先在设置页启用运营赠礼。" });
       return;
     }
 
     setNonSalesPickerMode(mode);
+    setCampaignGiftPickerSpu(mode === "campaign_gift" ? options.campaignGiftSpu : undefined);
     setNonSalesNote("");
     setShowAllNonSalesProducts(false);
     setNonSalesPickerError(undefined);
@@ -687,7 +693,7 @@ export default function SalesPage() {
   }
 
   function addCampaignGift() {
-    if (!settings?.campaignGift.enabled) {
+    if (!campaignGift.enabled) {
       setStatus({ kind: "error", text: "请先在设置页启用运营赠礼。" });
       return;
     }
@@ -697,9 +703,14 @@ export default function SalesPage() {
       return;
     }
 
+    if (campaignGift.targetType === "spu") {
+      openNonSalesPicker("campaign_gift", { campaignGiftSpu: campaignGift.defaultSpu || undefined });
+      return;
+    }
+
     const defaultProduct = products.find(
       (product) =>
-        product.id === settings?.campaignGift.defaultProductId &&
+        product.id === campaignGift.defaultProductId &&
         product.status === "active" &&
         product.isGiftEligible
     );
@@ -713,7 +724,7 @@ export default function SalesPage() {
       addNonSalesProduct({
         productId: defaultProduct.id,
         reason: "campaign_gift",
-        campaignNameSnapshot: settings.campaignGift.activityName
+        campaignNameSnapshot: campaignGift.activityName
       });
       setStatus(undefined);
       return;
@@ -728,7 +739,7 @@ export default function SalesPage() {
     }
 
     if (nonSalesPickerMode === "campaign_gift") {
-      if (!settings?.campaignGift.enabled) {
+      if (!campaignGift.enabled) {
         setNonSalesPickerError("请先在设置页启用运营赠礼。");
         return;
       }
@@ -759,9 +770,10 @@ export default function SalesPage() {
       productId: nonSalesProductId,
       reason: nonSalesPickerMode,
       note: nonSalesNote,
-      campaignNameSnapshot: nonSalesPickerMode === "campaign_gift" ? settings?.campaignGift.activityName : undefined
+      campaignNameSnapshot: nonSalesPickerMode === "campaign_gift" ? campaignGift.activityName : undefined
     });
     setNonSalesPickerMode(undefined);
+    setCampaignGiftPickerSpu(undefined);
     setNonSalesProductId("");
     setNonSalesNote("");
     setNonSalesPickerError(undefined);
@@ -1117,7 +1129,7 @@ export default function SalesPage() {
             increment={increment}
             decrement={decrement}
             clear={clearCart}
-            campaignGiftEnabled={settings?.campaignGift.enabled ?? false}
+            campaignGiftEnabled={campaignGift.enabled}
             addCampaignGift={addCampaignGift}
             addManualGift={() => openNonSalesPicker("manual_gift")}
             addOtherOutbound={() => openNonSalesPicker("other_non_sales")}
@@ -1158,6 +1170,7 @@ export default function SalesPage() {
           onConfirm={confirmNonSalesProduct}
           onCancel={() => {
             setNonSalesPickerMode(undefined);
+            setCampaignGiftPickerSpu(undefined);
             setNonSalesPickerError(undefined);
           }}
         />

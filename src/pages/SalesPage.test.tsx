@@ -275,7 +275,9 @@ test("购物车没有销售商品时不能添加运营赠礼", async () => {
     campaignGift: {
       enabled: true,
       activityName: "关注小红书赠礼",
+      targetType: "sku",
       defaultProductId: "campaign-gift",
+      defaultSpu: "",
       requireSaleLine: true
     }
   });
@@ -361,6 +363,58 @@ test("有销售行和默认运营赠礼 SKU 时点击运营赠礼会添加 0 元
       })
     ])
   );
+});
+
+test("运营赠礼配置为 SPU 时只显示该 SPU 下可赠礼 SKU", async () => {
+  repositories.listProducts.mockResolvedValue([
+    sellableProduct,
+    product({
+      id: "gift-a",
+      name: "赠礼 A",
+      spu: "赠礼SPU",
+      stockQty: 5,
+      isGiftEligible: true,
+      isSellable: false
+    }),
+    product({
+      id: "gift-b",
+      name: "赠礼 B",
+      spu: "赠礼SPU",
+      stockQty: 5,
+      isGiftEligible: true,
+      isSellable: false
+    }),
+    product({
+      id: "gift-other",
+      name: "其他赠礼",
+      spu: "其他SPU",
+      stockQty: 5,
+      isGiftEligible: true,
+      isSellable: false
+    })
+  ]);
+  repositories.getSettings.mockResolvedValue({
+    ...settings,
+    campaignGift: {
+      enabled: true,
+      activityName: "关注社媒赠礼",
+      targetType: "spu",
+      defaultProductId: "",
+      defaultSpu: "赠礼SPU",
+      requireSaleLine: true
+    }
+  });
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "加入 普通商品" }));
+  fireEvent.click(screen.getByRole("button", { name: "打开购物车，当前 1 件，应收 ¥20.00" }));
+  fireEvent.click(await screen.findByRole("button", { name: "运营赠礼" }));
+
+  const dialog = await screen.findByRole("dialog", { name: "选择运营赠礼商品" });
+  expect(within(dialog).getByText("赠礼 A")).toBeVisible();
+  expect(within(dialog).getByText("赠礼 B")).toBeVisible();
+  expect(within(dialog).queryByText("其他赠礼")).not.toBeInTheDocument();
 });
 
 test("默认运营赠礼按当前购物车同 SKU 总数量校验库存", async () => {

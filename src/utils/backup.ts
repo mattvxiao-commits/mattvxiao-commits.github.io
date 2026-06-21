@@ -210,7 +210,11 @@ function validateCampaignGift(value: unknown): void {
   assertRecord(value, "备份文件格式不正确。");
   assertBoolean(value, "enabled");
   assertString(value, "activityName");
+  if (value.targetType !== undefined) {
+    assertEnum(value, "targetType", new Set(["sku", "spu"]));
+  }
   assertString(value, "defaultProductId");
+  assertOptionalString(value, "defaultSpu");
   assertBoolean(value, "requireSaleLine");
 }
 

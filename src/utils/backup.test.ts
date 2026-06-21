@@ -237,7 +237,9 @@ describe("backup utilities", () => {
     expect(importData.mock.calls[0][0].settings[0].campaignGift).toEqual({
       enabled: false,
       activityName: "运营赠礼",
+      targetType: "sku",
       defaultProductId: "",
+      defaultSpu: "",
       requireSaleLine: true
     });
   });
@@ -285,8 +287,36 @@ describe("backup utilities", () => {
     expect(importData.mock.calls[0][0].settings[0].campaignGift).toEqual({
       enabled: true,
       activityName: "关注小红书赠礼",
+      targetType: "sku",
       defaultProductId: "gift-active",
+      defaultSpu: "",
       requireSaleLine: false
+    });
+  });
+
+  test("imports campaign gift target type and default SPU", async () => {
+    const importData = vi.fn();
+    const payload = validPayload({
+      settings: [
+        {
+          ...validPayload().data.settings[0],
+          campaignGift: {
+            enabled: true,
+            activityName: "关注社媒赠礼",
+            targetType: "spu",
+            defaultProductId: "",
+            defaultSpu: "赠礼SPU",
+            requireSaleLine: true
+          }
+        }
+      ]
+    });
+
+    await importJsonBackupFromText(JSON.stringify(payload), { importData });
+
+    expect(importData.mock.calls[0][0].settings[0].campaignGift).toMatchObject({
+      targetType: "spu",
+      defaultSpu: "赠礼SPU"
     });
   });
 

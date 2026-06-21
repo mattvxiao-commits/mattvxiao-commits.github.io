@@ -60,7 +60,9 @@ export function appSettings(overrides: Partial<AppSettings> = {}): AppSettings {
     campaignGift: {
       enabled: false,
       activityName: "运营赠礼",
+      targetType: "sku",
       defaultProductId: "",
+      defaultSpu: "",
       requireSaleLine: true
     },
     fieldLock: createDefaultFieldLockSettings(),
