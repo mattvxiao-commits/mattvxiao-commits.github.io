@@ -297,6 +297,39 @@ test("configures campaign gift activity and default eligible SKU", async () => {
   });
 });
 
+test("saves padded campaign gift activity name as trimmed value", async () => {
+  const settingsUpdated = vi.fn();
+  window.addEventListener("ecrm-settings-updated", settingsUpdated);
+
+  try {
+    render(<SettingsPage />);
+
+    fireEvent.change(await screen.findByLabelText("运营活动名称"), { target: { value: "  关注小红书赠礼  " } });
+    fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
+
+    await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalledTimes(1));
+    const savedSettings = repositories.saveSettings.mock.calls[0][0] as AppSettings;
+    const notifiedSettings = settingsUpdated.mock.calls[0][0].detail.settings as AppSettings;
+
+    expect(savedSettings.campaignGift.activityName).toBe("关注小红书赠礼");
+    expect(notifiedSettings.campaignGift).toEqual(savedSettings.campaignGift);
+  } finally {
+    window.removeEventListener("ecrm-settings-updated", settingsUpdated);
+  }
+});
+
+test("saves blank campaign gift activity name as default value", async () => {
+  render(<SettingsPage />);
+
+  fireEvent.change(await screen.findByLabelText("运营活动名称"), { target: { value: "   " } });
+  fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
+
+  await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalledTimes(1));
+  const savedSettings = repositories.saveSettings.mock.calls[0][0] as AppSettings;
+
+  expect(savedSettings.campaignGift.activityName).toBe("运营赠礼");
+});
+
 test("requires confirmation before importing a backup that overwrites current data", async () => {
   const { container } = render(<SettingsPage />);
 

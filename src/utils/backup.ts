@@ -1,6 +1,7 @@
 import { saveAs } from "file-saver";
-import { createDefaultCampaignGiftConfig, db, type StoredImage } from "../db/db";
+import { db, type StoredImage } from "../db/db";
 import { createDefaultFieldLockSettings, sanitizeFieldLockForBackup } from "../domain/fieldLock";
+import { normalizeCampaignGiftConfig } from "../domain/settings";
 import type { AppSettings, InventoryLog, Order, OrderItem, OrderRefund, Product } from "../domain/types";
 
 const BACKUP_VERSION = 4;
@@ -52,6 +53,8 @@ type ImportDeps = {
 const ORDER_STATUSES = new Set(["pending_payment", "paid", "cancelled"]);
 const PAYMENT_METHODS = new Set(["wechat", "alipay", "cash", "other"]);
 const ORDER_LINE_TYPES = new Set(["normal", "discount_addon", "gift"]);
+const ORDER_LINE_REVENUE_TYPES = new Set(["sale", "non_sales"]);
+const NON_SALES_REASONS = new Set(["tier_gift", "campaign_gift", "manual_gift", "other_non_sales"]);
 const ORDER_CANCEL_REASONS = new Set(["mistake", "customer_cancelled", "duplicate_order", "inventory_issue", "payment_issue", "other"]);
 const INVENTORY_REASONS = new Set(["order_paid", "gift_order_paid", "order_cancelled_rollback", "manual_adjust"]);
 const PRODUCT_STATUSES = new Set(["active", "inactive"]);
@@ -188,6 +191,12 @@ function validatePromotion(value: unknown): void {
         throw new Error("备份文件格式不正确。");
       }
     }
+  }
+}
+
+function assertOptionalEnum(record: Record<string, unknown>, key: string, allowed: Set<string>): void {
+  if (record[key] !== undefined) {
+    assertEnum(record, key, allowed);
   }
 }
 
@@ -333,6 +342,17 @@ function validateOrderItems(orderItems: unknown[]): asserts orderItems is OrderI
     assertOptionalNonNegativeNumber(item, "unitCostSnapshot");
     assertOptionalNonNegativeNumber(item, "costTotal");
     assertOptionalFiniteNumber(item, "grossProfit");
+    assertOptionalEnum(item, "revenueType", ORDER_LINE_REVENUE_TYPES);
+    assertOptionalEnum(item, "nonSalesReason", NON_SALES_REASONS);
+    assertOptionalString(item, "nonSalesNote");
+    assertOptionalString(item, "campaignNameSnapshot");
+    assertOptionalNonNegativeNumber(item, "statisticalUnitPrice");
+    assertOptionalNonNegativeNumber(item, "statisticalSubtotal");
+    assertOptionalNonNegativeNumber(item, "discountGiveawayAmount");
+    assertOptionalEnum(item, "originalRevenueType", ORDER_LINE_REVENUE_TYPES);
+    assertOptionalEnum(item, "originalNonSalesReason", NON_SALES_REASONS);
+    assertOptionalString(item, "adjustedAt");
+    assertOptionalString(item, "adjustmentNote");
   }
 }
 
@@ -453,20 +473,9 @@ function normalizeBackupData(data: BackupData): BackupData {
     ...data,
     settings: data.settings.map((setting) => ({
       ...setting,
-      campaignGift: normalizeCampaignGiftForBackup(setting.campaignGift),
+      campaignGift: normalizeCampaignGiftConfig(setting.campaignGift),
       fieldLock: createDefaultFieldLockSettings()
     }))
-  };
-}
-
-function normalizeCampaignGiftForBackup(campaignGift: AppSettings["campaignGift"]): AppSettings["campaignGift"] {
-  const defaults = createDefaultCampaignGiftConfig();
-
-  return {
-    enabled: campaignGift?.enabled ?? defaults.enabled,
-    activityName: campaignGift?.activityName.trim() || defaults.activityName,
-    defaultProductId: campaignGift?.defaultProductId ?? defaults.defaultProductId,
-    requireSaleLine: campaignGift?.requireSaleLine ?? defaults.requireSaleLine
   };
 }
 
@@ -596,7 +605,7 @@ export async function exportJsonBackup(): Promise<void> {
       products: await db.products.toArray(),
       settings: (await db.settings.toArray()).map((setting) => ({
         ...setting,
-        campaignGift: normalizeCampaignGiftForBackup(setting.campaignGift),
+        campaignGift: normalizeCampaignGiftConfig(setting.campaignGift),
         fieldLock: sanitizeFieldLockForBackup(setting.fieldLock)
       })),
       orders: await db.orders.toArray(),

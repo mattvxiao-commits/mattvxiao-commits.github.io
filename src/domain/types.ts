@@ -159,7 +159,7 @@ export type AppSettings = {
   wechatQrImageId?: string;
   alipayQrImageId?: string;
   promotion: PromotionConfig;
-  campaignGift?: CampaignGiftConfig;
+  campaignGift: CampaignGiftConfig;
   fieldLock: FieldLockSettings;
 };
 

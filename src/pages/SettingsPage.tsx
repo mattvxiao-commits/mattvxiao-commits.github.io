@@ -13,7 +13,8 @@ import {
 } from "../db/repositories";
 import { buildOrderExportSheets } from "../domain/orderExport";
 import { displayProductCode } from "../domain/productCode";
-import type { AppSettings, CampaignGiftConfig, GiftConfig, Product } from "../domain/types";
+import { createDefaultCampaignGiftConfig, normalizeCampaignGiftConfig } from "../domain/settings";
+import type { AppSettings, GiftConfig, Product } from "../domain/types";
 import { exportJsonBackup, IMAGE_BACKUP_NOTE, importJsonBackup } from "../utils/backup";
 import { exportOrderExcel } from "../utils/orderExcelExport";
 import { notifySettingsUpdated } from "../utils/settingsEvents";
@@ -34,21 +35,7 @@ type GiftTargetDraft = {
   value: string;
 };
 
-const defaultCampaignGift: CampaignGiftConfig = {
-  enabled: false,
-  activityName: "运营赠礼",
-  defaultProductId: "",
-  requireSaleLine: true
-};
-
-function normalizeCampaignGiftConfig(config?: CampaignGiftConfig): CampaignGiftConfig {
-  return {
-    enabled: config?.enabled ?? defaultCampaignGift.enabled,
-    activityName: config?.activityName ?? defaultCampaignGift.activityName,
-    defaultProductId: config?.defaultProductId ?? defaultCampaignGift.defaultProductId,
-    requireSaleLine: config?.requireSaleLine ?? defaultCampaignGift.requireSaleLine
-  };
-}
+const defaultCampaignGift = createDefaultCampaignGiftConfig();
 
 function toNumber(value: string, fallback: number): number {
   const parsed = Number(value);
@@ -268,8 +255,9 @@ export default function SettingsPage() {
     setStatus(undefined);
 
     try {
-      const nextSettings = applyGiftTiers(settings, giftA, giftB);
+      const nextSettings = normalizeSettingsForSave(applyGiftTiers(settings, giftA, giftB));
       await saveSettings(nextSettings);
+      setSettings(nextSettings);
       notifySettingsUpdated(nextSettings);
       setStatus({ kind: "success", text: "设置已保存。" });
     } catch {
@@ -288,7 +276,7 @@ export default function SettingsPage() {
     setStatus(undefined);
 
     try {
-      const nextSettings = applyGiftTiers({ ...settings, fieldLock }, giftA, giftB);
+      const nextSettings = normalizeSettingsForSave(applyGiftTiers({ ...settings, fieldLock }, giftA, giftB));
       await saveSettings(nextSettings);
       setSettings(nextSettings);
       notifySettingsUpdated(nextSettings, { suppressUnlockDialog: action === "relock" });
@@ -885,4 +873,11 @@ export default function SettingsPage() {
       ) : null}
     </section>
   );
+}
+
+function normalizeSettingsForSave(settings: AppSettings): AppSettings {
+  return {
+    ...settings,
+    campaignGift: normalizeCampaignGiftConfig(settings.campaignGift)
+  };
 }
