@@ -28,9 +28,9 @@ export type LineAccounting = {
 export function getNormalizedOrderLine(item: OrderItem): NormalizedOrderLine {
   const revenueType = inferRevenueType(item);
   const statisticalUnitPrice =
-    revenueType === "sale" ? item.statisticalUnitPrice ?? item.finalUnitPrice : 0;
+    revenueType === "sale" ? item.statisticalUnitPrice ?? inferStatisticalUnitPrice(item) : 0;
   const statisticalSubtotal =
-    revenueType === "sale" ? item.statisticalSubtotal ?? normalizeMoney(statisticalUnitPrice * item.quantity) : 0;
+    revenueType === "sale" ? item.statisticalSubtotal ?? item.lineTotal : 0;
 
   return {
     ...item,
@@ -121,6 +121,14 @@ function inferDiscountGiveawayAmount(item: OrderItem, revenueType: OrderLineReve
   }
 
   return normalizeMoney(Math.max(0, item.originalUnitPrice - item.finalUnitPrice) * item.quantity);
+}
+
+function inferStatisticalUnitPrice(item: OrderItem): number {
+  if (item.quantity > 0 && Number.isFinite(item.lineTotal)) {
+    return normalizeMoney(item.lineTotal / item.quantity);
+  }
+
+  return item.finalUnitPrice;
 }
 
 function isValidCostSnapshot(costTotal: number | undefined): costTotal is number {

@@ -202,9 +202,9 @@ test("loads full dashboard data and renders core sections", async () => {
   expect(operationsOverview).toHaveClass("dashboardOperationsStrip");
   expectMetricValue(operationsOverview, "售出件数", "6");
   expect(within(operationsOverview).getByText("售出件数")).toBeVisible();
-  expectMetricValue(operationsOverview, "赠品件数", "2");
+  expectMetricValue(operationsOverview, "赠品件数", "0");
   expect(within(operationsOverview).getByText("赠品件数")).toBeVisible();
-  expectMetricValue(operationsOverview, "总出库", "8");
+  expectMetricValue(operationsOverview, "总出库", "6");
   expect(within(operationsOverview).getByText("总出库")).toBeVisible();
   expectMetricValue(operationsOverview, "客单价", "¥33.33");
   expect(within(operationsOverview).getByText("客单价")).toBeVisible();
@@ -287,10 +287,8 @@ test("loads full dashboard data and renders core sections", async () => {
 
   const giftConsumption = screen.getByRole("region", { name: "赠品消耗" });
   expect(giftConsumption.querySelector(".dashboardRankList")).not.toBeNull();
-  const giftRow = within(giftConsumption).getByText("赠品贴纸").closest(".dashboardRankRow");
-  expect(giftRow).not.toBeNull();
-  expect(within(giftRow as HTMLElement).getByText("CHARM-BLK")).toBeVisible();
-  expect(within(giftRow as HTMLElement).getByText("2 件")).toBeVisible();
+  expect(within(giftConsumption).getByText("当前范围暂无赠品消耗。")).toBeVisible();
+  expect(within(giftConsumption).queryByText("赠品贴纸")).not.toBeInTheDocument();
 
   const lowStock = screen.getByRole("region", { name: "低库存 SKU" });
   expect(lowStock.querySelector(".dashboardRankList")).not.toBeNull();
@@ -407,10 +405,10 @@ test("shows profit overview, gift cost and missing cost snapshot notice", async 
   const profitOverview = screen.getByLabelText("毛利概览指标");
   expect(profitOverview).toHaveClass("dashboardOperationsStrip");
   expectMetricValue(profitOverview, "销售额（有成本快照）", "¥100.00");
-  expectMetricValue(profitOverview, "成本", "¥46.00");
-  expectMetricValue(profitOverview, "毛利", "¥54.00");
-  expectMetricValue(profitOverview, "毛利率", "54%");
-  expectMetricValue(profitOverview, "赠品成本", "¥6.00");
+  expectMetricValue(profitOverview, "成本", "¥40.00");
+  expectMetricValue(profitOverview, "毛利", "¥60.00");
+  expectMetricValue(profitOverview, "毛利率", "60%");
+  expectMetricValue(profitOverview, "赠品成本", "¥0.00");
   expect(screen.getByText("当前范围有 1 条旧订单明细缺少成本快照，未纳入准确毛利。")).toBeVisible();
 });
 
@@ -543,6 +541,92 @@ test("uses compact dashboard time range control structure", async () => {
   expect(startDate).toHaveValue("2026-06-12");
   expect(endDate).toHaveValue("2026-06-12");
   expect(screen.getByText("统计范围：2026-06-12 至 2026-06-12")).toBeVisible();
+});
+
+test("switches dashboard accounting scope and shows activity cost metrics", async () => {
+  repositories.listOrders.mockResolvedValue([paidOrder({ id: "mixed-order", orderNo: "ECRM-MIXED", payableAmount: 30 })]);
+  repositories.listOrderItems.mockResolvedValue([
+    orderItem({
+      id: "sale-item",
+      orderId: "mixed-order",
+      productId: "sale-sku",
+      productNameSnapshot: "正常销售商品",
+      quantity: 1,
+      originalUnitPrice: 30,
+      finalUnitPrice: 30,
+      lineTotal: 30,
+      unitCostSnapshot: 10,
+      costTotal: 10,
+      grossProfit: 20
+    }),
+    orderItem({
+      id: "campaign-gift",
+      orderId: "mixed-order",
+      productId: "campaign-gift",
+      productNameSnapshot: "运营赠礼商品",
+      quantity: 2,
+      lineTotal: 0,
+      revenueType: "non_sales",
+      nonSalesReason: "campaign_gift",
+      costTotal: 4,
+      grossProfit: -4
+    }),
+    orderItem({
+      id: "manual-gift",
+      orderId: "mixed-order",
+      productId: "manual-gift",
+      productNameSnapshot: "人工赠送商品",
+      quantity: 1,
+      lineTotal: 0,
+      revenueType: "non_sales",
+      nonSalesReason: "manual_gift",
+      costTotal: 3,
+      grossProfit: -3
+    })
+  ]);
+
+  render(<DashboardPage />);
+
+  expect(await screen.findByText("统计范围：今日")).toBeVisible();
+  const scopeSwitch = screen.getByRole("group", { name: "统计口径" });
+  expect(scopeSwitch).toHaveClass("dashboardScopeSwitch");
+  expect(within(scopeSwitch).getAllByRole("button").map((button) => button.textContent)).toEqual([
+    "正常销售",
+    "全部活动",
+    "运营赠礼",
+    "人工赠送",
+    "其他出库"
+  ]);
+
+  const activityCost = screen.getByLabelText("经营成本口径");
+  expectMetricValue(activityCost, "销售成本", "¥10.00");
+  expectMetricValue(activityCost, "运营活动成本", "¥0.00");
+  expectMetricValue(activityCost, "活动后毛利", "¥20.00");
+  expectMetricValue(activityCost, "非经营出库", "¥0.00");
+  expectMetricValue(activityCost, "全出库成本", "¥10.00");
+  expect(screen.queryByText("运营赠礼商品")).not.toBeInTheDocument();
+  expect(screen.queryByText("人工赠送商品")).not.toBeInTheDocument();
+
+  fireEvent.click(within(scopeSwitch).getByRole("button", { name: "全部活动" }));
+
+  expectMetricValue(screen.getByLabelText("出库与客单"), "赠品件数", "3");
+  expectMetricValue(screen.getByLabelText("经营成本口径"), "运营活动成本", "¥4.00");
+  expectMetricValue(screen.getByLabelText("经营成本口径"), "活动后毛利", "¥16.00");
+  expectMetricValue(screen.getByLabelText("经营成本口径"), "非经营出库", "¥3.00");
+  expectMetricValue(screen.getByLabelText("经营成本口径"), "全出库成本", "¥17.00");
+  const allScopeDistribution = await screen.findByRole("region", { name: "非销售出库分布" });
+  expect(allScopeDistribution).toBeVisible();
+  expect(within(allScopeDistribution).getByText("运营赠礼商品")).toBeVisible();
+  expect(within(allScopeDistribution).getByText("人工赠送商品")).toBeVisible();
+
+  fireEvent.click(within(scopeSwitch).getByRole("button", { name: "运营赠礼" }));
+
+  expectMetricValue(screen.getByLabelText("出库与客单"), "售出件数", "0");
+  expectMetricValue(screen.getByLabelText("出库与客单"), "赠品件数", "2");
+  expectMetricValue(screen.getByLabelText("经营成本口径"), "运营活动成本", "¥4.00");
+  const campaignScopeDistribution = screen.getByRole("region", { name: "非销售出库分布" });
+  expect(within(campaignScopeDistribution).getByText("运营赠礼商品")).toBeVisible();
+  expect(within(campaignScopeDistribution).queryByText("人工赠送商品")).not.toBeInTheDocument();
 });
 
 test("defaults to today and switches to yesterday using already loaded data", async () => {

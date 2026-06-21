@@ -4,6 +4,7 @@ import { listOrderItems, listOrders, listProducts, listRefunds } from "../db/rep
 import {
   buildDashboardDateRange,
   buildDashboardModel,
+  type DashboardAccountingScope,
   type DashboardCustomRangeInput,
   type DashboardDateRange,
   type DashboardRangePreset
@@ -42,6 +43,7 @@ export default function DashboardPage() {
   const [dateRange, setDateRange] = useState<DashboardDateRange | undefined>(() => buildDashboardDateRange("today"));
   const [rangePreset, setRangePreset] = useState<DashboardRangePreset>("today");
   const [customRange, setCustomRange] = useState<DashboardCustomRangeInput>(() => todayCustomRange());
+  const [accountingScope, setAccountingScope] = useState<DashboardAccountingScope>("sales");
   const [rangeError, setRangeError] = useState<string>();
 
   async function refreshDashboard() {
@@ -75,10 +77,11 @@ export default function DashboardPage() {
         orders: data.orders,
         orderItems: data.orderItems,
         products: data.products,
-        refunds: data.refunds
+        refunds: data.refunds,
+        accountingScope
       });
     },
-    [data, dateRange]
+    [accountingScope, data, dateRange]
   );
 
   function selectRangePreset(nextPreset: DashboardRangePreset) {
@@ -121,6 +124,13 @@ export default function DashboardPage() {
     { preset: "last7days", label: "近 7 天" },
     { preset: "custom", label: "自定义" }
   ];
+  const scopeOptions: Array<{ value: DashboardAccountingScope; label: string }> = [
+    { value: "sales", label: "正常销售" },
+    { value: "all", label: "全部活动" },
+    { value: "campaign_gift", label: "运营赠礼" },
+    { value: "manual_gift", label: "人工赠送" },
+    { value: "other_non_sales", label: "其他出库" }
+  ];
 
   return (
     <section className="dashboardPage" aria-labelledby="dashboard-title">
@@ -154,6 +164,19 @@ export default function DashboardPage() {
             <RefreshCw size={17} aria-hidden="true" />
             刷新
           </button>
+
+          <div className="dashboardScopeSwitch" role="group" aria-label="统计口径">
+            {scopeOptions.map((option) => (
+              <button
+                type="button"
+                className={accountingScope === option.value ? "secondaryButton isActive" : "secondaryButton"}
+                key={option.value}
+                onClick={() => setAccountingScope(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
 
           {rangePreset === "custom" ? (
             <div className="dashboardCustomRange">
@@ -271,6 +294,33 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            <div className="dashboardOperationsStrip dashboardActivityCostStrip" aria-label="经营成本口径">
+              <div>
+                <span>{formatMoney(dashboard.activityCostSummary.discountGiveawayAmount)}</span>
+                <p>优惠让利</p>
+              </div>
+              <div>
+                <span>{formatMoney(dashboard.activityCostSummary.salesCost)}</span>
+                <p>销售成本</p>
+              </div>
+              <div>
+                <span>{formatMoney(dashboard.activityCostSummary.operatingActivityCost)}</span>
+                <p>运营活动成本</p>
+              </div>
+              <div>
+                <span>{formatMoney(dashboard.activityCostSummary.activityAdjustedGrossProfit)}</span>
+                <p>活动后毛利</p>
+              </div>
+              <div>
+                <span>{formatMoney(dashboard.activityCostSummary.nonOperatingOutboundCost)}</span>
+                <p>非经营出库</p>
+              </div>
+              <div>
+                <span>{formatMoney(dashboard.activityCostSummary.fullOutboundCost)}</span>
+                <p>全出库成本</p>
+              </div>
+            </div>
+
             <section className="dashboardSection dashboardProfitOverview" aria-labelledby="profit-overview-title">
               <div className="sectionTitle">
                 <BarChart3 size={21} aria-hidden="true" />
@@ -309,6 +359,39 @@ export default function DashboardPage() {
                 </p>
               ) : null}
             </section>
+
+            {dashboard.accountingScope !== "sales" ? (
+              <section className="dashboardSection" aria-labelledby="non-sales-reason-title">
+                <div className="sectionTitle">
+                  <BarChart3 size={21} aria-hidden="true" />
+                  <div>
+                    <h2 id="non-sales-reason-title">非销售出库分布</h2>
+                    <p>当前统计口径下的赠礼和非销售出库 SKU。</p>
+                  </div>
+                </div>
+
+                {!isLoading && dashboard.nonSalesReasonRows.length === 0 ? (
+                  <div className="dashboardEmpty">
+                    <PackageX size={24} aria-hidden="true" />
+                    <p>当前口径暂无非销售出库。</p>
+                  </div>
+                ) : null}
+
+                <div className="dashboardRankList">
+                  {dashboard.nonSalesReasonRows.map((row) => (
+                    <article className="dashboardRankRow" key={row.productId}>
+                      <div>
+                        <h3>{row.productName}</h3>
+                        <p>{row.productCode ?? row.spu}</p>
+                      </div>
+                      <div className="dashboardRowMetric">
+                        <span>{row.quantity} 件</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
             <section className="dashboardSection" aria-labelledby="payment-method-title">
               <div className="sectionTitle">

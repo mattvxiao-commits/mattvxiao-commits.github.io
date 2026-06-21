@@ -319,8 +319,8 @@ describe("buildDashboardModel", () => {
 
     expect(model.operationsSummary).toEqual({
       soldQuantity: 6,
-      giftQuantity: 2,
-      outboundQuantity: 8,
+      giftQuantity: 0,
+      outboundQuantity: 6,
       averageOrderValue: 35
     });
   });
@@ -356,6 +356,229 @@ describe("buildDashboardModel", () => {
 
     expect(model.summary.refundAmount).toBe(8);
     expect(model.summary.netAmount).toBe(32);
+  });
+
+  test("正常销售口径排除运营赠礼、人工赠送和其他出库", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [order({ id: "mixed-order", payableAmount: 30 })],
+      orderItems: [
+        item({
+          id: "sale-item",
+          orderId: "mixed-order",
+          productId: "sale-sku",
+          productNameSnapshot: "正常销售商品",
+          quantity: 1,
+          originalUnitPrice: 30,
+          finalUnitPrice: 30,
+          lineTotal: 30,
+          unitCostSnapshot: 10,
+          costTotal: 10,
+          grossProfit: 20
+        }),
+        item({
+          id: "campaign-gift",
+          orderId: "mixed-order",
+          productId: "campaign-gift",
+          productNameSnapshot: "运营赠礼商品",
+          quantity: 2,
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "campaign_gift",
+          costTotal: 4,
+          grossProfit: -4
+        }),
+        item({
+          id: "manual-gift",
+          orderId: "mixed-order",
+          productId: "manual-gift",
+          productNameSnapshot: "人工赠送商品",
+          quantity: 1,
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "manual_gift",
+          costTotal: 3,
+          grossProfit: -3
+        })
+      ],
+      refunds: [],
+      products: [],
+      accountingScope: "sales"
+    });
+
+    expect(model.accountingScope).toBe("sales");
+    expect(model.summary.paidAmount).toBe(30);
+    expect(model.operationsSummary.soldQuantity).toBe(1);
+    expect(model.operationsSummary.giftQuantity).toBe(0);
+    expect(model.operationsSummary.outboundQuantity).toBe(1);
+    expect(model.profitSummary.costAmount).toBe(10);
+    expect(model.profitSummary.grossProfit).toBe(20);
+    expect(model.profitSummary.giftCostAmount).toBe(0);
+    expect(model.topSellingSkuRows.map((row) => row.productName)).toEqual(["正常销售商品"]);
+    expect(model.activityCostSummary).toMatchObject({
+      salesCost: 10,
+      campaignGiftCost: 0,
+      manualGiftCost: 0,
+      operatingActivityCost: 0,
+      nonOperatingOutboundCost: 0,
+      fullOutboundCost: 10
+    });
+  });
+
+  test("全部活动口径展示运营活动成本和非经营出库成本", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [order({ id: "mixed-order", payableAmount: 30 })],
+      orderItems: [
+        item({
+          id: "sale-item",
+          orderId: "mixed-order",
+          productId: "sale-sku",
+          productNameSnapshot: "正常销售商品",
+          quantity: 1,
+          originalUnitPrice: 30,
+          finalUnitPrice: 30,
+          lineTotal: 30,
+          unitCostSnapshot: 10,
+          costTotal: 10,
+          grossProfit: 20
+        }),
+        item({
+          id: "tier-gift",
+          orderId: "mixed-order",
+          productId: "tier-gift",
+          productNameSnapshot: "满赠商品",
+          quantity: 1,
+          lineType: "gift",
+          lineTotal: 0,
+          costTotal: 2,
+          grossProfit: -2
+        }),
+        item({
+          id: "campaign-gift",
+          orderId: "mixed-order",
+          productId: "campaign-gift",
+          productNameSnapshot: "运营赠礼商品",
+          quantity: 2,
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "campaign_gift",
+          costTotal: 4,
+          grossProfit: -4
+        }),
+        item({
+          id: "manual-gift",
+          orderId: "mixed-order",
+          productId: "manual-gift",
+          productNameSnapshot: "人工赠送商品",
+          quantity: 1,
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "manual_gift",
+          costTotal: 3,
+          grossProfit: -3
+        }),
+        item({
+          id: "other-outbound",
+          orderId: "mixed-order",
+          productId: "other-outbound",
+          productNameSnapshot: "其他出库商品",
+          quantity: 1,
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "other_non_sales",
+          costTotal: 5,
+          grossProfit: -5
+        })
+      ],
+      refunds: [],
+      products: [],
+      accountingScope: "all"
+    });
+
+    expect(model.accountingScope).toBe("all");
+    expect(model.operationsSummary).toMatchObject({
+      soldQuantity: 1,
+      giftQuantity: 5,
+      outboundQuantity: 6
+    });
+    expect(model.activityCostSummary).toMatchObject({
+      discountGiveawayAmount: 0,
+      salesCost: 10,
+      basicGrossProfit: 20,
+      tierGiftCost: 2,
+      campaignGiftCost: 4,
+      operatingActivityCost: 6,
+      activityAdjustedGrossProfit: 14,
+      manualGiftCost: 3,
+      otherNonSalesCost: 5,
+      nonOperatingOutboundCost: 8,
+      fullOutboundCost: 24
+    });
+    expect(model.nonSalesReasonRows.map((row) => [row.productName, row.quantity])).toEqual([
+      ["运营赠礼商品", 2],
+      ["人工赠送商品", 1],
+      ["满赠商品", 1],
+      ["其他出库商品", 1]
+    ]);
+  });
+
+  test("指定非销售口径只展示对应原因的明细分布", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [order({ id: "mixed-order", payableAmount: 30 })],
+      orderItems: [
+        item({
+          id: "sale-item",
+          orderId: "mixed-order",
+          productId: "sale-sku",
+          productNameSnapshot: "正常销售商品",
+          quantity: 1,
+          originalUnitPrice: 30,
+          finalUnitPrice: 30,
+          lineTotal: 30,
+          costTotal: 10
+        }),
+        item({
+          id: "campaign-gift",
+          orderId: "mixed-order",
+          productId: "campaign-gift",
+          productNameSnapshot: "运营赠礼商品",
+          quantity: 2,
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "campaign_gift",
+          costTotal: 4
+        }),
+        item({
+          id: "manual-gift",
+          orderId: "mixed-order",
+          productId: "manual-gift",
+          productNameSnapshot: "人工赠送商品",
+          quantity: 1,
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "manual_gift",
+          costTotal: 3
+        })
+      ],
+      refunds: [],
+      products: [],
+      accountingScope: "campaign_gift"
+    });
+
+    expect(model.operationsSummary).toMatchObject({
+      soldQuantity: 0,
+      giftQuantity: 2,
+      outboundQuantity: 2
+    });
+    expect(model.activityCostSummary).toMatchObject({
+      campaignGiftCost: 4,
+      operatingActivityCost: 4,
+      fullOutboundCost: 4
+    });
+    expect(model.nonSalesReasonRows.map((row) => row.productName)).toEqual(["运营赠礼商品"]);
+    expect(model.topSellingSkuRows).toEqual([]);
   });
 
   test("昨天订单今天补录退款时，金额按退款日期统计，状态按订单累计退款统计", () => {
@@ -590,7 +813,8 @@ describe("buildDashboardModel", () => {
         item({ id: "gift-cancelled", orderId: "cancelled", productId: "gift-a", quantity: 5, lineType: "gift", lineTotal: 0 })
       ],
       refunds: [],
-      products: []
+      products: [],
+      accountingScope: "all"
     });
 
     expect(model.giftConsumptionRows).toEqual([
@@ -620,7 +844,8 @@ describe("buildDashboardModel", () => {
         });
       }),
       refunds: [],
-      products: []
+      products: [],
+      accountingScope: "all"
     });
 
     expect(model.giftConsumptionRows.map((row) => row.productId)).toEqual(["gift-1", "gift-2", "gift-3", "gift-4", "gift-5"]);
@@ -1073,10 +1298,10 @@ describe("buildDashboardModel", () => {
 
     expect(model.profitSummary).toEqual({
       revenueWithCostSnapshot: 40,
-      costAmount: 18,
-      grossProfit: 22,
-      grossMargin: 55,
-      giftCostAmount: 2,
+      costAmount: 16,
+      grossProfit: 24,
+      grossMargin: 60,
+      giftCostAmount: 0,
       missingCostItemCount: 2,
       missingCostOrderCount: 1
     });
@@ -1252,18 +1477,18 @@ describe("buildDashboardModel", () => {
       productCode: "BADGE-H",
       quantity: 5,
       revenue: 100,
-      costAmount: 45,
-      grossProfit: 55,
-      grossMargin: 55
+      costAmount: 30,
+      grossProfit: 70,
+      grossMargin: 70
     });
     expect(model.profitSpuRows.map((row) => row.spu)).toEqual(["徽章", "钥匙扣", "贴纸", "卡片"]);
     expect(model.profitSpuRows[0]).toEqual({
       spu: "徽章",
       quantity: 5,
       revenue: 100,
-      costAmount: 45,
-      grossProfit: 55,
-      grossMargin: 55
+      costAmount: 30,
+      grossProfit: 70,
+      grossMargin: 70
     });
     expect(model.lowProfitSkuRows.map((row) => row.productId)).toEqual(["sku-zero", "sku-low"]);
     expect(model.lowProfitSkuRows[0]).toMatchObject({ productId: "sku-zero", quantity: 2, grossMargin: 0, grossProfit: 0 });

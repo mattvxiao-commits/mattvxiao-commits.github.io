@@ -1,4 +1,5 @@
 import type { Order, OrderItem, OrderRefund, PaymentMethod, Product } from "./types";
+import { getLineAccounting, getNormalizedOrderLine } from "./orderLines";
 
 export type DashboardRangePreset = "today" | "yesterday" | "last3days" | "last7days" | "custom";
 
@@ -21,7 +22,10 @@ export type DashboardInput = {
   orderItems: OrderItem[];
   refunds: OrderRefund[];
   products: Product[];
+  accountingScope?: DashboardAccountingScope;
 };
+
+export type DashboardAccountingScope = "sales" | "all" | "campaign_gift" | "manual_gift" | "other_non_sales";
 
 export type DashboardSummary = {
   paidAmount: number;
@@ -95,6 +99,20 @@ export type DashboardProfitSummary = {
   missingCostOrderCount: number;
 };
 
+export type DashboardActivityCostSummary = {
+  discountGiveawayAmount: number;
+  salesCost: number;
+  basicGrossProfit: number;
+  tierGiftCost: number;
+  campaignGiftCost: number;
+  operatingActivityCost: number;
+  activityAdjustedGrossProfit: number;
+  manualGiftCost: number;
+  otherNonSalesCost: number;
+  nonOperatingOutboundCost: number;
+  fullOutboundCost: number;
+};
+
 export type DashboardProfitSkuRow = {
   productId: string;
   productName: string;
@@ -150,6 +168,7 @@ export type DashboardExceptionRow = {
 };
 
 export type DashboardModel = {
+  accountingScope: DashboardAccountingScope;
   summary: DashboardSummary;
   operationsSummary: DashboardOperationsSummary;
   paymentMethodRows: DashboardPaymentMethodRow[];
@@ -163,6 +182,8 @@ export type DashboardModel = {
   profitSkuRows: DashboardProfitSkuRow[];
   profitSpuRows: DashboardProfitSpuRow[];
   lowProfitSkuRows: DashboardProfitSkuRow[];
+  activityCostSummary: DashboardActivityCostSummary;
+  nonSalesReasonRows: DashboardGiftRow[];
   lowStockRows: DashboardLowStockRow[];
   soldOutRows: DashboardInventoryRiskRow[];
   highRiskRows: DashboardInventoryRiskRow[];
@@ -305,8 +326,82 @@ function sortByQuantityThenName<T extends { quantity: number; productName: strin
   });
 }
 
-function buildOperationsSummary(
+function getScopedOrderItems(
   rangePaidOrderIds: Set<string>,
+  orderItems: OrderItem[],
+  accountingScope: DashboardAccountingScope
+): OrderItem[] {
+  return orderItems.filter((item) => {
+    if (!rangePaidOrderIds.has(item.orderId)) {
+      return false;
+    }
+
+    const normalized = getNormalizedOrderLine(item);
+
+    if (accountingScope === "all") {
+      return true;
+    }
+
+    if (accountingScope === "sales") {
+      return normalized.revenueType === "sale";
+    }
+
+    return normalized.revenueType === "non_sales" && normalized.nonSalesReason === accountingScope;
+  });
+}
+
+function getRangeOrderItemsByOrderId(rangePaidOrderIds: Set<string>, orderItems: OrderItem[]): Map<string, OrderItem[]> {
+  const itemsByOrderId = new Map<string, OrderItem[]>();
+
+  for (const item of orderItems) {
+    if (!rangePaidOrderIds.has(item.orderId)) {
+      continue;
+    }
+
+    itemsByOrderId.set(item.orderId, [...(itemsByOrderId.get(item.orderId) ?? []), item]);
+  }
+
+  return itemsByOrderId;
+}
+
+function hasExplicitAccountingMetadata(item: OrderItem): boolean {
+  return (
+    item.revenueType !== undefined ||
+    item.nonSalesReason !== undefined ||
+    item.statisticalSubtotal !== undefined ||
+    item.adjustedAt !== undefined
+  );
+}
+
+function calculatePaidAmount(rangePaidOrders: Order[], itemsByOrderId: Map<string, OrderItem[]>, accountingScope: DashboardAccountingScope): number {
+  if (accountingScope !== "sales" && accountingScope !== "all") {
+    return 0;
+  }
+
+  return rangePaidOrders.reduce((sum, order) => {
+    const items = itemsByOrderId.get(order.id) ?? [];
+    if (items.length === 0) {
+      return roundMoney(sum + order.payableAmount);
+    }
+
+    const hasAccountingOverride = items.some(hasExplicitAccountingMetadata);
+    const hasSaleLine = items.some((item) => getNormalizedOrderLine(item).revenueType === "sale");
+
+    if (!hasAccountingOverride) {
+      return hasSaleLine ? roundMoney(sum + order.payableAmount) : sum;
+    }
+
+    return roundMoney(
+      sum +
+        items.reduce((orderSum, item) => {
+          const normalized = getNormalizedOrderLine(item);
+          return normalized.revenueType === "sale" ? roundMoney(orderSum + normalized.statisticalSubtotal) : orderSum;
+        }, 0)
+    );
+  }, 0);
+}
+
+function buildOperationsSummary(
   orderItems: OrderItem[],
   netAmount: number,
   paidOrderCount: number
@@ -315,18 +410,13 @@ function buildOperationsSummary(
   let giftQuantity = 0;
 
   for (const item of orderItems) {
-    if (!rangePaidOrderIds.has(item.orderId)) {
-      continue;
-    }
-
-    if (item.lineType === "gift") {
+    const normalized = getNormalizedOrderLine(item);
+    if (normalized.revenueType === "non_sales") {
       giftQuantity += item.quantity;
       continue;
     }
 
-    if (item.lineType === "normal" || item.lineType === "discount_addon") {
-      soldQuantity += item.quantity;
-    }
+    soldQuantity += item.quantity;
   }
 
   return {
@@ -369,7 +459,6 @@ function buildPaymentMethodRows(rangePaidOrders: Order[]): DashboardPaymentMetho
 
 function buildPromotionSummary(
   rangePaidOrders: Order[],
-  rangePaidOrderIds: Set<string>,
   orderItems: OrderItem[]
 ): DashboardPromotionSummary {
   const addonOrderIds = new Set<string>();
@@ -377,13 +466,14 @@ function buildPromotionSummary(
   let addonDiscountAmount = 0;
 
   for (const item of orderItems) {
-    if (!rangePaidOrderIds.has(item.orderId) || item.lineType !== "discount_addon") {
+    const normalized = getNormalizedOrderLine(item);
+    if (normalized.revenueType !== "sale" || item.lineType !== "discount_addon") {
       continue;
     }
 
     addonOrderIds.add(item.orderId);
     addonQuantity += item.quantity;
-    addonDiscountAmount = roundMoney(addonDiscountAmount + (item.originalUnitPrice - item.finalUnitPrice) * item.quantity);
+    addonDiscountAmount = roundMoney(addonDiscountAmount + normalized.discountGiveawayAmount);
   }
 
   return {
@@ -412,11 +502,12 @@ function buildGiftTierRows(rangePaidOrders: Order[]): DashboardGiftTierRow[] {
   return [...rowsByThreshold.values()].sort((left, right) => left.threshold - right.threshold);
 }
 
-function buildTopSellingSkuRows(rangePaidOrderIds: Set<string>, orderItems: OrderItem[]): DashboardSkuRow[] {
+function buildTopSellingSkuRows(orderItems: OrderItem[]): DashboardSkuRow[] {
   const rowsByProduct = new Map<string, DashboardSkuRow>();
 
   for (const item of orderItems) {
-    if (!rangePaidOrderIds.has(item.orderId) || item.lineType === "gift") {
+    const normalized = getNormalizedOrderLine(item);
+    if (normalized.revenueType !== "sale") {
       continue;
     }
 
@@ -427,18 +518,19 @@ function buildTopSellingSkuRows(rangePaidOrderIds: Set<string>, orderItems: Orde
       spu: existing?.spu ?? item.spuSnapshot,
       productCode: existing?.productCode ?? item.productCodeSnapshot,
       quantity: (existing?.quantity ?? 0) + item.quantity,
-      amount: roundMoney((existing?.amount ?? 0) + item.lineTotal)
+      amount: roundMoney((existing?.amount ?? 0) + normalized.statisticalSubtotal)
     });
   }
 
   return sortByQuantityThenName([...rowsByProduct.values()]).slice(0, 5);
 }
 
-function buildSpuRows(rangePaidOrderIds: Set<string>, orderItems: OrderItem[]): DashboardSpuRow[] {
+function buildSpuRows(orderItems: OrderItem[]): DashboardSpuRow[] {
   const rowsBySpu = new Map<string, DashboardSpuRow>();
 
   for (const item of orderItems) {
-    if (!rangePaidOrderIds.has(item.orderId) || item.lineType === "gift") {
+    const normalized = getNormalizedOrderLine(item);
+    if (normalized.revenueType !== "sale") {
       continue;
     }
 
@@ -446,7 +538,7 @@ function buildSpuRows(rangePaidOrderIds: Set<string>, orderItems: OrderItem[]): 
     rowsBySpu.set(item.spuSnapshot, {
       spu: item.spuSnapshot,
       quantity: (existing?.quantity ?? 0) + item.quantity,
-      amount: roundMoney((existing?.amount ?? 0) + item.lineTotal)
+      amount: roundMoney((existing?.amount ?? 0) + normalized.statisticalSubtotal)
     });
   }
 
@@ -473,11 +565,12 @@ function sortSpuRowsByAmount(rows: DashboardSpuRow[]): DashboardSpuRow[] {
   });
 }
 
-function buildGiftConsumptionRows(rangePaidOrderIds: Set<string>, orderItems: OrderItem[]): DashboardGiftRow[] {
+function buildGiftConsumptionRows(orderItems: OrderItem[]): DashboardGiftRow[] {
   const rowsByProduct = new Map<string, DashboardGiftRow>();
 
   for (const item of orderItems) {
-    if (!rangePaidOrderIds.has(item.orderId) || item.lineType !== "gift") {
+    const normalized = getNormalizedOrderLine(item);
+    if (normalized.revenueType !== "non_sales") {
       continue;
     }
 
@@ -492,6 +585,42 @@ function buildGiftConsumptionRows(rangePaidOrderIds: Set<string>, orderItems: Or
   }
 
   return sortByQuantityThenName([...rowsByProduct.values()]).slice(0, 5);
+}
+
+function buildActivityCostSummary(orderItems: OrderItem[]): DashboardActivityCostSummary {
+  return orderItems.reduce(
+    (summary, item) => {
+      const accounting = getLineAccounting(item);
+      const nextSummary = {
+        discountGiveawayAmount: roundMoney(summary.discountGiveawayAmount + accounting.discountGiveawayAmount),
+        salesCost: roundMoney(summary.salesCost + accounting.salesCost),
+        basicGrossProfit: roundMoney(summary.basicGrossProfit + accounting.basicGrossProfit),
+        tierGiftCost: roundMoney(summary.tierGiftCost + accounting.tierGiftCost),
+        campaignGiftCost: roundMoney(summary.campaignGiftCost + accounting.campaignGiftCost),
+        operatingActivityCost: roundMoney(summary.operatingActivityCost + accounting.operatingActivityCost),
+        activityAdjustedGrossProfit: 0,
+        manualGiftCost: roundMoney(summary.manualGiftCost + accounting.manualGiftCost),
+        otherNonSalesCost: roundMoney(summary.otherNonSalesCost + accounting.otherNonSalesCost),
+        nonOperatingOutboundCost: roundMoney(summary.nonOperatingOutboundCost + accounting.nonOperatingOutboundCost),
+        fullOutboundCost: roundMoney(summary.fullOutboundCost + accounting.fullOutboundCost)
+      };
+      nextSummary.activityAdjustedGrossProfit = roundMoney(nextSummary.basicGrossProfit - nextSummary.operatingActivityCost);
+      return nextSummary;
+    },
+    {
+      discountGiveawayAmount: 0,
+      salesCost: 0,
+      basicGrossProfit: 0,
+      tierGiftCost: 0,
+      campaignGiftCost: 0,
+      operatingActivityCost: 0,
+      activityAdjustedGrossProfit: 0,
+      manualGiftCost: 0,
+      otherNonSalesCost: 0,
+      nonOperatingOutboundCost: 0,
+      fullOutboundCost: 0
+    }
+  );
 }
 
 function calculateStockRemainingPercent(stockQty: number, soldQuantity: number): number {
@@ -544,7 +673,6 @@ function sortProfitRows<T extends { revenue: number; grossProfit: number; produc
 }
 
 function buildProfitMetrics(
-  rangePaidOrderIds: Set<string>,
   orderItems: OrderItem[]
 ): Pick<DashboardModel, "profitSummary" | "profitSkuRows" | "profitSpuRows" | "lowProfitSkuRows"> {
   const missingCostOrderIds = new Set<string>();
@@ -557,34 +685,35 @@ function buildProfitMetrics(
   let missingCostItemCount = 0;
 
   for (const item of orderItems) {
-    if (!rangePaidOrderIds.has(item.orderId)) {
-      continue;
-    }
-
     if (!hasCostSnapshot(item)) {
       missingCostItemCount += 1;
       missingCostOrderIds.add(item.orderId);
       continue;
     }
 
-    revenueWithCostSnapshot = roundMoney(revenueWithCostSnapshot + item.lineTotal);
-    costAmount = roundMoney(costAmount + item.costTotal);
-    grossProfit = roundMoney(grossProfit + item.grossProfit);
+    const normalized = getNormalizedOrderLine(item);
+    const accounting = getLineAccounting(item);
+    const costContribution = roundMoney(accounting.salesCost + accounting.operatingActivityCost + accounting.nonOperatingOutboundCost);
+    const grossProfitContribution = roundMoney(accounting.basicGrossProfit - accounting.operatingActivityCost - accounting.nonOperatingOutboundCost);
 
-    if (item.lineType === "gift") {
+    revenueWithCostSnapshot = roundMoney(revenueWithCostSnapshot + accounting.revenue);
+    costAmount = roundMoney(costAmount + costContribution);
+    grossProfit = roundMoney(grossProfit + grossProfitContribution);
+
+    if (normalized.revenueType === "non_sales") {
       giftCostAmount = roundMoney(giftCostAmount + item.costTotal);
     }
 
     const existingSkuRow = skuRowsByProduct.get(item.productId);
-    const skuRevenue = roundMoney((existingSkuRow?.revenue ?? 0) + item.lineTotal);
-    const skuCostAmount = roundMoney((existingSkuRow?.costAmount ?? 0) + item.costTotal);
-    const skuGrossProfit = roundMoney((existingSkuRow?.grossProfit ?? 0) + item.grossProfit);
+    const skuRevenue = roundMoney((existingSkuRow?.revenue ?? 0) + accounting.revenue);
+    const skuCostAmount = roundMoney((existingSkuRow?.costAmount ?? 0) + costContribution);
+    const skuGrossProfit = roundMoney((existingSkuRow?.grossProfit ?? 0) + grossProfitContribution);
     skuRowsByProduct.set(item.productId, {
       productId: item.productId,
       productName: existingSkuRow?.productName ?? item.productNameSnapshot,
       spu: existingSkuRow?.spu ?? item.spuSnapshot,
       productCode: existingSkuRow?.productCode ?? item.productCodeSnapshot,
-      quantity: (existingSkuRow?.quantity ?? 0) + (item.lineType === "gift" ? 0 : item.quantity),
+      quantity: (existingSkuRow?.quantity ?? 0) + (normalized.revenueType === "sale" ? item.quantity : 0),
       revenue: skuRevenue,
       costAmount: skuCostAmount,
       grossProfit: skuGrossProfit,
@@ -592,12 +721,12 @@ function buildProfitMetrics(
     });
 
     const existingSpuRow = spuRowsBySpu.get(item.spuSnapshot);
-    const spuRevenue = roundMoney((existingSpuRow?.revenue ?? 0) + item.lineTotal);
-    const spuCostAmount = roundMoney((existingSpuRow?.costAmount ?? 0) + item.costTotal);
-    const spuGrossProfit = roundMoney((existingSpuRow?.grossProfit ?? 0) + item.grossProfit);
+    const spuRevenue = roundMoney((existingSpuRow?.revenue ?? 0) + accounting.revenue);
+    const spuCostAmount = roundMoney((existingSpuRow?.costAmount ?? 0) + costContribution);
+    const spuGrossProfit = roundMoney((existingSpuRow?.grossProfit ?? 0) + grossProfitContribution);
     spuRowsBySpu.set(item.spuSnapshot, {
       spu: item.spuSnapshot,
-      quantity: (existingSpuRow?.quantity ?? 0) + (item.lineType === "gift" ? 0 : item.quantity),
+      quantity: (existingSpuRow?.quantity ?? 0) + (normalized.revenueType === "sale" ? item.quantity : 0),
       revenue: spuRevenue,
       costAmount: spuCostAmount,
       grossProfit: spuGrossProfit,
@@ -678,11 +807,12 @@ function buildLowStockRows(products: Product[], soldQuantityByProduct: Map<strin
     }));
 }
 
-function buildSoldQuantityByProduct(rangePaidOrderIds: Set<string>, orderItems: OrderItem[]): Map<string, number> {
+function buildSoldQuantityByProduct(orderItems: OrderItem[]): Map<string, number> {
   const soldQuantityByProduct = new Map<string, number>();
 
   for (const item of orderItems) {
-    if (!rangePaidOrderIds.has(item.orderId) || item.lineType === "gift") {
+    const normalized = getNormalizedOrderLine(item);
+    if (normalized.revenueType !== "sale") {
       continue;
     }
 
@@ -690,6 +820,40 @@ function buildSoldQuantityByProduct(rangePaidOrderIds: Set<string>, orderItems: 
   }
 
   return soldQuantityByProduct;
+}
+
+function buildNonSalesReasonRows(orderItems: OrderItem[]): DashboardGiftRow[] {
+  const reasonPriority = {
+    campaign_gift: 0,
+    manual_gift: 1,
+    tier_gift: 2,
+    other_non_sales: 3
+  } as const;
+  const priorityByProduct = new Map<string, number>();
+
+  for (const item of orderItems) {
+    const normalized = getNormalizedOrderLine(item);
+    if (normalized.revenueType !== "non_sales") {
+      continue;
+    }
+
+    priorityByProduct.set(item.productId, reasonPriority[normalized.nonSalesReason ?? "other_non_sales"]);
+  }
+
+  return buildGiftConsumptionRows(orderItems).sort((left, right) => {
+    if (right.quantity !== left.quantity) {
+      return right.quantity - left.quantity;
+    }
+
+    const leftPriority = priorityByProduct.get(left.productId) ?? reasonPriority.other_non_sales;
+    const rightPriority = priorityByProduct.get(right.productId) ?? reasonPriority.other_non_sales;
+
+    if (leftPriority !== rightPriority) {
+      return leftPriority - rightPriority;
+    }
+
+    return left.productName.localeCompare(right.productName, "zh-Hans-CN");
+  });
 }
 
 function toInventoryRiskRow(product: Product, soldQuantity: number): DashboardInventoryRiskRow {
@@ -827,26 +991,34 @@ function buildExceptionRows(
 }
 
 export function buildDashboardModel(input: DashboardInput): DashboardModel {
+  const accountingScope = input.accountingScope ?? "sales";
   const rangePaidOrders = input.orders.filter(
     (order) => order.status === "paid" && isInDateRange(orderBusinessTime(order), input.dateRange)
   );
   const rangePaidOrderIds = new Set(rangePaidOrders.map((order) => order.id));
+  const rangeOrderItemsByOrderId = getRangeOrderItemsByOrderId(rangePaidOrderIds, input.orderItems);
+  const scopedOrderItems = getScopedOrderItems(rangePaidOrderIds, input.orderItems, accountingScope);
   const rangeRefunds = input.refunds.filter((refund) => isInDateRange(refund.createdAt, input.dateRange));
   const allRefundTotalsByOrder = sumRefundsByOrder(input.refunds);
-  const paidAmount = rangePaidOrders.reduce((sum, order) => roundMoney(sum + order.payableAmount), 0);
-  const refundAmount = rangeRefunds.reduce((sum, refund) => roundMoney(sum + refund.amount), 0);
+  const paidAmount = calculatePaidAmount(rangePaidOrders, rangeOrderItemsByOrderId, accountingScope);
+  const refundAmount =
+    accountingScope === "sales" || accountingScope === "all"
+      ? rangeRefunds.reduce((sum, refund) => roundMoney(sum + refund.amount), 0)
+      : 0;
   const netAmount = roundMoney(paidAmount - refundAmount);
   const rangeCancelledOrders = input.orders.filter((order) => isRangeCancelledOrder(order, input.dateRange));
   const afterSalesRefundStates = [...rangePaidOrders, ...rangeCancelledOrders].map((order) => ({
     order,
     refundedAmount: allRefundTotalsByOrder.get(order.id) ?? 0
   }));
-  const spuRows = buildSpuRows(rangePaidOrderIds, input.orderItems);
-  const profitMetrics = buildProfitMetrics(rangePaidOrderIds, input.orderItems);
-  const soldQuantityByProduct = buildSoldQuantityByProduct(rangePaidOrderIds, input.orderItems);
+  const spuRows = buildSpuRows(scopedOrderItems);
+  const profitMetrics = buildProfitMetrics(scopedOrderItems);
+  const activityCostSummary = buildActivityCostSummary(scopedOrderItems);
+  const soldQuantityByProduct = buildSoldQuantityByProduct(scopedOrderItems);
   const inventoryRiskRows = buildInventoryRiskRows(input.products, soldQuantityByProduct);
 
   return {
+    accountingScope,
     summary: {
       paidAmount,
       refundAmount,
@@ -861,15 +1033,17 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
       ).length,
       notedCancelledOrderCount: rangeCancelledOrders.filter((order) => Boolean(order.cancelNote?.trim())).length
     },
-    operationsSummary: buildOperationsSummary(rangePaidOrderIds, input.orderItems, netAmount, rangePaidOrders.length),
+    operationsSummary: buildOperationsSummary(scopedOrderItems, netAmount, rangePaidOrders.length),
     paymentMethodRows: buildPaymentMethodRows(rangePaidOrders),
-    promotionSummary: buildPromotionSummary(rangePaidOrders, rangePaidOrderIds, input.orderItems),
+    promotionSummary: buildPromotionSummary(rangePaidOrders, scopedOrderItems),
     giftTierRows: buildGiftTierRows(rangePaidOrders),
-    topSellingSkuRows: buildTopSellingSkuRows(rangePaidOrderIds, input.orderItems),
+    topSellingSkuRows: buildTopSellingSkuRows(scopedOrderItems),
     topSellingSpuRows: sortSpuRowsByQuantity(spuRows).slice(0, 5),
     topRevenueSpuRows: sortSpuRowsByAmount(spuRows).slice(0, 5),
-    giftConsumptionRows: buildGiftConsumptionRows(rangePaidOrderIds, input.orderItems),
+    giftConsumptionRows: buildGiftConsumptionRows(scopedOrderItems),
     ...profitMetrics,
+    activityCostSummary,
+    nonSalesReasonRows: buildNonSalesReasonRows(scopedOrderItems),
     lowStockRows: buildLowStockRows(input.products, soldQuantityByProduct),
     ...inventoryRiskRows,
     exceptionRows: buildExceptionRows(input.orders, allRefundTotalsByOrder, rangePaidOrderIds, input.dateRange)

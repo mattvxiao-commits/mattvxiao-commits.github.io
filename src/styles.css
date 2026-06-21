@@ -870,7 +870,25 @@ p {
   min-width: 0;
 }
 
+.dashboardScopeSwitch {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 5px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .dashboardRangeSwitch .secondaryButton {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.dashboardScopeSwitch .secondaryButton {
   min-height: 34px;
   padding: 0 11px;
   font-size: 12px;
@@ -887,6 +905,12 @@ p {
 }
 
 .dashboardRangeSwitch .secondaryButton.isActive {
+  border-color: rgba(47, 111, 94, 0.55);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.dashboardScopeSwitch .secondaryButton.isActive {
   border-color: rgba(47, 111, 94, 0.55);
   background: var(--accent-soft);
   color: var(--accent-strong);
@@ -947,6 +971,10 @@ p {
 
 .dashboardProfitStrip {
   grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.dashboardActivityCostStrip {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .dashboardMetricStrip div,
