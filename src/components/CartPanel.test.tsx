@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import { defaultPromotion, product } from "../test/fixtures";
 import { calculateCart } from "../domain/promotions";
@@ -214,9 +214,11 @@ test("hides campaign gift quick action when campaign gift is disabled", () => {
     />
   );
 
-  expect(screen.queryByRole("button", { name: "运营赠礼" })).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "人工赠送" })).toBeVisible();
-  expect(screen.getByRole("button", { name: "其他出库" })).toBeVisible();
+  const actions = screen.getByRole("group", { name: "非销售出库" });
+  expect(actions).toHaveClass("nonSalesActionBar");
+  expect(within(actions).queryByRole("button", { name: "+ 运营赠礼" })).not.toBeInTheDocument();
+  expect(within(actions).getByRole("button", { name: "+ 人工赠送" })).toBeVisible();
+  expect(within(actions).getByRole("button", { name: "+ 其他出库" })).toBeVisible();
 });
 
 test("blocks checkout when triggered gifts do not have enough stock", () => {
@@ -355,14 +357,16 @@ test("shows non-sales line labels, zero price, and quick actions", () => {
     />
   );
 
-  expect(screen.getAllByText("人工赠送").length).toBeGreaterThanOrEqual(2);
-  expect(screen.getAllByText("运营赠礼").length).toBeGreaterThanOrEqual(2);
+  const actions = screen.getByRole("group", { name: "非销售出库" });
+  expect(actions).toHaveClass("nonSalesActionBar");
+  expect(screen.getAllByText("人工赠送").length).toBeGreaterThanOrEqual(1);
+  expect(screen.getAllByText("运营赠礼").length).toBeGreaterThanOrEqual(1);
   expect(screen.getByText("好友赠送")).toBeVisible();
   expect(screen.getAllByText("¥0.00").length).toBeGreaterThan(0);
 
-  fireEvent.click(screen.getByRole("button", { name: "运营赠礼" }));
-  fireEvent.click(screen.getByRole("button", { name: "人工赠送" }));
-  fireEvent.click(screen.getByRole("button", { name: "其他出库" }));
+  fireEvent.click(within(actions).getByRole("button", { name: "+ 运营赠礼" }));
+  fireEvent.click(within(actions).getByRole("button", { name: "+ 人工赠送" }));
+  fireEvent.click(within(actions).getByRole("button", { name: "+ 其他出库" }));
 
   expect(onCampaignGift).toHaveBeenCalledTimes(1);
   expect(onManualGift).toHaveBeenCalledTimes(1);

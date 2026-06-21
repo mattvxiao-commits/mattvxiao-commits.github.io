@@ -1626,16 +1626,18 @@ p {
   line-height: 1.12;
 }
 
-.nonSalesQuickActions {
+.nonSalesActionBar {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
+  margin: 2px 0 6px;
 }
 
-.nonSalesQuickActions .secondaryButton {
-  min-height: 32px;
+.nonSalesActionBar .secondaryButton {
+  min-height: 34px;
   padding: 0 8px;
   font-size: 12px;
+  line-height: 1;
   white-space: nowrap;
 }
 

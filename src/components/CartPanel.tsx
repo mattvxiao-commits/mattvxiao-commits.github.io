@@ -126,17 +126,17 @@ export default function CartPanel({
         </div>
       </div>
 
-      <div className="nonSalesQuickActions" role="group" aria-label="非销售出库">
+      <div className="nonSalesActionBar" role="group" aria-label="非销售出库">
         {campaignGiftEnabled ? (
           <button type="button" className="secondaryButton" onClick={addCampaignGift}>
-            运营赠礼
+            + 运营赠礼
           </button>
         ) : null}
         <button type="button" className="secondaryButton" onClick={addManualGift}>
-          人工赠送
+          + 人工赠送
         </button>
         <button type="button" className="secondaryButton" onClick={addOtherOutbound}>
-          其他出库
+          + 其他出库
         </button>
       </div>
 
