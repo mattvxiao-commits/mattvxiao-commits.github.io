@@ -88,7 +88,7 @@ function validPayload(overrides: Record<string, unknown> = {}) {
 }
 
 describe("backup utilities", () => {
-  test("exports images, refunds, and order item costs in version 4 JSON backup", async () => {
+  test("exports images, refunds, and order item costs in version 5 JSON backup", async () => {
     const saveAsModule = await import("file-saver");
     const saveAsMock = vi.mocked(saveAsModule.saveAs);
     const tableSpies = [
@@ -141,7 +141,7 @@ describe("backup utilities", () => {
     const blob = saveAsMock.mock.calls[0][0] as Blob;
     const payload = JSON.parse(await blob.text());
 
-    expect(payload.version).toBe(4);
+    expect(payload.version).toBe(5);
     expect(payload.note).toBe("图片已包含在 JSON 备份中");
     expect(payload.data.orderItems).toEqual([
       expect.objectContaining({
@@ -375,7 +375,7 @@ describe("backup utilities", () => {
     await expect(
       importJsonBackupFromText(
         JSON.stringify({
-          version: 5,
+          version: 6,
           exportedAt: "2026-06-15T00:00:00.000Z",
           note: "图片暂不包含在 JSON 备份中",
           data: {
@@ -506,6 +506,50 @@ describe("backup utilities", () => {
             originalNonSalesReason: "manual_gift",
             adjustedAt: "2026-06-18T10:05:00.000Z",
             adjustmentNote: "改为运营赠礼"
+          })
+        ]
+      })
+    );
+  });
+
+  test("imports version 5 V1.6a backup with non-sales outbound inventory logs", async () => {
+    const importData = vi.fn();
+
+    const result = await importJsonBackupFromText(
+      JSON.stringify({
+        version: 5,
+        exportedAt: "2026-06-18T10:00:00.000Z",
+        note: "图片已包含在 JSON 备份中",
+        data: {
+          products: [],
+          settings: validPayload().data.settings,
+          orders: [],
+          orderItems: [],
+          inventoryLogs: [
+            {
+              id: "inventory-log-1",
+              productId: "product-1",
+              orderId: "order-1",
+              changeQty: -1,
+              reason: "non_sales_outbound",
+              beforeQty: 5,
+              afterQty: 4,
+              createdAt: "2026-06-18T10:02:00.000Z"
+            }
+          ],
+          images: [],
+          orderRefunds: []
+        }
+      }),
+      { importData }
+    );
+
+    expect(result.version).toBe(5);
+    expect(importData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inventoryLogs: [
+          expect.objectContaining({
+            reason: "non_sales_outbound"
           })
         ]
       })
