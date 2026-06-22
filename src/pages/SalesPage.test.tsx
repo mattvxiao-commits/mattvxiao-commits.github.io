@@ -281,6 +281,7 @@ test("checkout review uses cart line ordering and keeps totals outside the scrol
   const firstLine = within(review).getByText("运营赠品").closest(".cartLine");
   expect(firstLine?.querySelector(".lineTitleRow .cartLineBadge")).toBeNull();
   expect(firstLine?.querySelector(":scope > .cartLineBadge")).not.toBeNull();
+  expect(firstLine?.querySelector(".cartLineAmountColumn")).toHaveClass("isBottomAligned");
 });
 
 test("shows compact sales list by default without exposing image grid mode", async () => {

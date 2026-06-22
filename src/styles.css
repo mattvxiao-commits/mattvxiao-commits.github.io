@@ -1891,6 +1891,12 @@ p {
   min-width: max-content;
 }
 
+.cartLineActionColumn.isBottomAligned,
+.cartLineAmountColumn.isBottomAligned {
+  align-self: end;
+  padding-bottom: 2px;
+}
+
 .cartLineActionColumn {
   padding-left: 2px;
 }

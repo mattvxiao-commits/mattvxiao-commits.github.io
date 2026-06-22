@@ -180,7 +180,7 @@ export default function CartPanel({
                       <p className="lineNote">{line.nonSalesNote ?? line.campaignNameSnapshot}</p>
                     </div>
                   ) : null}
-                  <div className="cartLineActionColumn">
+                  <div className="cartLineActionColumn isBottomAligned">
                     <div className="quantityStepper" aria-label={`${line.productName} 数量`}>
                       <button
                         type="button"

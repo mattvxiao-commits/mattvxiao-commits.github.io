@@ -366,7 +366,7 @@ function CheckoutOrderReview({
                       </div>
                     </div>
                   </div>
-                  <div className="cartLineAmountColumn">
+                  <div className="cartLineAmountColumn isBottomAligned">
                     <strong className="lineTotal">{formatMoney(line.lineTotal)}</strong>
                   </div>
                 </div>
