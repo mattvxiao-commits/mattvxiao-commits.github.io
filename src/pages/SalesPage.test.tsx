@@ -186,11 +186,18 @@ test("shows order review instead of sellable products while checking out", async
   const review = await screen.findByRole("region", { name: "本单商品" });
 
   expect(within(review).getByRole("heading", { level: 2, name: "本单商品" })).toBeVisible();
+  expect(within(review).queryByText("ORDER")).not.toBeInTheDocument();
+  const checkoutScrollArea = within(review).getByLabelText("本单商品与促销");
+  expect(checkoutScrollArea).toHaveClass("checkoutScrollArea");
+  expect(within(checkoutScrollArea).queryByLabelText("本单促销信息")).not.toBeInTheDocument();
+  expect(within(review).getByLabelText("本单结算")).toHaveClass("checkoutReviewFooter");
+  expect(within(review).getByLabelText("本单促销信息")).toHaveClass("promotionSummary");
   expect(within(review).getByRole("heading", { level: 3, name: "普通商品" })).toBeVisible();
   expect(within(review).queryByText("NORMAL-BASE")).not.toBeInTheDocument();
   expect(within(review).getByText("正常")).toBeVisible();
   expect(within(review).getByText("单价 ¥20.00")).toBeVisible();
-  expect(screen.getByRole("heading", { level: 1, name: "售卖" }).closest(".salesHeader")).toHaveClass("isCheckout");
+  expect(screen.getByRole("heading", { level: 1, name: "收款" }).closest(".salesHeader")).toHaveClass("isCheckout");
+  expect(screen.queryByText("Checkout")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "刷新" })).toHaveClass("checkoutRefreshButton");
   const payableRow = within(review).getByText("应收").closest("div");
   expect(payableRow).not.toBeNull();

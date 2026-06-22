@@ -109,7 +109,6 @@ export default function CheckoutPanel({
     <aside className="checkoutPanel" aria-labelledby="checkout-title">
       <div className="panelHeading">
         <div>
-          <p className="eyebrow">Checkout</p>
           <h2 id="checkout-title">收款确认</h2>
         </div>
         <button type="button" className="secondaryButton" onClick={back}>

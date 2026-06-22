@@ -1568,7 +1568,7 @@ p {
 }
 
 .checkoutOrderReview {
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   max-height: calc(100vh - 96px);
   overflow: hidden;
 }
@@ -1665,6 +1665,15 @@ p {
   padding-right: 2px;
 }
 
+.checkoutScrollArea {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
 .cartLineList {
   display: grid;
   align-content: start;
@@ -1690,7 +1699,7 @@ p {
 .cartLineDense {
   grid-template-columns: 58px minmax(0, 1fr);
   gap: 10px;
-  align-items: stretch;
+  align-items: center;
   min-height: 74px;
   padding: 6px 8px;
 }
@@ -1741,13 +1750,14 @@ p {
 
 .cartLineInfoStack {
   align-content: center;
-  gap: 3px;
+  gap: 4px;
+  padding: 1px 0 2px;
 }
 
 .lineTitleRow {
   display: flex;
   gap: 6px;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
 }
 
@@ -1783,6 +1793,7 @@ p {
   font-size: 10px;
   font-weight: 900;
   white-space: nowrap;
+  margin-top: 0;
 }
 
 .cartLine-discount_addon .lineTitleRow span {
@@ -1812,7 +1823,7 @@ p {
 .linePriceRow {
   display: flex;
   gap: 8px;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   min-width: 0;
 }
@@ -1926,6 +1937,15 @@ p {
   grid-template-columns: minmax(0, 1fr) minmax(140px, auto);
   gap: 10px;
   align-items: end;
+}
+
+.checkoutReviewFooter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, auto);
+  gap: 10px;
+  align-items: end;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
 }
 
 .cartTotals {
@@ -3127,6 +3147,10 @@ p {
   }
 
   .cartFooterSummary {
+    grid-template-columns: 1fr;
+  }
+
+  .checkoutReviewFooter {
     grid-template-columns: 1fr;
   }
 
