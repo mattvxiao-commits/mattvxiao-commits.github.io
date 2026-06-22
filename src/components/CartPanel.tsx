@@ -165,9 +165,6 @@ export default function CartPanel({
                       <h3>{line.productName}</h3>
                     </div>
                     <p className="lineSpu">{line.spu}</p>
-                    {line.revenueType === "non_sales" && (line.nonSalesNote || line.campaignNameSnapshot) ? (
-                      <p className="lineNote">{line.nonSalesNote ?? line.campaignNameSnapshot}</p>
-                    ) : null}
                     <div className="linePriceRow">
                       <div className="linePriceStack">
                         <span className="unitPrice">单价 {formatMoney(line.finalUnitPrice)}</span>
@@ -178,6 +175,11 @@ export default function CartPanel({
                       </div>
                     </div>
                   </div>
+                  {line.revenueType === "non_sales" && (line.nonSalesNote || line.campaignNameSnapshot) ? (
+                    <div className="cartLineNoteColumn">
+                      <p className="lineNote">{line.nonSalesNote ?? line.campaignNameSnapshot}</p>
+                    </div>
+                  ) : null}
                   <div className="cartLineActionColumn">
                     <div className="quantityStepper" aria-label={`${line.productName} 数量`}>
                       <button

@@ -1755,7 +1755,14 @@ p {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
-  padding-right: 74px;
+}
+
+.cartPanel .cartLineBody {
+  grid-template-columns: minmax(0, 1.05fr) minmax(86px, 0.75fr) auto;
+}
+
+.checkoutOrderReview .cartLineBody {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .cartLineInfoStack {
@@ -1823,6 +1830,22 @@ p {
   color: #8b4f17;
 }
 
+.cartLineNoteColumn {
+  min-width: 0;
+  display: grid;
+  align-items: center;
+  justify-items: start;
+}
+
+.cartLineNoteColumn .lineNote {
+  max-width: 100%;
+  color: var(--muted-strong);
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
 .lineMeta {
   display: flex;
   gap: 5px;
@@ -1873,7 +1896,7 @@ p {
 }
 
 .cartLineAmountColumn {
-  min-width: 48px;
+  min-width: 58px;
 }
 
 .checkoutReviewLine .lineMeta strong {

@@ -507,6 +507,8 @@ test("sorts cart lines by newest and business priority with a separated action c
   expect(firstLine?.querySelector(".cartLineActionColumn")).not.toBeNull();
   expect(firstLine?.querySelector(".lineTitleRow .cartLineBadge")).toBeNull();
   expect(firstLine?.querySelector(":scope > .cartLineBadge")).not.toBeNull();
+  expect(firstLine?.querySelector(".cartLineNoteColumn")).not.toBeNull();
+  expect(firstLine?.querySelector(".cartLineNoteColumn")?.textContent).toContain("关注社媒赠礼");
   expect(firstLine?.querySelector(".linePriceRow")?.querySelector(".quantityStepper")).toBeNull();
   expect(firstLine?.querySelector(".cartLineActionColumn")?.querySelector(".quantityStepper")).not.toBeNull();
 });
