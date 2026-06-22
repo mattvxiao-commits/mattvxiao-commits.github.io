@@ -149,6 +149,9 @@ export default function CartPanel({
                 className={`cartLine cartLineDense cartLine-${line.lineType}`}
                 key={`${line.productId}-${line.lineType}-${line.finalUnitPrice}-${index}`}
               >
+                <span className="cartLineBadge">
+                  {line.revenueType === "non_sales" && line.nonSalesReason ? nonSalesReasonLabels[line.nonSalesReason] : lineTypeLabels[line.lineType]}
+                </span>
                 <div className="cartLineThumb cartLineThumbLarge">
                   {imageUrlsByProductId[line.productId] ? (
                     <img src={imageUrlsByProductId[line.productId]} alt={line.productName} />
@@ -160,7 +163,6 @@ export default function CartPanel({
                   <div className="lineMain cartLineInfoStack">
                     <div className="lineTitleRow">
                       <h3>{line.productName}</h3>
-                      <span>{line.revenueType === "non_sales" && line.nonSalesReason ? nonSalesReasonLabels[line.nonSalesReason] : lineTypeLabels[line.lineType]}</span>
                     </div>
                     <p className="lineSpu">{line.spu}</p>
                     {line.revenueType === "non_sales" && (line.nonSalesNote || line.campaignNameSnapshot) ? (

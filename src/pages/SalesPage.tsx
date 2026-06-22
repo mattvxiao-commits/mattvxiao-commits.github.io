@@ -338,6 +338,11 @@ function CheckoutOrderReview({
                 className={`cartLine cartLineDense checkoutReviewLine cartLine-${line.lineType}`}
                 key={`${line.productId}-${line.lineType}-${line.finalUnitPrice}-${index}`}
               >
+                <span className="cartLineBadge">
+                  {line.revenueType === "non_sales" && line.nonSalesReason && line.nonSalesReason !== "tier_gift"
+                    ? nonSalesReasonLabels[line.nonSalesReason]
+                    : lineTypeLabels[line.lineType]}
+                </span>
                 <div className="cartLineThumb cartLineThumbLarge">
                   {imageUrlsByProductId[line.productId] ? (
                     <img src={imageUrlsByProductId[line.productId]} alt={line.productName} />
@@ -349,11 +354,6 @@ function CheckoutOrderReview({
                   <div className="lineMain cartLineInfoStack">
                     <div className="lineTitleRow">
                       <h3>{line.productName}</h3>
-                      <span>
-                        {line.revenueType === "non_sales" && line.nonSalesReason && line.nonSalesReason !== "tier_gift"
-                          ? nonSalesReasonLabels[line.nonSalesReason]
-                          : lineTypeLabels[line.lineType]}
-                      </span>
                     </div>
                     <p className="lineSpu">{line.spu}</p>
                     <div className="linePriceRow">

@@ -1697,6 +1697,7 @@ p {
 }
 
 .cartLineDense {
+  position: relative;
   grid-template-columns: 58px minmax(0, 1fr);
   gap: 9px;
   align-items: stretch;
@@ -1754,6 +1755,7 @@ p {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
+  padding-right: 74px;
 }
 
 .cartLineInfoStack {
@@ -1791,9 +1793,11 @@ p {
   line-height: 1.15;
 }
 
-.lineTitleRow span {
+.cartLineBadge {
+  position: absolute;
+  top: 10px;
+  right: 9px;
   min-height: 20px;
-  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   padding: 0 5px;
@@ -1803,15 +1807,14 @@ p {
   font-size: 10px;
   font-weight: 900;
   white-space: nowrap;
-  margin-top: 0;
 }
 
-.cartLine-discount_addon .lineTitleRow span {
+.cartLine-discount_addon .cartLineBadge {
   background: var(--accent-soft);
   color: var(--accent-strong);
 }
 
-.cartLine-gift .lineTitleRow span {
+.cartLine-gift .cartLineBadge {
   background: rgba(168, 95, 24, 0.12);
   color: #8b4f17;
 }

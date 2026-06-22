@@ -278,6 +278,9 @@ test("checkout review uses cart line ordering and keeps totals outside the scrol
   expect(within(within(review).getByLabelText("本单商品与促销")).queryByLabelText("本单结算")).not.toBeInTheDocument();
   expect(within(review).getAllByText("运营赠礼").length).toBeGreaterThanOrEqual(1);
   expect(within(review).getAllByText("人工赠送").length).toBeGreaterThanOrEqual(1);
+  const firstLine = within(review).getByText("运营赠品").closest(".cartLine");
+  expect(firstLine?.querySelector(".lineTitleRow .cartLineBadge")).toBeNull();
+  expect(firstLine?.querySelector(":scope > .cartLineBadge")).not.toBeNull();
 });
 
 test("shows compact sales list by default without exposing image grid mode", async () => {
