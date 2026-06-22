@@ -1563,6 +1563,10 @@ p {
   box-shadow: 0 18px 38px rgba(36, 31, 26, 0.08);
 }
 
+.cartPanel {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
 .checkoutOrderReview {
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   max-height: calc(100vh - 96px);
@@ -1583,7 +1587,6 @@ p {
   position: relative;
   top: auto;
   z-index: 1;
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto auto;
   width: min(500px, calc(100vw - 28px));
   max-height: calc(100vh - 28px);
   overflow: hidden;
@@ -1620,17 +1623,22 @@ p {
   line-height: 1.12;
 }
 
+.cartPanelHeader h2 {
+  margin-top: 0;
+  font-size: 19px;
+}
+
 .nonSalesActionBar {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  margin: 2px 0 6px;
+  gap: 5px;
+  margin: -1px 0 0;
 }
 
 .nonSalesActionBar .secondaryButton {
-  min-height: 34px;
-  padding: 0 8px;
-  font-size: 12px;
+  min-height: 30px;
+  padding: 0 7px;
+  font-size: 11px;
   line-height: 1;
   white-space: nowrap;
 }
@@ -1648,14 +1656,20 @@ p {
   white-space: nowrap;
 }
 
+.cartScrollArea {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
 .cartLineList {
   display: grid;
   align-content: start;
   gap: 5px;
   min-height: 0;
-  max-height: min(58vh, 620px);
-  overflow: auto;
-  padding-right: 2px;
 }
 
 .checkoutReviewLines {
@@ -1673,6 +1687,13 @@ p {
   background: #ffffff;
 }
 
+.cartLineDense {
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+  padding: 5px 7px;
+}
+
 .cartLineThumb {
   display: grid;
   width: 40px;
@@ -1687,6 +1708,12 @@ p {
   color: var(--accent-strong);
   font-size: 18px;
   font-weight: 900;
+}
+
+.cartLineThumbLarge {
+  width: 48px;
+  height: 48px;
+  align-self: center;
 }
 
 .cartLineThumb img {
@@ -1711,9 +1738,13 @@ p {
   gap: 4px;
 }
 
+.cartLineInfoGrid {
+  gap: 2px;
+}
+
 .lineTitleRow {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   justify-content: space-between;
 }
@@ -1721,7 +1752,7 @@ p {
 .lineMain h3 {
   margin: 0;
   color: var(--ink);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.18;
   overflow-wrap: anywhere;
 }
@@ -1734,15 +1765,27 @@ p {
   overflow-wrap: anywhere;
 }
 
+.lineCompactMeta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.lineCompactMeta p {
+  max-width: 14em;
+}
+
 .lineTitleRow span {
-  min-height: 22px;
+  min-height: 20px;
   display: inline-flex;
   align-items: center;
-  padding: 0 6px;
+  padding: 0 5px;
   border-radius: 6px;
   background: #eee4df;
   color: var(--muted-strong);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
   white-space: nowrap;
 }
@@ -1771,6 +1814,17 @@ p {
   font-weight: 800;
 }
 
+.lineControlsRow {
+  justify-content: space-between;
+}
+
+.lineTotal {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
 .checkoutReviewLine .lineMeta strong {
   margin-left: auto;
   color: var(--ink);
@@ -1790,7 +1844,7 @@ p {
 .quantityStepper {
   margin-left: auto;
   display: inline-grid;
-  grid-template-columns: 28px minmax(24px, auto) 28px;
+  grid-template-columns: 26px minmax(24px, auto) 26px;
   align-items: center;
   overflow: hidden;
   border: 1px solid var(--line-strong);
@@ -1799,8 +1853,8 @@ p {
 }
 
 .quantityStepper .iconButton {
-  width: 28px;
-  min-height: 28px;
+  width: 26px;
+  min-height: 26px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -1826,6 +1880,11 @@ p {
   background: rgba(255, 255, 255, 0.78);
 }
 
+.cartScrollArea .promotionSummary,
+.cartScrollArea .cartWarning {
+  padding: 6px 8px;
+}
+
 .promotionSummary p,
 .giftSummary p,
 .manualConfirm p {
@@ -1845,10 +1904,16 @@ p {
   font-weight: 850;
 }
 
+.cartFooter {
+  display: grid;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
 .cartTotals {
   display: grid;
-  gap: 4px;
-  padding-top: 2px;
+  gap: 2px;
 }
 
 .cartTotals div {
@@ -1865,16 +1930,15 @@ p {
 
 .cartTotals .payableRow {
   align-items: baseline;
-  padding-top: 5px;
-  border-top: 1px solid var(--line);
+  padding-top: 2px;
   color: var(--ink);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 900;
 }
 
 .payableRow strong {
   color: var(--accent-strong);
-  font-size: 28px;
+  font-size: 26px;
   line-height: 1;
 }
 

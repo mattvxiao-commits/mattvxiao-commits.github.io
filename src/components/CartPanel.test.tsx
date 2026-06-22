@@ -372,3 +372,54 @@ test("shows non-sales line labels, zero price, and quick actions", () => {
   expect(onManualGift).toHaveBeenCalledTimes(1);
   expect(onOtherOutbound).toHaveBeenCalledTimes(1);
 });
+
+test("uses dense drawer structure with enlarged thumbnails and compact footer", () => {
+  const items: CartItem[] = [
+    { productId: "normal", quantity: 1, addedAt: "2026-06-15T00:00:00.000Z" },
+    { productId: "addon", quantity: 1, addedAt: "2026-06-15T00:01:00.000Z" }
+  ];
+  const calculated = calculateCart({
+    items,
+    products: [normal, addon],
+    promotion: { ...defaultPromotion(), giftTiers: [] }
+  });
+
+  render(
+    <CartPanel
+      products={[normal, addon]}
+      calculated={calculated}
+      cartItems={items}
+      increment={() => undefined}
+      decrement={() => undefined}
+      clear={() => undefined}
+      checkout={() => undefined}
+      hold={() => undefined}
+    />
+  );
+
+  const panel = screen.getByRole("complementary", { name: "购物车" });
+  expect(panel).toHaveClass("cartPanel");
+
+  const compactHeader = panel.querySelector(".cartPanelHeader");
+  expect(compactHeader).not.toBeNull();
+  expect(compactHeader).toContainElement(screen.getByRole("heading", { name: "购物车" }));
+
+  const toolBar = screen.getByRole("group", { name: "非销售出库" });
+  expect(toolBar).toHaveClass("nonSalesActionBar");
+
+  const scrollArea = screen.getByLabelText("购物车商品与促销");
+  expect(scrollArea).toHaveClass("cartScrollArea");
+  expect(within(scrollArea).getByLabelText("购物车明细")).toHaveClass("cartLineList");
+  expect(within(scrollArea).getByLabelText("促销信息")).toHaveClass("promotionSummary");
+
+  const firstLine = within(scrollArea).getByText("普通商品").closest(".cartLine");
+  expect(firstLine).not.toBeNull();
+  expect(firstLine).toHaveClass("cartLineDense");
+  expect(firstLine?.querySelector(".cartLineThumb")).toHaveClass("cartLineThumbLarge");
+  expect(firstLine?.querySelector(".cartLineInfoGrid")).not.toBeNull();
+
+  const footer = screen.getByLabelText("购物车结算");
+  expect(footer).toHaveClass("cartFooter");
+  expect(within(footer).getByText("应收")).toBeVisible();
+  expect(within(footer).getByRole("button", { name: "去收款" })).toHaveClass("primaryButton");
+});
