@@ -403,6 +403,7 @@ test("uses dense drawer structure with enlarged thumbnails and compact footer", 
   const compactHeader = panel.querySelector(".cartPanelHeader");
   expect(compactHeader).not.toBeNull();
   expect(compactHeader).toContainElement(screen.getByRole("heading", { name: "购物车" }));
+  expect(within(compactHeader as HTMLElement).queryByText("CART")).not.toBeInTheDocument();
 
   const toolBar = screen.getByRole("group", { name: "非销售出库" });
   expect(toolBar).toHaveClass("nonSalesActionBar");
@@ -410,16 +411,20 @@ test("uses dense drawer structure with enlarged thumbnails and compact footer", 
   const scrollArea = screen.getByLabelText("购物车商品与促销");
   expect(scrollArea).toHaveClass("cartScrollArea");
   expect(within(scrollArea).getByLabelText("购物车明细")).toHaveClass("cartLineList");
-  expect(within(scrollArea).getByLabelText("促销信息")).toHaveClass("promotionSummary");
+  expect(within(scrollArea).queryByLabelText("促销信息")).not.toBeInTheDocument();
 
   const firstLine = within(scrollArea).getByText("普通商品").closest(".cartLine");
   expect(firstLine).not.toBeNull();
   expect(firstLine).toHaveClass("cartLineDense");
   expect(firstLine?.querySelector(".cartLineThumb")).toHaveClass("cartLineThumbLarge");
-  expect(firstLine?.querySelector(".cartLineInfoGrid")).not.toBeNull();
+  expect(firstLine?.querySelector(".cartLineInfoStack")).not.toBeNull();
+  expect(firstLine?.querySelector(".lineCompactMeta")).toBeNull();
+  expect(firstLine?.querySelector(".linePriceRow")).not.toBeNull();
 
   const footer = screen.getByLabelText("购物车结算");
   expect(footer).toHaveClass("cartFooter");
+  expect(within(footer).getByLabelText("促销信息")).toHaveClass("promotionSummary");
+  expect(within(footer).getByText("已享加购优惠 1/3 个")).toBeVisible();
   expect(within(footer).getByText("应收")).toBeVisible();
   expect(within(footer).getByRole("button", { name: "去收款" })).toHaveClass("primaryButton");
 });

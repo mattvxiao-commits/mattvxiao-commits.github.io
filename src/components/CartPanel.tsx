@@ -113,7 +113,6 @@ export default function CartPanel({
     <aside className="cartPanel" aria-labelledby="cart-title">
       <div className="panelHeading cartPanelHeader">
         <div>
-          <p className="eyebrow">CART</p>
           <h2 id="cart-title">购物车</h2>
         </div>
         <div className="panelHeadingActions">
@@ -155,23 +154,23 @@ export default function CartPanel({
                     <span aria-hidden="true">{line.productName.slice(0, 1) || "商"}</span>
                   )}
                 </div>
-                <div className="lineMain cartLineInfoGrid">
+                <div className="lineMain cartLineInfoStack">
                   <div className="lineTitleRow">
                     <h3>{line.productName}</h3>
                     <span>{line.revenueType === "non_sales" && line.nonSalesReason ? nonSalesReasonLabels[line.nonSalesReason] : lineTypeLabels[line.lineType]}</span>
                   </div>
-                  <div className="lineCompactMeta">
-                    <p>{line.spu}</p>
-                    <span className="unitPrice">单价 {formatMoney(line.finalUnitPrice)}</span>
-                    {line.originalUnitPrice !== line.finalUnitPrice ? (
-                      <span className="strikePrice">{formatMoney(line.originalUnitPrice)}</span>
-                    ) : null}
-                  </div>
+                  <p className="lineSpu">{line.spu}</p>
                   {line.revenueType === "non_sales" && (line.nonSalesNote || line.campaignNameSnapshot) ? (
                     <p className="lineNote">{line.nonSalesNote ?? line.campaignNameSnapshot}</p>
                   ) : null}
-                  <div className="lineMeta lineControlsRow">
-                    <span className="lineTotal">{formatMoney(line.lineTotal)}</span>
+                  <div className="linePriceRow">
+                    <div className="linePriceStack">
+                      <span className="unitPrice">单价 {formatMoney(line.finalUnitPrice)}</span>
+                      {line.originalUnitPrice !== line.finalUnitPrice ? (
+                        <span className="strikePrice">{formatMoney(line.originalUnitPrice)}</span>
+                      ) : null}
+                      <strong className="lineTotal">{formatMoney(line.lineTotal)}</strong>
+                    </div>
                     <div className="quantityStepper" aria-label={`${line.productName} 数量`}>
                       <button
                         type="button"
@@ -201,11 +200,6 @@ export default function CartPanel({
           <p className="cartEmpty">还没有选择商品。</p>
         )}
 
-        <div className="promotionSummary" aria-label="促销信息">
-          <p>已享加购优惠 {calculated.appliedDiscountQty}/{calculated.maxDiscountQty} 个</p>
-          <p>{giftSummaryText ?? "暂未触发满额赠品"}</p>
-        </div>
-
         {calculated.giftStockWarnings.length > 0 ? (
           <div className="cartWarning" role="alert">
             {calculated.giftStockWarnings.map((warning) => (
@@ -218,18 +212,25 @@ export default function CartPanel({
       </div>
 
       <div className="cartFooter" aria-label="购物车结算">
-        <div className="cartTotals">
-          <div>
-            <span>原价小计</span>
-            <strong>{formatMoney(calculated.subtotalBeforeDiscount)}</strong>
+        <div className="cartFooterSummary">
+          <div className="promotionSummary" aria-label="促销信息">
+            <p>已享加购优惠 {calculated.appliedDiscountQty}/{calculated.maxDiscountQty} 个</p>
+            <p>{giftSummaryText ?? "暂未触发满额赠品"}</p>
           </div>
-          <div>
-            <span>优惠</span>
-            <strong>-{formatMoney(calculated.discountAmount)}</strong>
-          </div>
-          <div className="payableRow">
-            <span>应收</span>
-            <strong>{formatMoney(calculated.payableAmount)}</strong>
+
+          <div className="cartTotals">
+            <div>
+              <span>原价小计</span>
+              <strong>{formatMoney(calculated.subtotalBeforeDiscount)}</strong>
+            </div>
+            <div>
+              <span>优惠</span>
+              <strong>-{formatMoney(calculated.discountAmount)}</strong>
+            </div>
+            <div className="payableRow">
+              <span>应收</span>
+              <strong>{formatMoney(calculated.payableAmount)}</strong>
+            </div>
           </div>
         </div>
 
