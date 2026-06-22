@@ -208,6 +208,78 @@ test("shows order review instead of sellable products while checking out", async
   expect(screen.queryByRole("button", { name: "打开购物车，当前 1 件，应收 ¥20.00" })).not.toBeInTheDocument();
 });
 
+test("checkout review uses cart line ordering and keeps totals outside the scroll list", async () => {
+  repositories.listProducts.mockResolvedValue([
+    sellableProduct,
+    product({ id: "addon", name: "加购商品", spu: "加购SPU", salePrice: 5, stockQty: 10 }),
+    product({
+      id: "campaign-gift",
+      name: "运营赠品",
+      spu: "赠品SPU",
+      salePrice: 6,
+      stockQty: 10,
+      isSellable: false,
+      isGiftEligible: true
+    }),
+    product({
+      id: "manual-gift",
+      name: "人工赠品",
+      spu: "赠品SPU",
+      salePrice: 9,
+      stockQty: 10,
+      isSellable: false,
+      isGiftEligible: true
+    })
+  ]);
+  repositories.getSettings.mockResolvedValue({
+    ...settings,
+    promotion: {
+      ...settings.promotion,
+      addonDiscount: {
+        enabled: true,
+        discountSpu: "加购SPU",
+        discountPrice: 3,
+        maxDiscountQty: 3
+      },
+      giftTiers: []
+    },
+    campaignGift: {
+      enabled: true,
+      activityName: "关注社媒赠礼",
+      targetType: "sku",
+      defaultProductId: "campaign-gift",
+      defaultSpu: "",
+      requireSaleLine: true
+    }
+  });
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "加入 普通商品" }));
+  fireEvent.click(await screen.findByRole("button", { name: "加入 加购商品" }));
+  fireEvent.click(screen.getByRole("button", { name: "打开购物车，当前 2 件，应收 ¥23.00" }));
+  fireEvent.click(await screen.findByRole("button", { name: "+ 运营赠礼" }));
+  fireEvent.click(await screen.findByRole("button", { name: "+ 人工赠送" }));
+
+  const picker = await screen.findByRole("dialog", { name: "选择人工赠送商品" });
+  fireEvent.click(within(picker).getByRole("button", { name: "选择 人工赠品，库存 10" }));
+  fireEvent.change(within(picker).getByLabelText("备注"), { target: { value: "好友赠送" } });
+  fireEvent.click(within(picker).getByRole("button", { name: "确认添加" }));
+
+  fireEvent.click(await screen.findByRole("button", { name: "去收款" }));
+
+  const review = await screen.findByRole("region", { name: "本单商品" });
+  const lineNames = within(within(review).getByLabelText("本单商品明细"))
+    .getAllByRole("heading", { level: 3 })
+    .map((heading) => heading.textContent);
+
+  expect(lineNames).toEqual(["运营赠品", "人工赠品", "加购商品", "普通商品"]);
+  expect(within(review).getByLabelText("本单结算")).toHaveClass("checkoutReviewFooter");
+  expect(within(within(review).getByLabelText("本单商品与促销")).queryByLabelText("本单结算")).not.toBeInTheDocument();
+  expect(within(review).getAllByText("运营赠礼").length).toBeGreaterThanOrEqual(1);
+  expect(within(review).getAllByText("人工赠送").length).toBeGreaterThanOrEqual(1);
+});
+
 test("shows compact sales list by default without exposing image grid mode", async () => {
   render(<SalesPage />);
 

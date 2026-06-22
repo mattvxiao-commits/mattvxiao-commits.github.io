@@ -28,6 +28,7 @@ import {
   saveOrderRefund,
   voidPaidOrder
 } from "../db/repositories";
+import { sortCartLinesForReview } from "../domain/cartLinePresentation";
 import { resolveGiftLines, type GiftSelections } from "../domain/giftSelection";
 import { requiresFieldLockUnlock, verifyFieldLockPin } from "../domain/fieldLock";
 import { formatMoney } from "../domain/money";
@@ -47,6 +48,7 @@ import { calculateCart } from "../domain/promotions";
 import { createDefaultCampaignGiftConfig, normalizeCampaignGiftConfig } from "../domain/settings";
 import type {
   AppSettings,
+  CartItem,
   InventoryLog,
   NonSalesReason,
   Order,
@@ -272,7 +274,15 @@ function NonSalesProductPicker({
   );
 }
 
-function CheckoutOrderReview({ calculated, products }: { calculated: ReturnType<typeof calculateCart>; products: Product[] }) {
+function CheckoutOrderReview({
+  calculated,
+  products,
+  cartItems
+}: {
+  calculated: ReturnType<typeof calculateCart>;
+  products: Product[];
+  cartItems: CartItem[];
+}) {
   const productById = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
   const imageProductIds = useMemo(
     () => Array.from(new Set(calculated.lines.map((line) => line.productId))).filter((productId) => productById.get(productId)?.imageId),
@@ -309,6 +319,7 @@ function CheckoutOrderReview({ calculated, products }: { calculated: ReturnType<
   }, [imageProductIds, productById]);
 
   const itemCount = calculated.lines.reduce((sum, line) => sum + line.quantity, 0);
+  const displayLines = useMemo(() => sortCartLinesForReview(calculated.lines, cartItems), [calculated.lines, cartItems]);
 
   return (
     <section className="checkoutOrderReview" aria-labelledby="checkout-order-review-title">
@@ -320,9 +331,9 @@ function CheckoutOrderReview({ calculated, products }: { calculated: ReturnType<
       </div>
 
       <div className="checkoutScrollArea" aria-label="本单商品与促销">
-        {calculated.lines.length > 0 ? (
+        {displayLines.length > 0 ? (
           <div className="cartLineList checkoutReviewLines" aria-label="本单商品明细">
-            {calculated.lines.map((line, index) => (
+            {displayLines.map((line, index) => (
               <div
                 className={`cartLine cartLineDense checkoutReviewLine cartLine-${line.lineType}`}
                 key={`${line.productId}-${line.lineType}-${line.finalUnitPrice}-${index}`}
@@ -334,24 +345,28 @@ function CheckoutOrderReview({ calculated, products }: { calculated: ReturnType<
                     <span aria-hidden="true">{line.productName.slice(0, 1) || "商"}</span>
                   )}
                 </div>
-                <div className="lineMain cartLineInfoStack">
-                  <div className="lineTitleRow">
-                    <h3>{line.productName}</h3>
-                    <span>
-                      {line.revenueType === "non_sales" && line.nonSalesReason && line.nonSalesReason !== "tier_gift"
-                        ? nonSalesReasonLabels[line.nonSalesReason]
-                        : lineTypeLabels[line.lineType]}
-                    </span>
-                  </div>
-                  <p className="lineSpu">{line.spu}</p>
-                  <div className="linePriceRow">
-                    <div className="linePriceStack">
-                      <span className="unitPrice">单价 {formatMoney(line.finalUnitPrice)}</span>
-                      {line.originalUnitPrice !== line.finalUnitPrice ? (
-                        <span className="strikePrice">{formatMoney(line.originalUnitPrice)}</span>
-                      ) : null}
-                      <span>数量 x{line.quantity}</span>
+                <div className="cartLineBody">
+                  <div className="lineMain cartLineInfoStack">
+                    <div className="lineTitleRow">
+                      <h3>{line.productName}</h3>
+                      <span>
+                        {line.revenueType === "non_sales" && line.nonSalesReason && line.nonSalesReason !== "tier_gift"
+                          ? nonSalesReasonLabels[line.nonSalesReason]
+                          : lineTypeLabels[line.lineType]}
+                      </span>
                     </div>
+                    <p className="lineSpu">{line.spu}</p>
+                    <div className="linePriceRow">
+                      <div className="linePriceStack">
+                        <span className="unitPrice">单价 {formatMoney(line.finalUnitPrice)}</span>
+                        {line.originalUnitPrice !== line.finalUnitPrice ? (
+                          <span className="strikePrice">{formatMoney(line.originalUnitPrice)}</span>
+                        ) : null}
+                        <span>数量 x{line.quantity}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="cartLineAmountColumn">
                     <strong className="lineTotal">{formatMoney(line.lineTotal)}</strong>
                   </div>
                 </div>
@@ -1047,7 +1062,7 @@ export default function SalesPage() {
       <div className={mode === "checkout" ? "salesLayout hasCheckout" : "salesLayout"}>
         <div className="salesProductsArea">
           {mode === "checkout" ? (
-            <CheckoutOrderReview calculated={calculated} products={products} />
+            <CheckoutOrderReview calculated={calculated} products={products} cartItems={cartItems} />
           ) : (
             <>
               {isLoading ? <p className="emptyState">正在加载售卖商品...</p> : null}

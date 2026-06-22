@@ -428,3 +428,83 @@ test("uses dense drawer structure with enlarged thumbnails and compact footer", 
   expect(within(footer).getByText("应收")).toBeVisible();
   expect(within(footer).getByRole("button", { name: "去收款" })).toHaveClass("primaryButton");
 });
+
+test("sorts cart lines by newest and business priority with a separated action column", () => {
+  const manualGift = product({
+    id: "manual-gift",
+    name: "人工赠品",
+    spu: "赠品SPU",
+    salePrice: 9,
+    isGiftEligible: true
+  });
+  const campaignGift = product({
+    id: "campaign-gift",
+    name: "运营赠品",
+    spu: "赠品SPU",
+    salePrice: 6,
+    isGiftEligible: true
+  });
+  const items: CartItem[] = [
+    { id: "normal-line", productId: "normal", quantity: 1, addedAt: "2026-06-21T10:00:00.000Z" },
+    { id: "addon-line", productId: "addon", quantity: 1, addedAt: "2026-06-21T10:01:00.000Z" },
+    {
+      id: "manual-line",
+      productId: "manual-gift",
+      quantity: 1,
+      addedAt: "2026-06-21T10:02:00.000Z",
+      revenueType: "non_sales",
+      nonSalesReason: "manual_gift",
+      nonSalesNote: "好友赠送"
+    },
+    {
+      id: "campaign-line",
+      productId: "campaign-gift",
+      quantity: 1,
+      addedAt: "2026-06-21T10:03:00.000Z",
+      revenueType: "non_sales",
+      nonSalesReason: "campaign_gift",
+      campaignNameSnapshot: "关注社媒赠礼"
+    }
+  ];
+  const calculated = calculateCart({
+    items,
+    products: [normal, addon, manualGift, campaignGift],
+    promotion: {
+      ...defaultPromotion(),
+      giftTiers: [],
+      addonDiscount: {
+        enabled: true,
+        discountSpu: "优惠SPU",
+        discountPrice: 3,
+        maxDiscountQty: 3
+      }
+    }
+  });
+
+  render(
+    <CartPanel
+      products={[normal, addon, manualGift, campaignGift]}
+      calculated={calculated}
+      cartItems={items}
+      increment={() => undefined}
+      decrement={() => undefined}
+      clear={() => undefined}
+      checkout={() => undefined}
+      hold={() => undefined}
+    />
+  );
+
+  const lineNames = within(screen.getByLabelText("购物车明细"))
+    .getAllByRole("heading", { level: 3 })
+    .map((heading) => heading.textContent);
+
+  expect(lineNames).toEqual(["运营赠品", "人工赠品", "优惠商品A", "普通商品"]);
+
+  const firstLine = screen.getByText("运营赠品").closest(".cartLine");
+  expect(firstLine).toHaveClass("cartLineDense");
+  expect(firstLine?.querySelector(".cartLineThumbLarge")).not.toBeNull();
+  expect(firstLine?.querySelector(".cartLineBody")).not.toBeNull();
+  expect(firstLine?.querySelector(".cartLineActionColumn")).not.toBeNull();
+  expect(firstLine?.querySelector(".linePriceRow")?.querySelector(".quantityStepper")).toBeNull();
+  expect(firstLine?.querySelector(".cartLineActionColumn")?.querySelector(".quantityStepper")).not.toBeNull();
+});

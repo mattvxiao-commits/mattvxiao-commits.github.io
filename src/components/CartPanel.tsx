@@ -1,5 +1,6 @@
 import { Minus, PauseCircle, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { sortCartLinesForReview } from "../domain/cartLinePresentation";
 import type { CalculatedCart, CartItem, NonSalesReason, Product } from "../domain/types";
 import { getImageUrl } from "../utils/image";
 
@@ -80,6 +81,7 @@ export default function CartPanel({
           .map((gift) => `${gift.label} x${gift.quantity}`)
           .join("、")}`
       : undefined;
+  const displayLines = useMemo(() => sortCartLinesForReview(calculated.lines, cartItems), [calculated.lines, cartItems]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -140,9 +142,9 @@ export default function CartPanel({
       </div>
 
       <div className="cartScrollArea" aria-label="购物车商品与促销">
-        {calculated.lines.length > 0 ? (
+        {displayLines.length > 0 ? (
           <div className="cartLineList" aria-label="购物车明细">
-            {calculated.lines.map((line, index) => (
+            {displayLines.map((line, index) => (
               <div
                 className={`cartLine cartLineDense cartLine-${line.lineType}`}
                 key={`${line.productId}-${line.lineType}-${line.finalUnitPrice}-${index}`}
@@ -154,23 +156,27 @@ export default function CartPanel({
                     <span aria-hidden="true">{line.productName.slice(0, 1) || "商"}</span>
                   )}
                 </div>
-                <div className="lineMain cartLineInfoStack">
-                  <div className="lineTitleRow">
-                    <h3>{line.productName}</h3>
-                    <span>{line.revenueType === "non_sales" && line.nonSalesReason ? nonSalesReasonLabels[line.nonSalesReason] : lineTypeLabels[line.lineType]}</span>
-                  </div>
-                  <p className="lineSpu">{line.spu}</p>
-                  {line.revenueType === "non_sales" && (line.nonSalesNote || line.campaignNameSnapshot) ? (
-                    <p className="lineNote">{line.nonSalesNote ?? line.campaignNameSnapshot}</p>
-                  ) : null}
-                  <div className="linePriceRow">
-                    <div className="linePriceStack">
-                      <span className="unitPrice">单价 {formatMoney(line.finalUnitPrice)}</span>
-                      {line.originalUnitPrice !== line.finalUnitPrice ? (
-                        <span className="strikePrice">{formatMoney(line.originalUnitPrice)}</span>
-                      ) : null}
-                      <strong className="lineTotal">{formatMoney(line.lineTotal)}</strong>
+                <div className="cartLineBody">
+                  <div className="lineMain cartLineInfoStack">
+                    <div className="lineTitleRow">
+                      <h3>{line.productName}</h3>
+                      <span>{line.revenueType === "non_sales" && line.nonSalesReason ? nonSalesReasonLabels[line.nonSalesReason] : lineTypeLabels[line.lineType]}</span>
                     </div>
+                    <p className="lineSpu">{line.spu}</p>
+                    {line.revenueType === "non_sales" && (line.nonSalesNote || line.campaignNameSnapshot) ? (
+                      <p className="lineNote">{line.nonSalesNote ?? line.campaignNameSnapshot}</p>
+                    ) : null}
+                    <div className="linePriceRow">
+                      <div className="linePriceStack">
+                        <span className="unitPrice">单价 {formatMoney(line.finalUnitPrice)}</span>
+                        {line.originalUnitPrice !== line.finalUnitPrice ? (
+                          <span className="strikePrice">{formatMoney(line.originalUnitPrice)}</span>
+                        ) : null}
+                        <strong className="lineTotal">{formatMoney(line.lineTotal)}</strong>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="cartLineActionColumn">
                     <div className="quantityStepper" aria-label={`${line.productName} 数量`}>
                       <button
                         type="button"
