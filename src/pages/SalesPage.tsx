@@ -28,6 +28,7 @@ import {
   saveOrderRefund,
   voidPaidOrder
 } from "../db/repositories";
+import { sortCartLinesForReview } from "../domain/cartLinePresentation";
 import { resolveGiftLines, type GiftSelections } from "../domain/giftSelection";
 import { requiresFieldLockUnlock, verifyFieldLockPin } from "../domain/fieldLock";
 import { formatMoney } from "../domain/money";
@@ -44,8 +45,10 @@ import {
   type OrderHistoryStatusFilter
 } from "../domain/orderHistory";
 import { calculateCart } from "../domain/promotions";
+import { createDefaultCampaignGiftConfig, normalizeCampaignGiftConfig } from "../domain/settings";
 import type {
   AppSettings,
+  CartItem,
   InventoryLog,
   NonSalesReason,
   Order,
@@ -271,7 +274,15 @@ function NonSalesProductPicker({
   );
 }
 
-function CheckoutOrderReview({ calculated, products }: { calculated: ReturnType<typeof calculateCart>; products: Product[] }) {
+function CheckoutOrderReview({
+  calculated,
+  products,
+  cartItems
+}: {
+  calculated: ReturnType<typeof calculateCart>;
+  products: Product[];
+  cartItems: CartItem[];
+}) {
   const productById = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
   const imageProductIds = useMemo(
     () => Array.from(new Set(calculated.lines.map((line) => line.productId))).filter((productId) => productById.get(productId)?.imageId),
@@ -308,80 +319,90 @@ function CheckoutOrderReview({ calculated, products }: { calculated: ReturnType<
   }, [imageProductIds, productById]);
 
   const itemCount = calculated.lines.reduce((sum, line) => sum + line.quantity, 0);
+  const displayLines = useMemo(() => sortCartLinesForReview(calculated.lines, cartItems), [calculated.lines, cartItems]);
 
   return (
     <section className="checkoutOrderReview" aria-labelledby="checkout-order-review-title">
-      <div className="panelHeading">
+      <div className="panelHeading cartPanelHeader">
         <div>
-          <p className="eyebrow">Order</p>
           <h2 id="checkout-order-review-title">本单商品</h2>
         </div>
         <span className="cartCount">{itemCount} 件</span>
       </div>
 
-      {calculated.lines.length > 0 ? (
-        <div className="cartLineList checkoutReviewLines" aria-label="本单商品明细">
-          {calculated.lines.map((line, index) => (
-            <div
-              className={`cartLine checkoutReviewLine cartLine-${line.lineType}`}
-              key={`${line.productId}-${line.lineType}-${line.finalUnitPrice}-${index}`}
-            >
-              <div className="cartLineThumb">
-                {imageUrlsByProductId[line.productId] ? (
-                  <img src={imageUrlsByProductId[line.productId]} alt={line.productName} />
-                ) : (
-                  <span aria-hidden="true">{line.productName.slice(0, 1) || "商"}</span>
-                )}
-              </div>
-              <div className="lineMain">
-                <div className="lineTitleRow">
-                  <h3>{line.productName}</h3>
-                  <span>
-                    {line.revenueType === "non_sales" && line.nonSalesReason && line.nonSalesReason !== "tier_gift"
-                      ? nonSalesReasonLabels[line.nonSalesReason]
-                      : lineTypeLabels[line.lineType]}
-                  </span>
+      <div className="checkoutScrollArea" aria-label="本单商品与促销">
+        {displayLines.length > 0 ? (
+          <div className="cartLineList checkoutReviewLines" aria-label="本单商品明细">
+            {displayLines.map((line, index) => (
+              <div
+                className={`cartLine cartLineDense checkoutReviewLine cartLine-${line.lineType}`}
+                key={`${line.productId}-${line.lineType}-${line.finalUnitPrice}-${index}`}
+              >
+                <span className="cartLineBadge">
+                  {line.revenueType === "non_sales" && line.nonSalesReason && line.nonSalesReason !== "tier_gift"
+                    ? nonSalesReasonLabels[line.nonSalesReason]
+                    : lineTypeLabels[line.lineType]}
+                </span>
+                <div className="cartLineThumb cartLineThumbLarge">
+                  {imageUrlsByProductId[line.productId] ? (
+                    <img src={imageUrlsByProductId[line.productId]} alt={line.productName} />
+                  ) : (
+                    <span aria-hidden="true">{line.productName.slice(0, 1) || "商"}</span>
+                  )}
                 </div>
-                <p>{line.spu}</p>
-                <div className="lineMeta">
-                  <span className="unitPrice">单价 {formatMoney(line.finalUnitPrice)}</span>
-                  {line.originalUnitPrice !== line.finalUnitPrice ? (
-                    <span className="strikePrice">{formatMoney(line.originalUnitPrice)}</span>
-                  ) : null}
-                  <span>数量 x{line.quantity}</span>
-                  <strong>{formatMoney(line.lineTotal)}</strong>
+                <div className="cartLineBody">
+                  <div className="lineMain cartLineInfoStack">
+                    <div className="lineTitleRow">
+                      <h3>{line.productName}</h3>
+                    </div>
+                    <p className="lineSpu">{line.spu}</p>
+                    <div className="linePriceRow">
+                      <div className="linePriceStack">
+                        <span className="unitPrice">单价 {formatMoney(line.finalUnitPrice)}</span>
+                        {line.originalUnitPrice !== line.finalUnitPrice ? (
+                          <span className="strikePrice">{formatMoney(line.originalUnitPrice)}</span>
+                        ) : null}
+                        <span>数量 x{line.quantity}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="cartLineAmountColumn isBottomAligned">
+                    <strong className="lineTotal">{formatMoney(line.lineTotal)}</strong>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="cartEmpty">还没有选择商品。</p>
-      )}
-
-      <div className="promotionSummary" aria-label="本单促销信息">
-        <p>已享加购优惠 {calculated.appliedDiscountQty}/{calculated.maxDiscountQty} 个</p>
-        <p>
-          {calculated.triggeredGiftTier && calculated.giftEntitlements.length > 0
-            ? `已触发满 ${calculated.triggeredGiftTier.threshold}：${calculated.giftEntitlements
-                .map((gift) => `${gift.label} x${gift.quantity}`)
-                .join("、")}`
-            : "暂未触发满额赠品"}
-        </p>
+            ))}
+          </div>
+        ) : (
+          <p className="cartEmpty">还没有选择商品。</p>
+        )}
       </div>
 
-      <div className="cartTotals">
-        <div>
-          <span>原价小计</span>
-          <strong>{formatMoney(calculated.subtotalBeforeDiscount)}</strong>
+      <div className="checkoutReviewFooter" aria-label="本单结算">
+        <div className="promotionSummary" aria-label="本单促销信息">
+          <p>已享加购优惠 {calculated.appliedDiscountQty}/{calculated.maxDiscountQty} 个</p>
+          <p>
+            {calculated.triggeredGiftTier && calculated.giftEntitlements.length > 0
+              ? `已触发满 ${calculated.triggeredGiftTier.threshold}：${calculated.giftEntitlements
+                  .map((gift) => `${gift.label} x${gift.quantity}`)
+                  .join("、")}`
+              : "暂未触发满额赠品"}
+          </p>
         </div>
-        <div>
-          <span>优惠</span>
-          <strong>-{formatMoney(calculated.discountAmount)}</strong>
-        </div>
-        <div className="payableRow">
-          <span>应收</span>
-          <strong>{formatMoney(calculated.payableAmount)}</strong>
+
+        <div className="cartTotals">
+          <div>
+            <span>原价小计</span>
+            <strong>{formatMoney(calculated.subtotalBeforeDiscount)}</strong>
+          </div>
+          <div>
+            <span>优惠</span>
+            <strong>-{formatMoney(calculated.discountAmount)}</strong>
+          </div>
+          <div className="payableRow">
+            <span>应收</span>
+            <strong>{formatMoney(calculated.payableAmount)}</strong>
+          </div>
         </div>
       </div>
     </section>
@@ -416,6 +437,7 @@ export default function SalesPage() {
   const [nonSalesPickerMode, setNonSalesPickerMode] = useState<NonSalesPickerMode>();
   const [nonSalesProductId, setNonSalesProductId] = useState("");
   const [nonSalesNote, setNonSalesNote] = useState("");
+  const [campaignGiftPickerSpu, setCampaignGiftPickerSpu] = useState<string>();
   const [showAllNonSalesProducts, setShowAllNonSalesProducts] = useState(false);
   const [nonSalesPickerError, setNonSalesPickerError] = useState<string>();
   const [qrImageUrls, setQrImageUrls] = useState<{ wechat?: string; alipay?: string }>({});
@@ -535,17 +557,20 @@ export default function SalesPage() {
     () => products.filter((product) => product.status === "active" && product.isGiftEligible),
     [products]
   );
+  const campaignGift = settings ? normalizeCampaignGiftConfig(settings.campaignGift) : createDefaultCampaignGiftConfig();
   const nonSalesPickerProducts = useMemo(() => {
     if (!nonSalesPickerMode) {
       return [];
     }
 
     if (nonSalesPickerMode === "campaign_gift") {
-      return giftEligibleProducts;
+      return campaignGiftPickerSpu
+        ? giftEligibleProducts.filter((product) => product.spu === campaignGiftPickerSpu)
+        : giftEligibleProducts;
     }
 
     return (showAllNonSalesProducts ? products.filter((product) => product.status === "active") : giftEligibleProducts);
-  }, [giftEligibleProducts, nonSalesPickerMode, products, showAllNonSalesProducts]);
+  }, [campaignGiftPickerSpu, giftEligibleProducts, nonSalesPickerMode, products, showAllNonSalesProducts]);
   const cartQuantityByProduct = useMemo(
     () =>
       cartItems.reduce((quantityByProduct, item) => {
@@ -673,13 +698,14 @@ export default function SalesPage() {
     setSelectedOrderRefunds([]);
   }
 
-  function openNonSalesPicker(mode: NonSalesPickerMode) {
-    if (mode === "campaign_gift" && !settings?.campaignGift.enabled) {
+  function openNonSalesPicker(mode: NonSalesPickerMode, options: { campaignGiftSpu?: string } = {}) {
+    if (mode === "campaign_gift" && !campaignGift.enabled) {
       setStatus({ kind: "error", text: "请先在设置页启用运营赠礼。" });
       return;
     }
 
     setNonSalesPickerMode(mode);
+    setCampaignGiftPickerSpu(mode === "campaign_gift" ? options.campaignGiftSpu : undefined);
     setNonSalesNote("");
     setShowAllNonSalesProducts(false);
     setNonSalesPickerError(undefined);
@@ -687,7 +713,7 @@ export default function SalesPage() {
   }
 
   function addCampaignGift() {
-    if (!settings?.campaignGift.enabled) {
+    if (!campaignGift.enabled) {
       setStatus({ kind: "error", text: "请先在设置页启用运营赠礼。" });
       return;
     }
@@ -697,9 +723,14 @@ export default function SalesPage() {
       return;
     }
 
+    if (campaignGift.targetType === "spu") {
+      openNonSalesPicker("campaign_gift", { campaignGiftSpu: campaignGift.defaultSpu || undefined });
+      return;
+    }
+
     const defaultProduct = products.find(
       (product) =>
-        product.id === settings?.campaignGift.defaultProductId &&
+        product.id === campaignGift.defaultProductId &&
         product.status === "active" &&
         product.isGiftEligible
     );
@@ -713,7 +744,7 @@ export default function SalesPage() {
       addNonSalesProduct({
         productId: defaultProduct.id,
         reason: "campaign_gift",
-        campaignNameSnapshot: settings.campaignGift.activityName
+        campaignNameSnapshot: campaignGift.activityName
       });
       setStatus(undefined);
       return;
@@ -728,7 +759,7 @@ export default function SalesPage() {
     }
 
     if (nonSalesPickerMode === "campaign_gift") {
-      if (!settings?.campaignGift.enabled) {
+      if (!campaignGift.enabled) {
         setNonSalesPickerError("请先在设置页启用运营赠礼。");
         return;
       }
@@ -759,9 +790,10 @@ export default function SalesPage() {
       productId: nonSalesProductId,
       reason: nonSalesPickerMode,
       note: nonSalesNote,
-      campaignNameSnapshot: nonSalesPickerMode === "campaign_gift" ? settings?.campaignGift.activityName : undefined
+      campaignNameSnapshot: nonSalesPickerMode === "campaign_gift" ? campaignGift.activityName : undefined
     });
     setNonSalesPickerMode(undefined);
+    setCampaignGiftPickerSpu(undefined);
     setNonSalesProductId("");
     setNonSalesNote("");
     setNonSalesPickerError(undefined);
@@ -985,9 +1017,8 @@ export default function SalesPage() {
     <section className="salesPage" aria-labelledby="sales-title">
       <div className={mode === "checkout" ? "salesHeader isCheckout" : "salesHeader"}>
         <div className="salesTitleBlock">
-          <p className="eyebrow">Checkout</p>
           <div className="salesTitleLine">
-            <h1 id="sales-title">售卖</h1>
+            <h1 id="sales-title">{mode === "checkout" ? "收款" : "售卖"}</h1>
             {settings ? <FieldLockStatus settings={settings} onSave={handleSaveFieldLock} /> : null}
           </div>
           <p>选择商品、确认收款，订单只在手动确认已支付后保存并扣减库存。</p>
@@ -1031,7 +1062,7 @@ export default function SalesPage() {
       <div className={mode === "checkout" ? "salesLayout hasCheckout" : "salesLayout"}>
         <div className="salesProductsArea">
           {mode === "checkout" ? (
-            <CheckoutOrderReview calculated={calculated} products={products} />
+            <CheckoutOrderReview calculated={calculated} products={products} cartItems={cartItems} />
           ) : (
             <>
               {isLoading ? <p className="emptyState">正在加载售卖商品...</p> : null}
@@ -1117,7 +1148,7 @@ export default function SalesPage() {
             increment={increment}
             decrement={decrement}
             clear={clearCart}
-            campaignGiftEnabled={settings?.campaignGift.enabled ?? false}
+            campaignGiftEnabled={campaignGift.enabled}
             addCampaignGift={addCampaignGift}
             addManualGift={() => openNonSalesPicker("manual_gift")}
             addOtherOutbound={() => openNonSalesPicker("other_non_sales")}
@@ -1158,6 +1189,7 @@ export default function SalesPage() {
           onConfirm={confirmNonSalesProduct}
           onCancel={() => {
             setNonSalesPickerMode(undefined);
+            setCampaignGiftPickerSpu(undefined);
             setNonSalesPickerError(undefined);
           }}
         />

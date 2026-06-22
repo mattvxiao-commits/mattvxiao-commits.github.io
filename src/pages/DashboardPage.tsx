@@ -141,45 +141,34 @@ export default function DashboardPage() {
           <p>统计范围：{dateRange?.label ?? "自定义日期无效"}</p>
         </div>
 
-        <div className="dashboardHeaderControls" aria-label="仪表盘时间范围">
-          <div className="dashboardRangeSwitch" role="group" aria-label="时间范围">
-            {rangeOptions.map((option) => (
-              <button
-                type="button"
-                className={rangePreset === option.preset ? "secondaryButton isActive" : "secondaryButton"}
-                key={option.preset}
-                onClick={() => selectRangePreset(option.preset)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+        <div className="dashboardFilterPanel" role="group" aria-label="仪表盘筛选">
+          <div className="dashboardFilterRow" role="group" aria-label="时间范围">
+            <div className="dashboardRangeSwitch" role="group" aria-label="日期范围">
+              {rangeOptions.map((option) => (
+                <button
+                  type="button"
+                  className={rangePreset === option.preset ? "secondaryButton isActive" : "secondaryButton"}
+                  key={option.preset}
+                  onClick={() => selectRangePreset(option.preset)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
 
-          <button
-            type="button"
-            className="secondaryButton dashboardRefreshButton"
-            disabled={isLoading}
-            onClick={() => void refreshDashboard()}
-          >
-            <RefreshCw size={17} aria-hidden="true" />
-            刷新
-          </button>
-
-          <div className="dashboardScopeSwitch" role="group" aria-label="统计口径">
-            {scopeOptions.map((option) => (
-              <button
-                type="button"
-                className={accountingScope === option.value ? "secondaryButton isActive" : "secondaryButton"}
-                key={option.value}
-                onClick={() => setAccountingScope(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
+            <button
+              type="button"
+              className="secondaryButton dashboardRefreshButton"
+              disabled={isLoading}
+              onClick={() => void refreshDashboard()}
+            >
+              <RefreshCw size={17} aria-hidden="true" />
+              刷新
+            </button>
           </div>
 
           {rangePreset === "custom" ? (
-            <div className="dashboardCustomRange">
+            <div className="dashboardCustomRange" role="group" aria-label="自定义日期">
               <label>
                 开始日期
                 <input
@@ -198,6 +187,21 @@ export default function DashboardPage() {
               </label>
             </div>
           ) : null}
+
+          <div className="dashboardFilterRow dashboardFilterScopeRow" role="group" aria-label="统计口径">
+            <div className="dashboardScopeSwitch" role="group" aria-label="口径选项">
+              {scopeOptions.map((option) => (
+                <button
+                  type="button"
+                  className={accountingScope === option.value ? "secondaryButton isActive" : "secondaryButton"}
+                  key={option.value}
+                  onClick={() => setAccountingScope(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

@@ -852,27 +852,28 @@ p {
   line-height: 1.35;
 }
 
-.dashboardHeaderControls {
+.dashboardFilterPanel {
   display: grid;
-  grid-template-columns: minmax(0, auto) auto;
-  gap: 8px;
-  align-items: end;
-  justify-content: end;
-  max-width: min(100%, 680px);
+  gap: 7px;
+  justify-items: end;
+  max-width: min(100%, 760px);
 }
 
-.dashboardRangeSwitch {
+.dashboardFilterRow {
   display: flex;
-  gap: 5px;
+  gap: 7px;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
   min-width: 0;
 }
 
+.dashboardFilterScopeRow {
+  width: 100%;
+}
+
+.dashboardRangeSwitch,
 .dashboardScopeSwitch {
   display: flex;
-  grid-column: 1 / -1;
   gap: 5px;
   align-items: center;
   justify-content: flex-end;
@@ -880,14 +881,7 @@ p {
   min-width: 0;
 }
 
-.dashboardRangeSwitch .secondaryButton {
-  min-height: 34px;
-  padding: 0 11px;
-  font-size: 12px;
-  line-height: 1;
-  white-space: nowrap;
-}
-
+.dashboardRangeSwitch .secondaryButton,
 .dashboardScopeSwitch .secondaryButton {
   min-height: 34px;
   padding: 0 11px;
@@ -897,9 +891,10 @@ p {
 }
 
 .dashboardRefreshButton {
-  min-height: 40px;
-  padding: 0 14px;
-  font-size: 14px;
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
   line-height: 1;
   white-space: nowrap;
 }
@@ -918,11 +913,10 @@ p {
 
 .dashboardCustomRange {
   display: grid;
-  grid-column: 1 / -1;
   grid-template-columns: repeat(2, minmax(132px, 1fr));
   gap: 8px;
   justify-self: end;
-  width: min(100%, 330px);
+  width: min(100%, 340px);
 }
 
 .dashboardCustomRange label {
@@ -1569,8 +1563,12 @@ p {
   box-shadow: 0 18px 38px rgba(36, 31, 26, 0.08);
 }
 
+.cartPanel {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
 .checkoutOrderReview {
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   max-height: calc(100vh - 96px);
   overflow: hidden;
 }
@@ -1589,7 +1587,6 @@ p {
   position: relative;
   top: auto;
   z-index: 1;
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto auto;
   width: min(500px, calc(100vw - 28px));
   max-height: calc(100vh - 28px);
   overflow: hidden;
@@ -1626,16 +1623,23 @@ p {
   line-height: 1.12;
 }
 
-.nonSalesQuickActions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+.cartPanelHeader h2 {
+  margin-top: 0;
+  font-size: 20px;
 }
 
-.nonSalesQuickActions .secondaryButton {
-  min-height: 32px;
-  padding: 0 8px;
-  font-size: 12px;
+.nonSalesActionBar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: -1px 0 0;
+}
+
+.nonSalesActionBar .secondaryButton {
+  min-height: 30px;
+  padding: 0 7px;
+  font-size: 11px;
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -1652,14 +1656,29 @@ p {
   white-space: nowrap;
 }
 
+.cartScrollArea {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.checkoutScrollArea {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
 .cartLineList {
   display: grid;
   align-content: start;
   gap: 5px;
   min-height: 0;
-  max-height: min(58vh, 620px);
-  overflow: auto;
-  padding-right: 2px;
 }
 
 .checkoutReviewLines {
@@ -1677,6 +1696,15 @@ p {
   background: #ffffff;
 }
 
+.cartLineDense {
+  position: relative;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 9px;
+  align-items: stretch;
+  min-height: 86px;
+  padding: 8px 9px;
+}
+
 .cartLineThumb {
   display: grid;
   width: 40px;
@@ -1691,6 +1719,12 @@ p {
   color: var(--accent-strong);
   font-size: 18px;
   font-weight: 900;
+}
+
+.cartLineThumbLarge {
+  width: 58px;
+  height: 58px;
+  align-self: center;
 }
 
 .cartLineThumb img {
@@ -1715,11 +1749,34 @@ p {
   gap: 4px;
 }
 
-.lineTitleRow {
-  display: flex;
+.cartLineBody {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
+}
+
+.cartPanel .cartLineBody {
+  grid-template-columns: minmax(0, 1.05fr) minmax(86px, 0.75fr) auto;
+}
+
+.checkoutOrderReview .cartLineBody {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.cartLineInfoStack {
+  align-content: center;
+  gap: 5px;
+  padding: 2px 0;
+}
+
+.lineTitleRow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
   justify-content: space-between;
+  min-height: 21px;
 }
 
 .lineMain h3 {
@@ -1738,31 +1795,55 @@ p {
   overflow-wrap: anywhere;
 }
 
-.lineTitleRow span {
-  min-height: 22px;
+.lineMain .lineSpu {
+  font-size: 11px;
+  line-height: 1.15;
+}
+
+.cartLineBadge {
+  position: absolute;
+  top: 10px;
+  right: 9px;
+  min-height: 20px;
   display: inline-flex;
   align-items: center;
-  padding: 0 6px;
+  padding: 0 5px;
   border-radius: 6px;
   background: #eee4df;
   color: var(--muted-strong);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
   white-space: nowrap;
 }
 
-.cartLine-discount_addon .lineTitleRow span {
+.cartLine-discount_addon .cartLineBadge {
   background: var(--accent-soft);
   color: var(--accent-strong);
 }
 
-.cartLine-gift .lineTitleRow span {
+.cartLine-gift .cartLineBadge {
   background: rgba(168, 95, 24, 0.12);
   color: #8b4f17;
 }
 
 .lineMain .lineNote {
   color: #8b4f17;
+}
+
+.cartLineNoteColumn {
+  min-width: 0;
+  display: grid;
+  align-items: center;
+  justify-items: start;
+}
+
+.cartLineNoteColumn .lineNote {
+  max-width: 100%;
+  color: var(--muted-strong);
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .lineMeta {
@@ -1773,6 +1854,55 @@ p {
   color: var(--muted-strong);
   font-size: 11px;
   font-weight: 800;
+}
+
+.linePriceRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  min-height: 22px;
+}
+
+.linePriceStack {
+  display: flex;
+  gap: 5px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  min-width: 0;
+  color: var(--muted-strong);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.lineTotal {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.cartLineActionColumn,
+.cartLineAmountColumn {
+  display: grid;
+  align-items: center;
+  justify-items: end;
+  min-width: max-content;
+}
+
+.cartLineActionColumn.isBottomAligned,
+.cartLineAmountColumn.isBottomAligned {
+  align-self: end;
+  padding-bottom: 2px;
+}
+
+.cartLineActionColumn {
+  padding-left: 2px;
+}
+
+.cartLineAmountColumn {
+  min-width: 58px;
 }
 
 .checkoutReviewLine .lineMeta strong {
@@ -1794,7 +1924,7 @@ p {
 .quantityStepper {
   margin-left: auto;
   display: inline-grid;
-  grid-template-columns: 28px minmax(24px, auto) 28px;
+  grid-template-columns: 26px minmax(24px, auto) 26px;
   align-items: center;
   overflow: hidden;
   border: 1px solid var(--line-strong);
@@ -1803,8 +1933,8 @@ p {
 }
 
 .quantityStepper .iconButton {
-  width: 28px;
-  min-height: 28px;
+  width: 26px;
+  min-height: 26px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -1830,6 +1960,11 @@ p {
   background: rgba(255, 255, 255, 0.78);
 }
 
+.cartScrollArea .promotionSummary,
+.cartScrollArea .cartWarning {
+  padding: 6px 8px;
+}
+
 .promotionSummary p,
 .giftSummary p,
 .manualConfirm p {
@@ -1849,10 +1984,33 @@ p {
   font-weight: 850;
 }
 
+.cartFooter {
+  display: grid;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.cartFooterSummary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, auto);
+  gap: 10px;
+  align-items: end;
+}
+
+.checkoutReviewFooter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, auto);
+  gap: 10px;
+  align-items: end;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
 .cartTotals {
   display: grid;
-  gap: 4px;
-  padding-top: 2px;
+  gap: 2px;
+  min-width: 140px;
 }
 
 .cartTotals div {
@@ -1869,16 +2027,15 @@ p {
 
 .cartTotals .payableRow {
   align-items: baseline;
-  padding-top: 5px;
-  border-top: 1px solid var(--line);
+  padding-top: 2px;
   color: var(--ink);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 900;
 }
 
 .payableRow strong {
   color: var(--accent-strong);
-  font-size: 28px;
+  font-size: 26px;
   line-height: 1;
 }
 
@@ -2804,13 +2961,20 @@ p {
     flex-direction: column;
   }
 
-  .dashboardHeaderControls {
-    grid-template-columns: 1fr;
-    justify-content: stretch;
+  .dashboardFilterPanel {
+    justify-items: stretch;
     max-width: 100%;
   }
 
-  .dashboardRangeSwitch {
+  .dashboardFilterRow {
+    align-items: stretch;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .dashboardRangeSwitch,
+  .dashboardScopeSwitch {
+    flex: 1 1 100%;
     justify-content: flex-start;
   }
 
@@ -2818,14 +2982,18 @@ p {
     flex: 1 1 86px;
   }
 
-  .dashboardRefreshButton,
-  .dashboardCustomRange {
-    width: 100%;
+  .dashboardScopeSwitch .secondaryButton {
+    flex: 1 1 92px;
+  }
+
+  .dashboardRefreshButton {
+    flex: 0 0 auto;
   }
 
   .dashboardCustomRange {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-self: stretch;
+    width: 100%;
   }
 
   .salesHeader {
@@ -2932,7 +3100,6 @@ p {
   }
 
   .settingsHeader .primaryButton,
-  .dashboardRefreshButton,
   .salesHeader .secondaryButton,
   .backupActions button {
     width: 100%;
@@ -3035,6 +3202,14 @@ p {
   }
 
   .dashboardCustomRange {
+    grid-template-columns: 1fr;
+  }
+
+  .cartFooterSummary {
+    grid-template-columns: 1fr;
+  }
+
+  .checkoutReviewFooter {
     grid-template-columns: 1fr;
   }
 

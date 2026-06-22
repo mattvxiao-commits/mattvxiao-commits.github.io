@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import { defaultPromotion, product } from "../test/fixtures";
 import { calculateCart } from "../domain/promotions";
@@ -214,9 +214,11 @@ test("hides campaign gift quick action when campaign gift is disabled", () => {
     />
   );
 
-  expect(screen.queryByRole("button", { name: "运营赠礼" })).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "人工赠送" })).toBeVisible();
-  expect(screen.getByRole("button", { name: "其他出库" })).toBeVisible();
+  const actions = screen.getByRole("group", { name: "非销售出库" });
+  expect(actions).toHaveClass("nonSalesActionBar");
+  expect(within(actions).queryByRole("button", { name: "+ 运营赠礼" })).not.toBeInTheDocument();
+  expect(within(actions).getByRole("button", { name: "+ 人工赠送" })).toBeVisible();
+  expect(within(actions).getByRole("button", { name: "+ 其他出库" })).toBeVisible();
 });
 
 test("blocks checkout when triggered gifts do not have enough stock", () => {
@@ -355,16 +357,160 @@ test("shows non-sales line labels, zero price, and quick actions", () => {
     />
   );
 
-  expect(screen.getAllByText("人工赠送").length).toBeGreaterThanOrEqual(2);
-  expect(screen.getAllByText("运营赠礼").length).toBeGreaterThanOrEqual(2);
+  const actions = screen.getByRole("group", { name: "非销售出库" });
+  expect(actions).toHaveClass("nonSalesActionBar");
+  expect(screen.getAllByText("人工赠送").length).toBeGreaterThanOrEqual(1);
+  expect(screen.getAllByText("运营赠礼").length).toBeGreaterThanOrEqual(1);
   expect(screen.getByText("好友赠送")).toBeVisible();
   expect(screen.getAllByText("¥0.00").length).toBeGreaterThan(0);
 
-  fireEvent.click(screen.getByRole("button", { name: "运营赠礼" }));
-  fireEvent.click(screen.getByRole("button", { name: "人工赠送" }));
-  fireEvent.click(screen.getByRole("button", { name: "其他出库" }));
+  fireEvent.click(within(actions).getByRole("button", { name: "+ 运营赠礼" }));
+  fireEvent.click(within(actions).getByRole("button", { name: "+ 人工赠送" }));
+  fireEvent.click(within(actions).getByRole("button", { name: "+ 其他出库" }));
 
   expect(onCampaignGift).toHaveBeenCalledTimes(1);
   expect(onManualGift).toHaveBeenCalledTimes(1);
   expect(onOtherOutbound).toHaveBeenCalledTimes(1);
+});
+
+test("uses dense drawer structure with enlarged thumbnails and compact footer", () => {
+  const items: CartItem[] = [
+    { productId: "normal", quantity: 1, addedAt: "2026-06-15T00:00:00.000Z" },
+    { productId: "addon", quantity: 1, addedAt: "2026-06-15T00:01:00.000Z" }
+  ];
+  const calculated = calculateCart({
+    items,
+    products: [normal, addon],
+    promotion: { ...defaultPromotion(), giftTiers: [] }
+  });
+
+  render(
+    <CartPanel
+      products={[normal, addon]}
+      calculated={calculated}
+      cartItems={items}
+      increment={() => undefined}
+      decrement={() => undefined}
+      clear={() => undefined}
+      checkout={() => undefined}
+      hold={() => undefined}
+    />
+  );
+
+  const panel = screen.getByRole("complementary", { name: "购物车" });
+  expect(panel).toHaveClass("cartPanel");
+
+  const compactHeader = panel.querySelector(".cartPanelHeader");
+  expect(compactHeader).not.toBeNull();
+  expect(compactHeader).toContainElement(screen.getByRole("heading", { name: "购物车" }));
+  expect(within(compactHeader as HTMLElement).queryByText("CART")).not.toBeInTheDocument();
+
+  const toolBar = screen.getByRole("group", { name: "非销售出库" });
+  expect(toolBar).toHaveClass("nonSalesActionBar");
+
+  const scrollArea = screen.getByLabelText("购物车商品与促销");
+  expect(scrollArea).toHaveClass("cartScrollArea");
+  expect(within(scrollArea).getByLabelText("购物车明细")).toHaveClass("cartLineList");
+  expect(within(scrollArea).queryByLabelText("促销信息")).not.toBeInTheDocument();
+
+  const firstLine = within(scrollArea).getByText("普通商品").closest(".cartLine");
+  expect(firstLine).not.toBeNull();
+  expect(firstLine).toHaveClass("cartLineDense");
+  expect(firstLine?.querySelector(".cartLineThumb")).toHaveClass("cartLineThumbLarge");
+  expect(firstLine?.querySelector(".cartLineInfoStack")).not.toBeNull();
+  expect(firstLine?.querySelector(".lineCompactMeta")).toBeNull();
+  expect(firstLine?.querySelector(".linePriceRow")).not.toBeNull();
+
+  const footer = screen.getByLabelText("购物车结算");
+  expect(footer).toHaveClass("cartFooter");
+  expect(within(footer).getByLabelText("促销信息")).toHaveClass("promotionSummary");
+  expect(within(footer).getByText("已享加购优惠 1/3 个")).toBeVisible();
+  expect(within(footer).getByText("应收")).toBeVisible();
+  expect(within(footer).getByRole("button", { name: "去收款" })).toHaveClass("primaryButton");
+});
+
+test("sorts cart lines by newest and business priority with a separated action column", () => {
+  const manualGift = product({
+    id: "manual-gift",
+    name: "人工赠品",
+    spu: "赠品SPU",
+    salePrice: 9,
+    isGiftEligible: true
+  });
+  const campaignGift = product({
+    id: "campaign-gift",
+    name: "运营赠品",
+    spu: "赠品SPU",
+    salePrice: 6,
+    isGiftEligible: true
+  });
+  const items: CartItem[] = [
+    { id: "normal-line", productId: "normal", quantity: 1, addedAt: "2026-06-21T10:00:00.000Z" },
+    { id: "addon-line", productId: "addon", quantity: 1, addedAt: "2026-06-21T10:01:00.000Z" },
+    {
+      id: "manual-line",
+      productId: "manual-gift",
+      quantity: 1,
+      addedAt: "2026-06-21T10:02:00.000Z",
+      revenueType: "non_sales",
+      nonSalesReason: "manual_gift",
+      nonSalesNote: "好友赠送"
+    },
+    {
+      id: "campaign-line",
+      productId: "campaign-gift",
+      quantity: 1,
+      addedAt: "2026-06-21T10:03:00.000Z",
+      revenueType: "non_sales",
+      nonSalesReason: "campaign_gift",
+      campaignNameSnapshot: "关注社媒赠礼"
+    }
+  ];
+  const calculated = calculateCart({
+    items,
+    products: [normal, addon, manualGift, campaignGift],
+    promotion: {
+      ...defaultPromotion(),
+      giftTiers: [],
+      addonDiscount: {
+        enabled: true,
+        discountSpu: "优惠SPU",
+        discountPrice: 3,
+        maxDiscountQty: 3
+      }
+    }
+  });
+
+  render(
+    <CartPanel
+      products={[normal, addon, manualGift, campaignGift]}
+      calculated={calculated}
+      cartItems={items}
+      increment={() => undefined}
+      decrement={() => undefined}
+      clear={() => undefined}
+      checkout={() => undefined}
+      hold={() => undefined}
+    />
+  );
+
+  const lineNames = within(screen.getByLabelText("购物车明细"))
+    .getAllByRole("heading", { level: 3 })
+    .map((heading) => heading.textContent);
+
+  expect(lineNames).toEqual(["运营赠品", "人工赠品", "优惠商品A", "普通商品"]);
+
+  const firstLine = screen.getByText("运营赠品").closest(".cartLine");
+  expect(firstLine).toHaveClass("cartLineDense");
+  expect(firstLine?.querySelector(".cartLineThumbLarge")).not.toBeNull();
+  expect(firstLine?.querySelector(".cartLineBody")).not.toBeNull();
+  expect(firstLine?.querySelector(".cartLineActionColumn")).not.toBeNull();
+  expect(firstLine?.querySelector(".lineTitleRow .cartLineBadge")).toBeNull();
+  expect(firstLine?.querySelector(":scope > .cartLineBadge")).not.toBeNull();
+  expect(firstLine?.querySelector(".cartLineNoteColumn")).not.toBeNull();
+  expect(firstLine?.querySelector(".cartLineNoteColumn")?.textContent).toContain("关注社媒赠礼");
+  expect(firstLine?.querySelector(".linePriceRow")?.querySelector(".quantityStepper")).toBeNull();
+  const actionColumn = firstLine?.querySelector(".cartLineActionColumn");
+  expect(actionColumn).toHaveClass("isBottomAligned");
+  expect(actionColumn?.querySelector(".quantityStepper")).not.toBeNull();
 });

@@ -48,6 +48,8 @@ export type NonSalesReason = "tier_gift" | "campaign_gift" | "manual_gift" | "ot
 
 export type OrderNature = "sale" | "mixed" | "non_sales";
 
+export type CampaignGiftTargetType = "sku" | "spu";
+
 export type OrderCancelReason =
   | "mistake"
   | "customer_cancelled"
@@ -79,7 +81,9 @@ export type FieldLockSettings = {
 export type CampaignGiftConfig = {
   enabled: boolean;
   activityName: string;
+  targetType: CampaignGiftTargetType;
   defaultProductId: string;
+  defaultSpu: string;
   requireSaleLine: boolean;
 };
 
