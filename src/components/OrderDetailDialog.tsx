@@ -63,6 +63,7 @@ type OrderDetailDialogProps = {
   onAdjustWholeOrder?: (input: AdjustOrderAccountingInput) => Promise<void> | void;
   isAdjustingAccounting?: boolean;
   canAdjustItemToCampaignGift?: (item: OrderItem) => boolean;
+  campaignGiftActivityName?: string;
 };
 
 const orderLineTypeLabels: Record<OrderLineType, string> = {
@@ -110,6 +111,46 @@ const accountingAdjustmentLabels: Record<AccountingAdjustmentMode, string> = {
 };
 
 const accountingAdjustmentOptions = Object.keys(accountingAdjustmentLabels) as AccountingAdjustmentMode[];
+
+const defaultCampaignActivityOptions = ["关注社媒赠礼", "现场互动赠礼", "活动补赠"];
+const campaignNoteOptions = ["已完成关注", "现场活动赠礼", "补登记运营赠礼"];
+const manualGiftNoteOptions = ["好友赠送", "摊主赠送", "合作赠送", "老客赠送"];
+const otherNonSalesNoteOptions = ["样品出库", "问题补偿", "陈列损耗", "盘点修正"];
+const adjustmentNoteOptions = ["历史订单补修正", "现场复核修正", "复盘口径修正"];
+
+function NoTranslate({ children }: { children: string }) {
+  return (
+    <span className="notranslate" translate="no">
+      {children}
+    </span>
+  );
+}
+
+function QuickOptionGroup({
+  label,
+  options,
+  onPick
+}: {
+  label: string;
+  options: string[];
+  onPick: (value: string) => void;
+}) {
+  const uniqueOptions = Array.from(new Set(options.map((option) => option.trim()).filter(Boolean)));
+
+  if (uniqueOptions.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="quickOptionGroup" aria-label={label}>
+      {uniqueOptions.map((option) => (
+        <button type="button" className="quickOptionButton" key={option} onClick={() => onPick(option)}>
+          {option}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function formatDateTime(value?: string): string {
   if (!value) {
@@ -168,7 +209,8 @@ export default function OrderDetailDialog({
   onAdjustOrderItem,
   onAdjustWholeOrder,
   isAdjustingAccounting = false,
-  canAdjustItemToCampaignGift = () => true
+  canAdjustItemToCampaignGift = () => true,
+  campaignGiftActivityName = ""
 }: OrderDetailDialogProps) {
   const [isVoidConfirmOpen, setIsVoidConfirmOpen] = useState(false);
   const [isRefundDialogOpen, setIsRefundDialogOpen] = useState(false);
@@ -178,6 +220,7 @@ export default function OrderDetailDialog({
   const [adjustmentCampaignName, setAdjustmentCampaignName] = useState("");
   const [adjustmentNote, setAdjustmentNote] = useState("");
   const [adjustmentError, setAdjustmentError] = useState("");
+  const [adjustmentSuccessMessage, setAdjustmentSuccessMessage] = useState("");
   const [cancelReason, setCancelReason] = useState<OrderCancelReason>("mistake");
   const [cancelNote, setCancelNote] = useState("");
   const [refundAmount, setRefundAmount] = useState("");
@@ -224,6 +267,7 @@ export default function OrderDetailDialog({
   }
 
   function openRefundDialog() {
+    setAdjustmentSuccessMessage("");
     setRefundAmount("");
     setRefundMethod(order.paymentMethod ?? "cash");
     setRefundReason("customer_return");
@@ -269,6 +313,7 @@ export default function OrderDetailDialog({
 
   function openItemAdjustment(item: OrderItem) {
     const normalized = getNormalizedOrderLine(item);
+    setAdjustmentSuccessMessage("");
     setAdjustmentTarget(item);
     setAdjustmentMode(
       normalized.revenueType === "sale" ? "sale" : normalized.nonSalesReason === "tier_gift" ? "campaign_gift" : normalized.nonSalesReason ?? "manual_gift"
@@ -280,6 +325,7 @@ export default function OrderDetailDialog({
   }
 
   function openWholeOrderAdjustment() {
+    setAdjustmentSuccessMessage("");
     setAdjustmentTarget("whole");
     setAdjustmentMode("sale");
     setAdjustmentNonSalesNote("");
@@ -291,6 +337,20 @@ export default function OrderDetailDialog({
   function closeAdjustmentDialog() {
     setAdjustmentTarget(undefined);
     setAdjustmentError("");
+  }
+
+  function pickAdjustmentText(setter: (value: string) => void, value: string) {
+    setter(value);
+    setAdjustmentError("");
+  }
+
+  function handleAdjustmentModeChange(mode: AccountingAdjustmentMode) {
+    setAdjustmentMode(mode);
+    setAdjustmentError("");
+
+    if (mode === "campaign_gift" && !adjustmentCampaignName.trim()) {
+      setAdjustmentCampaignName(campaignGiftActivityName.trim());
+    }
   }
 
   function buildAdjustmentPayload(): AdjustOrderAccountingInput | undefined {
@@ -354,6 +414,7 @@ export default function OrderDetailDialog({
           itemId: adjustmentTarget.id
         });
       }
+      setAdjustmentSuccessMessage("统计口径已修正，原始支付、退款和库存流水未改动。");
       closeAdjustmentDialog();
     } catch {
       setAdjustmentError("统计口径修正失败，请刷新后重试。");
@@ -371,7 +432,9 @@ export default function OrderDetailDialog({
         <header className="dialogHeader">
           <div>
             <p className="eyebrow">Order Detail</p>
-            <h2>{order.orderNo}</h2>
+            <h2 className="notranslate" translate="no">
+              {order.orderNo}
+            </h2>
             <p>
               <span>{orderStatusLabels[order.status]}</span>
               <span> / </span>
@@ -384,6 +447,11 @@ export default function OrderDetailDialog({
         </header>
 
         <div className="orderDetailBody">
+          {adjustmentSuccessMessage ? (
+            <p className="successBanner" role="status">
+              {adjustmentSuccessMessage}
+            </p>
+          ) : null}
           <section className="orderDetailSection" aria-labelledby="order-detail-basic-title">
             <div className="sectionTitle">
               <ReceiptText size={19} aria-hidden="true" />
@@ -403,15 +471,21 @@ export default function OrderDetailDialog({
               </div>
               <div>
                 <dt>应收</dt>
-                <dd>{formatMoney(order.payableAmount)}</dd>
+                <dd>
+                  <NoTranslate>{formatMoney(order.payableAmount)}</NoTranslate>
+                </dd>
               </div>
               <div>
                 <dt>原价</dt>
-                <dd>{formatMoney(order.subtotalBeforeDiscount)}</dd>
+                <dd>
+                  <NoTranslate>{formatMoney(order.subtotalBeforeDiscount)}</NoTranslate>
+                </dd>
               </div>
               <div>
                 <dt>优惠</dt>
-                <dd>{formatMoney(order.discountAmount)}</dd>
+                <dd>
+                  <NoTranslate>{formatMoney(order.discountAmount)}</NoTranslate>
+                </dd>
               </div>
               <div>
                 <dt>订单性质</dt>
@@ -452,11 +526,15 @@ export default function OrderDetailDialog({
                 ) : null}
                 <div>
                   <dt>累计退款</dt>
-                  <dd>{formatMoney(refundedAmount)}</dd>
+                  <dd>
+                    <NoTranslate>{formatMoney(refundedAmount)}</NoTranslate>
+                  </dd>
                 </div>
                 <div>
                   <dt>剩余可退</dt>
-                  <dd>{formatMoney(remainingRefundAmount)}</dd>
+                  <dd>
+                    <NoTranslate>{formatMoney(remainingRefundAmount)}</NoTranslate>
+                  </dd>
                 </div>
               </dl>
               {orderRefunds.length > 0 ? (
@@ -465,7 +543,9 @@ export default function OrderDetailDialog({
                     <article className="refundRecordRow" role="listitem" key={refund.id}>
                       <div>
                         <span>退款金额</span>
-                        <strong>{formatMoney(refund.amount)}</strong>
+                        <strong>
+                          <NoTranslate>{formatMoney(refund.amount)}</NoTranslate>
+                        </strong>
                       </div>
                       <div>
                         <span>退款方式</span>
@@ -511,7 +591,9 @@ export default function OrderDetailDialog({
                   </div>
                   <div>
                     <span>商品编码</span>
-                    <strong>{item.productCodeSnapshot || "未设置"}</strong>
+                    <strong className="notranslate" translate="no">
+                      {item.productCodeSnapshot || "未设置"}
+                    </strong>
                   </div>
                   <div>
                     <span>数量</span>
@@ -535,11 +617,15 @@ export default function OrderDetailDialog({
                   </div>
                   <div>
                     <span>统计小计</span>
-                    <strong>{`统计小计 ${formatMoney(item.statisticalSubtotal)}`}</strong>
+                    <strong>
+                      <NoTranslate>{`统计小计 ${formatMoney(item.statisticalSubtotal)}`}</NoTranslate>
+                    </strong>
                   </div>
                   <div>
                     <span>优惠让利</span>
-                    <strong>{`优惠让利 ${formatMoney(item.discountGiveawayAmount)}`}</strong>
+                    <strong>
+                      <NoTranslate>{`优惠让利 ${formatMoney(item.discountGiveawayAmount)}`}</NoTranslate>
+                    </strong>
                   </div>
                   <div>
                     <span>是否修正</span>
@@ -547,22 +633,32 @@ export default function OrderDetailDialog({
                   </div>
                   <div>
                     <span>单价</span>
-                    <strong>{`单价 ${formatMoney(item.finalUnitPrice)}`}</strong>
+                    <strong>
+                      <NoTranslate>{`单价 ${formatMoney(item.finalUnitPrice)}`}</NoTranslate>
+                    </strong>
                   </div>
                   <div>
                     <span>原价</span>
-                    <strong>{`原价 ${formatMoney(item.originalUnitPrice)}`}</strong>
+                    <strong>
+                      <NoTranslate>{`原价 ${formatMoney(item.originalUnitPrice)}`}</NoTranslate>
+                    </strong>
                   </div>
                   <div>
                     <span>小计</span>
-                    <strong>{`小计 ${formatMoney(item.lineTotal)}`}</strong>
+                    <strong>
+                      <NoTranslate>{`小计 ${formatMoney(item.lineTotal)}`}</NoTranslate>
+                    </strong>
                   </div>
                   <div className="orderDetailLineCost">
                     <span>成本/毛利</span>
                     {typeof item.costTotal === "number" && typeof item.grossProfit === "number" ? (
                       <>
-                        <strong>{`成本 ${formatMoney(item.costTotal)}`}</strong>
-                        <strong>{`毛利 ${formatMoney(item.grossProfit)}`}</strong>
+                        <strong>
+                          <NoTranslate>{`成本 ${formatMoney(item.costTotal)}`}</NoTranslate>
+                        </strong>
+                        <strong>
+                          <NoTranslate>{`毛利 ${formatMoney(item.grossProfit)}`}</NoTranslate>
+                        </strong>
                       </>
                     ) : (
                       <strong>缺少成本快照</strong>
@@ -851,10 +947,7 @@ export default function OrderDetailDialog({
                 aria-label="修正为"
                 value={adjustmentMode}
                 disabled={isAdjustingAccounting}
-                onChange={(event) => {
-                  setAdjustmentMode(event.target.value as AccountingAdjustmentMode);
-                  setAdjustmentError("");
-                }}
+                onChange={(event) => handleAdjustmentModeChange(event.target.value as AccountingAdjustmentMode)}
               >
                 {accountingAdjustmentOptions.map((mode) => (
                   <option key={mode} value={mode}>
@@ -864,50 +957,79 @@ export default function OrderDetailDialog({
               </select>
             </label>
             {adjustmentMode === "campaign_gift" ? (
-              <label className="dialogField">
-                <span>运营活动快照</span>
-                <input
-                  aria-label="运营活动快照"
-                  value={adjustmentCampaignName}
-                  disabled={isAdjustingAccounting}
-                  onChange={(event) => {
-                    setAdjustmentCampaignName(event.target.value);
-                    setAdjustmentError("");
-                  }}
-                  placeholder="可选"
+              <div className="dialogField">
+                <label>
+                  <span>运营活动快照</span>
+                  <input
+                    aria-label="运营活动快照"
+                    value={adjustmentCampaignName}
+                    disabled={isAdjustingAccounting}
+                    onChange={(event) => {
+                      setAdjustmentCampaignName(event.target.value);
+                      setAdjustmentError("");
+                    }}
+                    placeholder="可选"
+                  />
+                </label>
+                <QuickOptionGroup
+                  label="运营活动快照快速选项"
+                  options={[campaignGiftActivityName, ...defaultCampaignActivityOptions]}
+                  onPick={(value) => pickAdjustmentText(setAdjustmentCampaignName, value)}
                 />
-              </label>
+              </div>
             ) : null}
             {adjustmentMode !== "sale" ? (
-              <label className="dialogField">
-                <span>非销售备注</span>
+              <div className="dialogField">
+                <label>
+                  <span>{adjustmentMode === "manual_gift" || adjustmentMode === "other_non_sales" ? "非销售备注（必填）" : "非销售备注"}</span>
+                  <textarea
+                    aria-label="非销售备注"
+                    value={adjustmentNonSalesNote}
+                    disabled={isAdjustingAccounting}
+                    maxLength={120}
+                    rows={3}
+                    onChange={(event) => {
+                      setAdjustmentNonSalesNote(event.target.value);
+                      setAdjustmentError("");
+                    }}
+                    placeholder={adjustmentMode === "manual_gift" || adjustmentMode === "other_non_sales" ? "必填" : "可选"}
+                  />
+                </label>
+                <QuickOptionGroup
+                  label="非销售备注快速选项"
+                  options={
+                    adjustmentMode === "campaign_gift"
+                      ? campaignNoteOptions
+                      : adjustmentMode === "manual_gift"
+                        ? manualGiftNoteOptions
+                        : otherNonSalesNoteOptions
+                  }
+                  onPick={(value) => pickAdjustmentText(setAdjustmentNonSalesNote, value)}
+                />
+              </div>
+            ) : null}
+            <div className="dialogField">
+              <label>
+                <span>修正备注</span>
                 <textarea
-                  aria-label="非销售备注"
-                  value={adjustmentNonSalesNote}
+                  aria-label="修正备注"
+                  value={adjustmentNote}
                   disabled={isAdjustingAccounting}
                   maxLength={120}
                   rows={3}
-                  onChange={(event) => {
-                    setAdjustmentNonSalesNote(event.target.value);
-                    setAdjustmentError("");
-                  }}
-                  placeholder={adjustmentMode === "manual_gift" || adjustmentMode === "other_non_sales" ? "必填" : "可选"}
+                  onChange={(event) => setAdjustmentNote(event.target.value)}
+                  placeholder="可选"
                 />
               </label>
-            ) : null}
-            <label className="dialogField">
-              <span>修正备注</span>
-              <textarea
-                aria-label="修正备注"
-                value={adjustmentNote}
-                disabled={isAdjustingAccounting}
-                maxLength={120}
-                rows={3}
-                onChange={(event) => setAdjustmentNote(event.target.value)}
-                placeholder="可选"
+              <QuickOptionGroup
+                label="修正备注快速选项"
+                options={adjustmentNoteOptions}
+                onPick={(value) => pickAdjustmentText(setAdjustmentNote, value)}
               />
-            </label>
-            {adjustmentError ? <p className="fieldError">{adjustmentError}</p> : null}
+            </div>
+            <p className="dialogErrorSlot" role={adjustmentError ? "alert" : undefined} aria-label="修正错误提示">
+              {adjustmentError}
+            </p>
             <div className="dialogActions">
               <button
                 type="button"

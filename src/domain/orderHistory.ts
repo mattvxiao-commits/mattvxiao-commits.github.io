@@ -112,6 +112,27 @@ export type OrderAfterSalesBadge = {
   tone: OrderAfterSalesBadgeTone;
 };
 
+export type OrderHistoryAccountingBadgeTone = "neutral" | "warning";
+
+export type OrderHistoryAccountingBadge = {
+  label: string;
+  tone: OrderHistoryAccountingBadgeTone;
+};
+
+export function getOrderHistoryAccountingBadges(
+  order: Pick<Order, "orderNature">,
+  items?: Array<Pick<OrderItem, "lineType" | "revenueType" | "adjustedAt">>
+): OrderHistoryAccountingBadge[] {
+  const nature = items && items.length > 0 ? deriveOrderNature(items) : order.orderNature ?? "sale";
+  const badges: OrderHistoryAccountingBadge[] = [{ label: orderNatureLabels[nature], tone: "neutral" }];
+
+  if (items?.some((item) => Boolean(item.adjustedAt))) {
+    badges.push({ label: "已修正", tone: "warning" });
+  }
+
+  return badges;
+}
+
 export function getOrderAfterSalesBadges(order: Order, refunds: OrderRefund[] = []): OrderAfterSalesBadge[] {
   const badges: OrderAfterSalesBadge[] = [];
 

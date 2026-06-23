@@ -5,6 +5,7 @@ import {
   dateRangeLabels,
   deriveOrderNature,
   filterAndSortOrders,
+  getOrderHistoryAccountingBadges,
   getOrderAfterSalesBadges,
   getNormalizedOrderLine,
   orderCancelReasonLabels,
@@ -202,6 +203,41 @@ describe("order history filters", () => {
       { label: "其他", tone: "neutral" },
       { label: "已退款", tone: "danger" }
     ]);
+  });
+
+  test("builds accounting badges from order nature snapshot", () => {
+    expect(getOrderHistoryAccountingBadges(order({ orderNature: "sale" }))).toEqual([
+      { label: "正常销售", tone: "neutral" }
+    ]);
+    expect(getOrderHistoryAccountingBadges(order({ orderNature: "mixed" }))).toEqual([
+      { label: "销售 + 赠送", tone: "neutral" }
+    ]);
+    expect(getOrderHistoryAccountingBadges(order({ orderNature: "non_sales" }))).toEqual([
+      { label: "非销售出库", tone: "neutral" }
+    ]);
+  });
+
+  test("marks adjusted orders in accounting badges", () => {
+    expect(
+      getOrderHistoryAccountingBadges(order({ orderNature: "sale" }), [
+        {
+          lineType: "normal",
+          adjustedAt: "2026-06-23T10:00:00.000Z"
+        }
+      ])
+    ).toEqual([
+      { label: "正常销售", tone: "neutral" },
+      { label: "已修正", tone: "warning" }
+    ]);
+  });
+
+  test("derives accounting badges from loaded order items when available", () => {
+    expect(
+      getOrderHistoryAccountingBadges(order({ orderNature: "sale" }), [
+        { lineType: "normal", revenueType: "sale" },
+        { lineType: "gift", revenueType: "non_sales" }
+      ])
+    ).toEqual([{ label: "销售 + 赠送", tone: "neutral" }]);
   });
 
   test("exports Chinese labels used by the sales page", () => {
