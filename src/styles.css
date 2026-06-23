@@ -944,6 +944,66 @@ p {
   margin-top: 14px;
 }
 
+.dashboardSectionNav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  overflow-x: auto;
+  margin-top: 12px;
+  padding-bottom: 2px;
+}
+
+.dashboardSectionNav a {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dashboardReviewGroup {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 10px;
+  scroll-margin-top: 14px;
+}
+
+.dashboardReviewGroupHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.dashboardReviewGroupHeader h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 19px;
+  line-height: 1.15;
+}
+
+.dashboardReviewGroupHeader p:not(.eyebrow) {
+  margin-top: 4px;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dashboardReviewGroupGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .dashboardMetricStrip {
   display: grid;
   grid-column: 1 / -1;
@@ -3159,6 +3219,10 @@ p {
   }
 
   .dashboardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboardReviewGroupGrid {
     grid-template-columns: 1fr;
   }
 
