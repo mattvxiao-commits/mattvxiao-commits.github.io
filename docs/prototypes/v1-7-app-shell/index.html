@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ECRM V1.7 App Shell 可视化草图</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="prototypeHeader">
+      <div>
+        <p class="eyebrow">ECRM V1.7-0 Wireframes</p>
+        <h1>App Shell 可视化草图</h1>
+        <p>三套完整布局方案 + 一套混合结构示意，用于确认 V1.7 全局 UI 壳层方向。</p>
+      </div>
+      <nav aria-label="草图导航">
+        <a href="#scheme-a">方案 A</a>
+        <a href="#scheme-b">方案 B</a>
+        <a href="#scheme-c">方案 C</a>
+        <a href="#scheme-d">方案 D</a>
+        <a href="#compare">对比结论</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="introPanel">
+        <div>
+          <h2>阅读方式</h2>
+          <p>每套方案都展示桌面、iPad 横屏、iPad 竖屏、窄屏四类视口。草图不是最终视觉稿，重点看导航位置、现场模式状态、页面标题区、筛选区和说明入口。</p>
+        </div>
+        <div class="legend">
+          <span><i class="mark nav"></i>主导航</span>
+          <span><i class="mark field"></i>现场模式</span>
+          <span><i class="mark action"></i>主操作</span>
+          <span><i class="mark help"></i>说明入口</span>
+        </div>
+      </section>
+
+      <section class="scheme" id="scheme-a">
+        <div class="schemeHeader">
+          <div>
+            <p class="eyebrow">Scheme A</p>
+            <h2>当前结构进化版：顶部品牌 + 横向导航</h2>
+            <p>低风险方案，保留当前使用习惯，重点修正顶部导航稳定性和页面标题区规范。</p>
+          </div>
+          <div class="verdict">推荐作为 V1.7a 基线</div>
+        </div>
+        <div class="viewportGrid">
+          <article class="device desktop">
+            <h3>Desktop 1366</h3>
+            <div class="frame schemeA">
+              <div class="topbar">
+                <div class="brand">ECRM <b>v1.7</b><small>现场经营工具</small></div>
+                <div class="fieldChip">现场模式已锁定</div>
+                <div class="topnav"><span>商品</span><span>售卖</span><span class="active">仪表盘</span><span>设置</span></div>
+              </div>
+              <div class="pageHead">
+                <div><strong>仪表盘</strong><small>统计范围：近 7 天</small></div>
+                <div class="filterBar"><span>今日</span><span>近 7 天</span><span>正常销售</span><span>刷新</span></div>
+              </div>
+              <div class="contentGrid">
+                <div class="wide metric">经营概览 <button>?</button></div>
+                <div>销售表现 <button>?</button></div>
+                <div>活动成本 <button>?</button></div>
+                <div>毛利分析 <button>?</button></div>
+                <div>库存风险 <button>?</button></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="device tabletWide">
+            <h3>iPad 横屏</h3>
+            <div class="frame schemeA">
+              <div class="topbar compact">
+                <div class="brand">ECRM <b>v1.7</b></div>
+                <div class="fieldChip">已锁定</div>
+                <div class="topnav"><span>商品</span><span>售卖</span><span class="active">仪表盘</span><span>设置</span></div>
+              </div>
+              <div class="pageHead stacked">
+                <div><strong>仪表盘</strong><small>统计范围：近 7 天</small></div>
+                <div class="filterBar"><span>近 7 天</span><span>正常销售</span><span>刷新</span></div>
+              </div>
+              <div class="contentGrid two">
+                <div class="wide metric">经营概览 <button>?</button></div>
+                <div>销售表现</div><div>活动成本</div><div>库存风险</div>
+              </div>
+            </div>
+          </article>
+
+          <article class="device tabletTall">
+            <h3>iPad 竖屏</h3>
+            <div class="frame schemeA portrait">
+              <div class="topbar vertical">
+                <div class="brand">ECRM <b>v1.7</b></div>
+                <div class="topnav scroll"><span>商品</span><span>售卖</span><span class="active">仪表盘</span><span>设置</span></div>
+              </div>
+              <div class="pageHead stacked"><strong>仪表盘</strong><div class="filterBar wrap"><span>近 7 天</span><span>正常销售</span><span>刷新</span></div></div>
+              <div class="contentList">
+                <div>经营概览 <button>?</button></div><div>销售表现</div><div>活动成本</div><div>毛利分析</div>
+              </div>
+            </div>
+          </article>
+
+          <article class="device narrow">
+            <h3>窄屏</h3>
+            <div class="frame schemeA phone">
+              <div class="topbar vertical tight"><div class="brand">ECRM</div><div class="topnav scroll"><span>商品</span><span>售卖</span><span class="active">仪表盘</span><span>设置</span></div></div>
+              <div class="pageHead stacked"><strong>仪表盘</strong><div class="filterBar wrap"><span>近 7 天</span><span>正常销售</span></div></div>
+              <div class="contentList"><div>经营概览 ?</div><div>销售表现</div><div>活动成本</div></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="scheme" id="scheme-b">
+        <div class="schemeHeader">
+          <div>
+            <p class="eyebrow">Scheme B</p>
+            <h2>桌面管理工具版：顶部状态栏 + 左侧窄导航</h2>
+            <p>更适合长期扩展，桌面端空间更清晰；窄屏时左侧导航折叠为顶部滚动导航。</p>
+          </div>
+          <div class="verdict neutral">长期扩展更强</div>
+        </div>
+        <div class="viewportGrid">
+          <article class="device desktop">
+            <h3>Desktop 1366</h3>
+            <div class="frame schemeB">
+              <aside class="sideNav"><b>ECRM</b><span>商品</span><span>售卖</span><span class="active">仪表盘</span><span>设置</span></aside>
+              <section class="appArea">
+                <div class="statusbar"><span>GA10 摊位</span><span class="fieldChip">现场模式已锁定</span></div>
+                <div class="pageHead"><div><strong>仪表盘</strong><small>经营复盘</small></div><div class="filterBar"><span>近 7 天</span><span>正常销售</span><span>刷新</span></div></div>
+                <div class="contentGrid"><div class="wide metric">经营概览 <button>?</button></div><div>销售表现</div><div>库存风险</div><div>订单异常</div></div>
+              </section>
+            </div>
+          </article>
+          <article class="device tabletWide">
+            <h3>iPad 横屏</h3>
+            <div class="frame schemeB">
+              <aside class="sideNav slim"><b>E</b><span>商品</span><span>售卖</span><span class="active">仪表盘</span><span>设置</span></aside>
+              <section class="appArea">
+                <div class="statusbar"><span>仪表盘</span><span class="fieldChip">已锁定</span></div>
+                <div class="filterBar"><span>近 7 天</span><span>正常销售</span><span>刷新</span></div>
+                <div class="contentGrid two"><div class="wide metric">经营概览 ?</div><div>销售表现</div><div>活动成本</div><div>库存风险</div></div>
+              </section>
+            </div>
+          </article>
+          <article class="device tabletTall">
+            <h3>iPad 竖屏</h3>
+            <div class="frame schemeB portrait">
+              <div class="topbar compact"><div class="brand">ECRM</div><div class="fieldChip">已锁定</div></div>
+              <div class="topnav scroll"><span>商品</span><span>售卖</span><span class="active">仪表盘</span><span>设置</span></div>
+              <div class="pageHead stacked"><strong>仪表盘</strong><div class="filterBar wrap"><span>近 7 天</span><span>正常销售</span></div></div>
+              <div class="contentList"><div>经营概览 ?</div><div>销售表现</div><div>库存风险</div></div>
+            </div>
+          </article>
+          <article class="device narrow">
+            <h3>窄屏</h3>
+            <div class="frame schemeB phone">
+              <div class="topbar compact"><div class="brand">ECRM</div><span class="fieldChip">锁定</span></div>
+              <div class="topnav scroll"><span>商品</span><span>售卖</span><span class="active">仪表盘</span><span>设置</span></div>
+              <div class="contentList"><div>仪表盘筛选</div><div>经营概览 ?</div><div>活动成本</div></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="scheme" id="scheme-c">
+        <div class="schemeHeader">
+          <div>
+            <p class="eyebrow">Scheme C</p>
+            <h2>现场操作优先版：顶部状态栏 + 底部主导航</h2>
+            <p>更接近 iPad / 移动 App，减少顶部误触风险；需要重点处理售卖页购物车和底部导航的关系。</p>
+          </div>
+          <div class="verdict field">现场体验最强</div>
+        </div>
+        <div class="viewportGrid">
+          <article class="device desktop">
+            <h3>Desktop 1366</h3>
+            <div class="frame schemeC">
+              <div class="topbar"><div class="brand">ECRM</div><div class="fieldChip">现场模式已锁定</div><div class="pageTitle">售卖</div></div>
+              <div class="salesShell">
+                <div class="productPane"><div class="filterBar"><span>全部</span><span>挂件</span><span>贴纸</span></div><div class="productGrid"><i></i><i></i><i></i><i></i></div></div>
+                <div class="cartPane">购物车 / 订单复核 / 去收款</div>
+              </div>
+              <div class="bottomNav"><span>商品</span><span class="active">售卖</span><span>仪表盘</span><span>设置</span></div>
+            </div>
+          </article>
+          <article class="device tabletWide">
+            <h3>iPad 横屏</h3>
+            <div class="frame schemeC">
+              <div class="topbar compact"><div class="brand">ECRM</div><div class="pageTitle">售卖</div><div class="fieldChip">已锁定</div></div>
+              <div class="salesShell"><div class="productPane"><div class="productGrid"><i></i><i></i><i></i></div></div><div class="cartPane">购物车</div></div>
+              <div class="bottomNav"><span>商品</span><span class="active">售卖</span><span>仪表盘</span><span>设置</span></div>
+            </div>
+          </article>
+          <article class="device tabletTall">
+            <h3>iPad 竖屏</h3>
+            <div class="frame schemeC portrait">
+              <div class="topbar compact"><div class="brand">ECRM</div><div class="fieldChip">已锁定</div></div>
+              <div class="filterBar wrap"><span>全部</span><span>挂件</span><span>贴纸</span></div>
+              <div class="productGrid tall"><i></i><i></i><i></i><i></i></div>
+              <div class="floatingCart">购物车 3</div>
+              <div class="bottomNav"><span>商品</span><span class="active">售卖</span><span>仪表盘</span><span>设置</span></div>
+            </div>
+          </article>
+          <article class="device narrow">
+            <h3>窄屏</h3>
+            <div class="frame schemeC phone">
+              <div class="topbar compact"><div class="brand">ECRM</div><span class="fieldChip">锁定</span></div>
+              <div class="productGrid tall"><i></i><i></i><i></i></div>
+              <div class="floatingCart">购物车</div>
+              <div class="bottomNav"><span>商品</span><span class="active">售卖</span><span>仪表盘</span><span>设置</span></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="scheme compactScheme" id="scheme-d">
+        <div class="schemeHeader">
+          <div>
+            <p class="eyebrow">Scheme D</p>
+            <h2>混合响应式示意：桌面左侧导航 + 小屏底部导航</h2>
+            <p>作为边界参考，不建议 V1.7a 直接全量实现，可作为长期产品化方向。</p>
+          </div>
+        </div>
+        <div class="hybridMap">
+          <div><strong>Desktop</strong><span>左侧导航 + 顶部状态栏 + 内容标题区</span></div>
+          <div><strong>iPad 横屏</strong><span>左侧窄导航或顶部滚动导航二选一</span></div>
+          <div><strong>iPad 竖屏</strong><span>顶部状态栏 + 底部主导航</span></div>
+          <div><strong>Narrow</strong><span>顶部状态栏 + 底部主导航 + 页面内主操作</span></div>
+        </div>
+      </section>
+
+      <section class="comparison" id="compare">
+        <h2>方案对比</h2>
+        <div class="compareGrid">
+          <div><strong>A 当前结构进化版</strong><p>最适合 V1.7a 快速落地，风险最低。</p></div>
+          <div><strong>B 桌面管理工具版</strong><p>长期扩展更清晰，但改动量更大。</p></div>
+          <div><strong>C 现场操作优先版</strong><p>iPad 体验最好，但要处理底部导航与购物车竞争。</p></div>
+          <div><strong>D 混合响应式</strong><p>长期方向参考，当前只做结构示意。</p></div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

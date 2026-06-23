@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1500" viewBox="0 0 1800 1500">
+  <defs>
+    <style>
+      .title{font:700 28px "Segoe UI",Arial,sans-serif;fill:#241f1a}
+      .sub{font:500 15px "Segoe UI",Arial,sans-serif;fill:#70685e}
+      .label{font:700 14px "Segoe UI",Arial,sans-serif;fill:#51493f}
+      .small{font:600 12px "Segoe UI",Arial,sans-serif;fill:#70685e}
+      .card{fill:#fffdfa;stroke:#ded6c9;stroke-width:1.5;rx:10}
+      .screen{fill:#f8f5ee;stroke:#bfb6aa;stroke-width:1.5;rx:10}
+      .green{fill:#dbe9e4;stroke:#2f6f5e;stroke-width:1.2;rx:8}
+      .chip{fill:#ffffff;stroke:#ded6c9;stroke-width:1;rx:7}
+      .warn{fill:#fff2dc;stroke:#a85f18;stroke-width:1;rx:7}
+      .dark{fill:#194a3f;rx:8}
+      .line{stroke:#ded6c9;stroke-width:1.2}
+      .ink{fill:#241f1a}
+      .muted{fill:#70685e}
+      .accentText{fill:#194a3f}
+      .white{fill:#fffdfa}
+    </style>
+  </defs>
+
+  <rect width="1800" height="1500" fill="#f7f4ee"/>
+  <text x="40" y="48" class="title">ECRM V1.7-0 App Shell Wireframes</text>
+  <text x="40" y="76" class="sub">Figma-ready SVG：三套完整方案 + 一套混合结构示意。拖入 Figma 后可查看、移动、标注和轻量编辑。</text>
+
+  <!-- Scheme A -->
+  <g transform="translate(40 120)">
+    <rect class="card" width="540" height="610"/>
+    <text x="20" y="34" class="title">方案 A：顶部品牌 + 横向导航</text>
+    <text x="20" y="60" class="sub">当前结构进化版，低风险，适合 V1.7a 基线。</text>
+
+    <g transform="translate(20 86)">
+      <text class="label" x="0" y="-10">Desktop</text>
+      <rect class="screen" width="500" height="170"/>
+      <rect class="chip" x="12" y="12" width="92" height="28"/><text class="label" x="24" y="31">ECRM</text>
+      <rect class="warn" x="118" y="12" width="106" height="28"/><text class="small" x="128" y="31">现场模式锁定</text>
+      <rect class="chip" x="250" y="12" width="54" height="28"/><text class="small" x="264" y="31">商品</text>
+      <rect class="chip" x="310" y="12" width="54" height="28"/><text class="small" x="324" y="31">售卖</text>
+      <rect class="green" x="370" y="12" width="66" height="28"/><text class="small accentText" x="384" y="31">仪表盘</text>
+      <rect class="chip" x="442" y="12" width="46" height="28"/><text class="small" x="452" y="31">设置</text>
+      <line class="line" x1="0" y1="52" x2="500" y2="52"/>
+      <text class="title" x="14" y="88" style="font-size:20px">仪表盘</text>
+      <rect class="chip" x="250" y="66" width="58" height="28"/><text class="small" x="263" y="85">近7天</text>
+      <rect class="chip" x="314" y="66" width="78" height="28"/><text class="small" x="326" y="85">正常销售</text>
+      <rect class="chip" x="398" y="66" width="54" height="28"/><text class="small" x="412" y="85">刷新</text>
+      <rect class="green" x="14" y="110" width="472" height="42"/><text class="label accentText" x="28" y="136">经营概览  ?</text>
+    </g>
+
+    <g transform="translate(20 290)">
+      <text class="label" x="0" y="-10">iPad / Narrow</text>
+      <rect class="screen" width="236" height="250"/>
+      <rect class="chip" x="12" y="12" width="74" height="28"/><text class="label" x="24" y="31">ECRM</text>
+      <rect class="chip" x="12" y="52" width="50" height="28"/><text class="small" x="23" y="71">商品</text>
+      <rect class="chip" x="68" y="52" width="50" height="28"/><text class="small" x="79" y="71">售卖</text>
+      <rect class="green" x="124" y="52" width="68" height="28"/><text class="small accentText" x="138" y="71">仪表盘</text>
+      <rect class="chip" x="198" y="52" width="50" height="28"/>
+      <text class="title" x="14" y="118" style="font-size:18px">仪表盘</text>
+      <rect class="chip" x="14" y="135" width="72" height="28"/><text class="small" x="27" y="154">近7天</text>
+      <rect class="chip" x="92" y="135" width="88" height="28"/><text class="small" x="104" y="154">正常销售</text>
+      <rect class="green" x="14" y="178" width="208" height="42"/><text class="small accentText" x="28" y="204">经营概览 ?</text>
+    </g>
+  </g>
+
+  <!-- Scheme B -->
+  <g transform="translate(630 120)">
+    <rect class="card" width="540" height="610"/>
+    <text x="20" y="34" class="title">方案 B：顶部状态栏 + 左侧窄导航</text>
+    <text x="20" y="60" class="sub">桌面管理工具版，扩展能力更强。</text>
+
+    <g transform="translate(20 86)">
+      <text class="label" x="0" y="-10">Desktop</text>
+      <rect class="screen" width="500" height="170"/>
+      <rect class="chip" x="0" y="0" width="74" height="170"/><text class="label" x="18" y="30">ECRM</text>
+      <rect class="chip" x="12" y="48" width="50" height="24"/><text class="small" x="23" y="65">商品</text>
+      <rect class="chip" x="12" y="78" width="50" height="24"/><text class="small" x="23" y="95">售卖</text>
+      <rect class="green" x="10" y="108" width="54" height="24"/><text class="small accentText" x="15" y="125">仪表盘</text>
+      <rect class="warn" x="360" y="12" width="112" height="28"/><text class="small" x="370" y="31">现场模式锁定</text>
+      <text class="title" x="94" y="74" style="font-size:20px">仪表盘</text>
+      <rect class="chip" x="270" y="54" width="58" height="28"/><text class="small" x="283" y="73">近7天</text>
+      <rect class="chip" x="334" y="54" width="78" height="28"/><text class="small" x="346" y="73">正常销售</text>
+      <rect class="green" x="94" y="106" width="382" height="42"/><text class="label accentText" x="108" y="132">经营概览 ?</text>
+    </g>
+
+    <g transform="translate(20 290)">
+      <text class="label" x="0" y="-10">iPad 竖屏 / Narrow</text>
+      <rect class="screen" width="236" height="250"/>
+      <rect class="chip" x="12" y="12" width="74" height="28"/><text class="label" x="24" y="31">ECRM</text>
+      <rect class="warn" x="140" y="12" width="72" height="28"/><text class="small" x="152" y="31">锁定</text>
+      <rect class="chip" x="12" y="52" width="50" height="28"/><text class="small" x="23" y="71">商品</text>
+      <rect class="chip" x="68" y="52" width="50" height="28"/><text class="small" x="79" y="71">售卖</text>
+      <rect class="green" x="124" y="52" width="68" height="28"/><text class="small accentText" x="138" y="71">仪表盘</text>
+      <text class="title" x="14" y="118" style="font-size:18px">仪表盘</text>
+      <rect class="green" x="14" y="150" width="208" height="42"/><text class="small accentText" x="28" y="176">经营概览 ?</text>
+      <rect class="chip" x="14" y="202" width="98" height="30"/><text class="small" x="28" y="222">销售表现</text>
+      <rect class="chip" x="122" y="202" width="98" height="30"/><text class="small" x="136" y="222">库存风险</text>
+    </g>
+  </g>
+
+  <!-- Scheme C -->
+  <g transform="translate(1220 120)">
+    <rect class="card" width="540" height="610"/>
+    <text x="20" y="34" class="title">方案 C：顶部状态栏 + 底部主导航</text>
+    <text x="20" y="60" class="sub">现场操作优先版，更偏 iPad / 移动 App。</text>
+
+    <g transform="translate(20 86)">
+      <text class="label" x="0" y="-10">Desktop / iPad 横屏</text>
+      <rect class="screen" width="500" height="170"/>
+      <rect class="chip" x="12" y="12" width="74" height="28"/><text class="label" x="24" y="31">ECRM</text>
+      <text class="title" x="214" y="33" style="font-size:18px">售卖</text>
+      <rect class="warn" x="360" y="12" width="112" height="28"/><text class="small" x="370" y="31">现场模式锁定</text>
+      <rect class="chip" x="14" y="58" width="290" height="70"/><text class="label" x="28" y="96">商品列表 / SPU 筛选</text>
+      <rect class="green" x="316" y="58" width="158" height="70"/><text class="label accentText" x="350" y="96">购物车</text>
+      <rect class="chip" x="0" y="138" width="500" height="32"/>
+      <text class="small" x="72" y="159">商品</text><text class="small accentText" x="178" y="159">售卖</text><text class="small" x="286" y="159">仪表盘</text><text class="small" x="404" y="159">设置</text>
+    </g>
+
+    <g transform="translate(20 290)">
+      <text class="label" x="0" y="-10">iPad 竖屏 / Narrow</text>
+      <rect class="screen" width="236" height="250"/>
+      <rect class="chip" x="12" y="12" width="74" height="28"/><text class="label" x="24" y="31">ECRM</text>
+      <rect class="warn" x="150" y="12" width="60" height="28"/><text class="small" x="162" y="31">锁定</text>
+      <rect class="chip" x="14" y="58" width="208" height="110"/><text class="label" x="34" y="116">商品列表</text>
+      <rect class="dark" x="140" y="176" width="72" height="32"/><text class="small white" x="154" y="197">购物车</text>
+      <rect class="chip" x="0" y="218" width="236" height="32"/>
+      <text class="small" x="20" y="239">商品</text><text class="small accentText" x="78" y="239">售卖</text><text class="small" x="132" y="239">仪表盘</text><text class="small" x="196" y="239">设置</text>
+    </g>
+  </g>
+
+  <!-- Scheme D -->
+  <g transform="translate(40 790)">
+    <rect class="card" width="1720" height="300"/>
+    <text x="20" y="38" class="title">方案 D：混合响应式结构示意</text>
+    <text x="20" y="66" class="sub">桌面左侧导航，小屏底部导航。当前只作为长期方向参考，不建议 V1.7a 直接全量实现。</text>
+    <g transform="translate(20 105)">
+      <rect class="green" width="390" height="140"/><text class="label accentText" x="24" y="42">Desktop</text><text class="small" x="24" y="72">左侧导航 + 顶部状态栏 + 内容标题区</text>
+      <rect class="chip" x="430" width="390" height="140"/><text class="label" x="454" y="42">iPad 横屏</text><text class="small" x="454" y="72">左侧窄导航或顶部横向导航二选一</text>
+      <rect class="chip" x="860" width="390" height="140"/><text class="label" x="884" y="42">iPad 竖屏</text><text class="small" x="884" y="72">顶部状态栏 + 底部主导航</text>
+      <rect class="warn" x="1290" width="390" height="140"/><text class="label" x="1314" y="42">Narrow</text><text class="small" x="1314" y="72">顶部状态栏 + 底部导航 + 页面内主操作</text>
+    </g>
+  </g>
+
+  <!-- Comparison -->
+  <g transform="translate(40 1140)">
+    <rect class="card" width="1720" height="250"/>
+    <text x="20" y="38" class="title">快速对比</text>
+    <rect class="green" x="20" y="70" width="390" height="120"/><text class="label accentText" x="42" y="105">A 当前结构进化版</text><text class="small" x="42" y="135">风险最低，建议优先实现为 V1.7a 基线。</text>
+    <rect class="chip" x="450" y="70" width="390" height="120"/><text class="label" x="472" y="105">B 桌面管理工具版</text><text class="small" x="472" y="135">长期扩展更好，改动量更大。</text>
+    <rect class="warn" x="880" y="70" width="390" height="120"/><text class="label" x="902" y="105">C 现场操作优先版</text><text class="small" x="902" y="135">iPad 使用感更强，需处理底部导航与购物车竞争。</text>
+    <rect class="chip" x="1310" y="70" width="390" height="120"/><text class="label" x="1332" y="105">D 混合响应式</text><text class="small" x="1332" y="135">长期方向参考，当前不建议一次到位。</text>
+  </g>
+</svg>
