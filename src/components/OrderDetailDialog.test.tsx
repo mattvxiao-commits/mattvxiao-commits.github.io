@@ -293,6 +293,84 @@ test("validates note before adjusting one item to manual gift and then calls the
   });
 });
 
+test("defaults campaign accounting adjustment activity from settings and quick options fill fields", () => {
+  const onAdjustOrderItem = vi.fn();
+
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
+      onClose={() => undefined}
+      onAdjustOrderItem={onAdjustOrderItem}
+      campaignGiftActivityName="关注社媒赠礼"
+    />
+  );
+
+  const itemList = screen.getByRole("list", { name: "订单商品明细" });
+  const firstRow = within(itemList).getAllByRole("listitem")[0];
+  fireEvent.click(within(firstRow).getByRole("button", { name: "修正统计口径" }));
+
+  const adjustDialog = screen.getByRole("dialog", { name: "修正单行统计口径" });
+  fireEvent.change(within(adjustDialog).getByLabelText("修正为"), { target: { value: "campaign_gift" } });
+
+  expect(within(adjustDialog).getByLabelText("运营活动快照")).toHaveValue("关注社媒赠礼");
+
+  fireEvent.click(within(adjustDialog).getByRole("button", { name: "现场互动赠礼" }));
+  expect(within(adjustDialog).getByLabelText("运营活动快照")).toHaveValue("现场互动赠礼");
+
+  fireEvent.click(within(adjustDialog).getByRole("button", { name: "已完成关注" }));
+  expect(within(adjustDialog).getByLabelText("非销售备注")).toHaveValue("已完成关注");
+
+  fireEvent.click(within(adjustDialog).getByRole("button", { name: "历史订单补修正" }));
+  expect(within(adjustDialog).getByLabelText("修正备注")).toHaveValue("历史订单补修正");
+});
+
+test("shows required note label and stable error slot for manual accounting adjustment", () => {
+  const onAdjustOrderItem = vi.fn();
+
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
+      onClose={() => undefined}
+      onAdjustOrderItem={onAdjustOrderItem}
+    />
+  );
+
+  const itemList = screen.getByRole("list", { name: "订单商品明细" });
+  const firstRow = within(itemList).getAllByRole("listitem")[0];
+  fireEvent.click(within(firstRow).getByRole("button", { name: "修正统计口径" }));
+
+  const adjustDialog = screen.getByRole("dialog", { name: "修正单行统计口径" });
+  fireEvent.change(within(adjustDialog).getByLabelText("修正为"), { target: { value: "manual_gift" } });
+
+  expect(within(adjustDialog).getByText("非销售备注（必填）")).toBeVisible();
+  expect(within(adjustDialog).getByLabelText("修正错误提示")).toHaveClass("dialogErrorSlot");
+
+  fireEvent.click(within(adjustDialog).getByRole("button", { name: "好友赠送" }));
+  expect(within(adjustDialog).getByLabelText("非销售备注")).toHaveValue("好友赠送");
+});
+
+test("marks money and order identifiers as not translatable in order detail", () => {
+  render(
+    <OrderDetailDialog
+      order={order}
+      orderItems={orderItems}
+      inventoryLogs={inventoryLogs}
+      orderRefunds={[]}
+      onClose={() => undefined}
+    />
+  );
+
+  expect(screen.getByText("ECRM-20260617-001")).toHaveAttribute("translate", "no");
+  expect(screen.getByText("¥100.00")).toHaveAttribute("translate", "no");
+  expect(screen.getByText("CANDLE-ROSE")).toHaveAttribute("translate", "no");
+});
+
 test("calls the whole order adjustment handler from the detail action", () => {
   const onAdjustWholeOrder = vi.fn();
 
