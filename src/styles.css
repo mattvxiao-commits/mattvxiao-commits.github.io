@@ -972,7 +972,11 @@ p {
 }
 
 .dashboardActivityCostStrip {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+}
+
+.dashboardNonSalesBreakdownStrip span {
+  font-size: 17px;
 }
 
 .dashboardMetricStrip div,
