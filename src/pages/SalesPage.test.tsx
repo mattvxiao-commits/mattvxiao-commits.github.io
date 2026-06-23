@@ -830,6 +830,30 @@ test("含人工赠送时确认保存会保存混合订单 V1.6a 字段", async (
   expect(screen.queryByText("非销售出库订单保存将在下一步启用，请先完成当前开发版本更新。")).not.toBeInTheDocument();
 });
 
+test("非销售商品选择弹窗显示必填备注、快速选项和固定错误区域", async () => {
+  const manualGift = product({
+    id: "manual-gift",
+    name: "人工赠品",
+    spu: "赠品SPU",
+    stockQty: 5,
+    isSellable: false,
+    isGiftEligible: true
+  });
+  repositories.listProducts.mockResolvedValue([sellableProduct, manualGift]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "打开购物车，当前 0 件，应收 ¥0.00" }));
+  fireEvent.click(await screen.findByRole("button", { name: "+ 人工赠送" }));
+
+  const dialog = await screen.findByRole("dialog", { name: "选择人工赠送商品" });
+  expect(within(dialog).getByText("备注（必填）")).toBeVisible();
+  expect(within(dialog).getByLabelText("非销售出库错误提示")).toHaveClass("dialogErrorSlot");
+
+  fireEvent.click(within(dialog).getByRole("button", { name: "好友赠送" }));
+  expect(within(dialog).getByLabelText("备注")).toHaveValue("好友赠送");
+});
+
 test("含运营赠礼时确认保存会保存运营赠礼字段", async () => {
   const campaignGift = product({
     id: "campaign-gift",
@@ -1682,6 +1706,47 @@ test("shows recent paid order history behind a toggle", async () => {
   expect(within(paidOrderButton).getByText("已支付")).toHaveClass("orderHistoryChip", "isStatus");
   expect(within(paidOrderButton).getByText("¥42.50")).toBeVisible();
   expect(within(history).queryByText("ECRM-PENDING")).not.toBeInTheDocument();
+});
+
+test("shows accounting nature badges in order history", async () => {
+  repositories.listOrders.mockResolvedValue([
+    order({
+      id: "normal-order",
+      orderNo: "ECRM-NORMAL",
+      orderNature: "sale",
+      paymentMethod: "alipay",
+      paidAt: localIsoDateTime(0, 9, 25)
+    }),
+    order({
+      id: "mixed-order",
+      orderNo: "ECRM-MIXED",
+      orderNature: "mixed",
+      paymentMethod: "cash",
+      paidAt: localIsoDateTime(0, 10, 25)
+    }),
+    order({
+      id: "non-sales-order",
+      orderNo: "ECRM-NON-SALES",
+      orderNature: "non_sales",
+      paymentMethod: undefined,
+      payableAmount: 0,
+      paidAt: localIsoDateTime(0, 11, 25)
+    })
+  ]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+
+  const history = await screen.findByRole("region", { name: "订单记录列表" });
+  const normalOrderButton = within(history).getByRole("button", { name: "查看订单 ECRM-NORMAL" });
+  const mixedOrderButton = within(history).getByRole("button", { name: "查看订单 ECRM-MIXED" });
+  const nonSalesOrderButton = within(history).getByRole("button", { name: "查看订单 ECRM-NON-SALES" });
+
+  expect(within(normalOrderButton).getByText("正常销售")).toHaveClass("orderHistoryChip", "isAccounting");
+  expect(within(mixedOrderButton).getByText("销售 + 赠送")).toHaveClass("orderHistoryChip", "isAccounting");
+  expect(within(nonSalesOrderButton).getByText("非销售出库")).toHaveClass("orderHistoryChip", "isAccounting");
+  expect(within(normalOrderButton).getByText("¥20.00")).toHaveAttribute("translate", "no");
 });
 
 test("shows after-sales badges for cancelled orders in order history", async () => {

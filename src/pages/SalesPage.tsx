@@ -36,6 +36,7 @@ import { buildPaidOrder } from "../domain/order";
 import {
   dateRangeLabels,
   filterAndSortOrders,
+  getOrderHistoryAccountingBadges,
   getOrderAfterSalesBadges,
   orderBusinessTime,
   orderStatusLabels,
@@ -103,6 +104,29 @@ const nonSalesReasonLabels: Record<NonSalesPickerMode, string> = {
   manual_gift: "人工赠送",
   other_non_sales: "其他出库"
 };
+
+const manualGiftNoteOptions = ["好友赠送", "摊主赠送", "合作赠送", "老客赠送"];
+const otherNonSalesNoteOptions = ["样品出库", "问题补偿", "陈列损耗", "盘点修正"];
+
+function QuickOptionGroup({
+  label,
+  options,
+  onPick
+}: {
+  label: string;
+  options: string[];
+  onPick: (value: string) => void;
+}) {
+  return (
+    <div className="quickOptionGroup" aria-label={label}>
+      {options.map((option) => (
+        <button type="button" className="quickOptionButton" key={option} onClick={() => onPick(option)}>
+          {option}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function formatPaidTime(value: string): string {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -184,6 +208,7 @@ function NonSalesProductPicker({
 }) {
   const requiresNote = mode === "manual_gift" || mode === "other_non_sales";
   const selectedProduct = products.find((product) => product.id === selectedProductId);
+  const noteOptions = mode === "manual_gift" ? manualGiftNoteOptions : otherNonSalesNoteOptions;
 
   return (
     <div className="modalBackdrop">
@@ -249,17 +274,24 @@ function NonSalesProductPicker({
         ) : null}
 
         {requiresNote ? (
-          <label className="dialogField">
-            <span>备注</span>
-            <textarea aria-label="备注" value={note} onChange={(event) => setNote(event.target.value)} rows={3} />
-          </label>
+          <div className="dialogField">
+            <label>
+              <span>备注（必填）</span>
+              <textarea
+                aria-label="备注"
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                rows={3}
+                placeholder="例如：好友赠送 / 问题补偿 / 样品出库"
+              />
+            </label>
+            <QuickOptionGroup label={`${nonSalesReasonLabels[mode]}备注快速选项`} options={noteOptions} onPick={setNote} />
+          </div>
         ) : null}
 
-        {error ? (
-          <p className="errorBanner" role="alert">
-            {error}
-          </p>
-        ) : null}
+        <p className="dialogErrorSlot" role={error ? "alert" : undefined} aria-label="非销售出库错误提示">
+          {error}
+        </p>
 
         <div className="dialogActions">
           <button type="button" className="secondaryButton" onClick={onCancel}>
@@ -1287,6 +1319,7 @@ export default function SalesPage() {
             {!isLoading && filteredOrders.length === 0 ? <p className="emptyState">当前筛选下暂无订单。</p> : null}
             {filteredOrders.map((order) => {
               const afterSalesBadges = getOrderAfterSalesBadges(order, refunds);
+              const accountingBadges = getOrderHistoryAccountingBadges(order);
 
               return (
                 <article className="orderHistoryRow" key={order.id}>
@@ -1304,7 +1337,17 @@ export default function SalesPage() {
                     <span className="orderHistoryMeta">
                       <span className="orderHistoryChip isStatus">{orderStatusLabels[order.status]}</span>
                       <span className="orderHistoryChip isPayment">{order.paymentMethod ? paymentMethodLabels[order.paymentMethod] : "未记录"}</span>
-                      <strong>{formatMoney(order.payableAmount)}</strong>
+                      {accountingBadges.map((badge) => (
+                        <span
+                          className={badge.tone === "warning" ? "orderHistoryChip isAccounting isWarning" : "orderHistoryChip isAccounting"}
+                          key={`${order.id}-${badge.label}`}
+                        >
+                          {badge.label}
+                        </span>
+                      ))}
+                      <strong className="notranslate" translate="no">
+                        {formatMoney(order.payableAmount)}
+                      </strong>
                       {afterSalesBadges.length > 0 ? (
                         <span className="orderAfterSalesBadges" aria-label="订单售后标识">
                           {afterSalesBadges.map((badge) => (
@@ -1345,6 +1388,7 @@ export default function SalesPage() {
           onAdjustWholeOrder={handleAdjustSelectedWholeOrder}
           isAdjustingAccounting={isAdjustingAccounting}
           canAdjustItemToCampaignGift={canAdjustItemToCampaignGift}
+          campaignGiftActivityName={campaignGift.activityName}
         />
       ) : null}
       <FieldLockDialog
