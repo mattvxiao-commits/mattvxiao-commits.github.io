@@ -15,6 +15,10 @@
 ## 2. 文件说明
 
 ```text
+docs/prototypes/v1-7-app-shell/hybrid-desktop.html
+docs/prototypes/v1-7-app-shell/hybrid-mobile.html
+docs/prototypes/v1-7-app-shell/hybrid-real-shell.css
+docs/prototypes/v1-7-app-shell/hybrid-real-shell.js
 docs/prototypes/v1-7-app-shell/scheme-a-current-top-nav.html
 docs/prototypes/v1-7-app-shell/scheme-b-left-rail.html
 docs/prototypes/v1-7-app-shell/scheme-c-bottom-nav.html
@@ -27,7 +31,35 @@ docs/prototypes/v1-7-app-shell/figma/scheme-d-hybrid-responsive.svg
 docs/prototypes/v1-7-app-shell/README.md
 ```
 
-## 3. 浏览器查看入口
+## 3. 方案 D 实操草图入口
+
+在确认倾向“方案 D：混合响应式示意”后，新增一套更接近真实产品的实操草图。
+
+这套草图只保留两个入口：
+
+```text
+docs/prototypes/v1-7-app-shell/hybrid-desktop.html
+docs/prototypes/v1-7-app-shell/hybrid-mobile.html
+```
+
+规则：
+
+- 桌面版使用左侧导航菜单。
+- 移动端使用底部导航菜单。
+- 页面打开后不再显示 A/B/C/D 方案切换。
+- 页面打开后不再显示桌面、iPad 横屏、iPad 竖屏、移动端四类设备切换按钮。
+- 商品、售卖、仪表盘、设置四个菜单可以通过真实产品式导航切换。
+- 每个页面只做首屏布局和数据密度预览，不实现新增、编辑、下单、弹窗等完整功能。
+- 可在“设置 / 备份与恢复”中导入 ECRM JSON 备份用于当前草图预览；该导入只影响当前 HTML 页面，不会覆盖正式产品 IndexedDB 数据。
+
+建议先看：
+
+1. `hybrid-desktop.html`：确认桌面左侧导航、顶部状态栏和各页面首屏结构。
+2. `hybrid-mobile.html`：确认移动端底部导航、首屏密度和购物车区域占位。
+
+## 4. A/B/C/D 方案对比入口
+
+以下文件保留为前一轮方案对比稿，用于回看不同方向。正式评审方案 D 实操效果时，优先使用上方两个 `hybrid-*` 文件。
 
 建议分别打开以下文件：
 
@@ -47,9 +79,9 @@ docs/prototypes/v1-7-app-shell/scheme-d-hybrid-responsive.html
 
 页面默认打开时显示“桌面 / Windows 浏览器”效果。
 
-## 4. 四个方案
+## 5. 四个方案
 
-### 4.1 方案 A：当前结构进化版
+### 5.1 方案 A：当前结构进化版
 
 文件：
 
@@ -71,7 +103,7 @@ scheme-a-current-top-nav.html
 - 页面标题区和筛选区是否比当前更规范。
 - 窄屏下横向导航是否仍可接受。
 
-### 4.2 方案 B：桌面管理工具版
+### 5.2 方案 B：桌面管理工具版
 
 文件：
 
@@ -92,7 +124,7 @@ scheme-b-left-rail.html
 - 现场售卖时是否占用过多商品列表空间。
 - iPad 竖屏折叠后的使用感是否自然。
 
-### 4.3 方案 C：现场操作优先版
+### 5.3 方案 C：现场操作优先版
 
 文件：
 
@@ -112,7 +144,7 @@ scheme-c-bottom-nav.html
 - 购物车入口是否和底部导航冲突。
 - 转屏给顾客看收款码时，误触主导航风险是否降低。
 
-### 4.4 方案 D：混合响应式示意
+### 5.4 方案 D：混合响应式示意
 
 文件：
 
@@ -132,7 +164,7 @@ scheme-d-hybrid-responsive.html
 - 多种导航模式是否增加认知负担。
 - 是否更适合作为 V1.8 或更后续版本。
 
-## 5. Figma 导入
+## 6. Figma 导入
 
 可将以下 SVG 文件拖入 Figma：
 
@@ -151,7 +183,7 @@ docs/prototypes/v1-7-app-shell/figma/scheme-d-hybrid-responsive.svg
 - 不会自动生成 Auto Layout。
 - 不会自动生成 Figma Components。
 
-## 6. 当前阶段不做内容
+## 7. 当前阶段不做内容
 
 V1.7-0 仍然只做草图，不做产品实现：
 
@@ -161,13 +193,13 @@ V1.7-0 仍然只做草图，不做产品实现：
 - 不改真实路由。
 - 不推送远端。
 
-## 7. 下一步
+## 8. 下一步
 
 建议评审顺序：
 
-1. 单独打开方案 A，看是否足够作为 V1.7a 低风险基线。
-2. 单独打开方案 B，看长期扩展价值是否值得更大改动。
-3. 单独打开方案 C，看现场 iPad 操作是否明显更好。
-4. 单独打开方案 D，看是否作为长期方向保留。
+1. 打开 `hybrid-desktop.html`，检查桌面版左侧导航和四个菜单首屏。
+2. 打开 `hybrid-mobile.html`，检查移动端底部导航和四个菜单首屏。
+3. 在设置页导入 JSON 备份，检查真实商品、订单、仪表盘数据密度。
+4. 确认方案 D 混合壳层是否进入 V1.7 正式实现。
 
 确认方向后，再写 V1.7 正式中文方案文档。
