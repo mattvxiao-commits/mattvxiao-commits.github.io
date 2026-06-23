@@ -3001,6 +3001,7 @@ p {
   }
 
   .nav {
+    flex: 0 0 auto;
     width: 100%;
     justify-content: flex-start;
     overscroll-behavior-x: contain;
