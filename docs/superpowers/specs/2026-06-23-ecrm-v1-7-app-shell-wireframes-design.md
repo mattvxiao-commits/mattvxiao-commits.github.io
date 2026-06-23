@@ -44,6 +44,10 @@ docs/prototypes/v1-7-app-shell/
 计划文件：
 
 ```text
+docs/prototypes/v1-7-app-shell/hybrid-desktop.html
+docs/prototypes/v1-7-app-shell/hybrid-mobile.html
+docs/prototypes/v1-7-app-shell/hybrid-real-shell.css
+docs/prototypes/v1-7-app-shell/hybrid-real-shell.js
 docs/prototypes/v1-7-app-shell/scheme-a-current-top-nav.html
 docs/prototypes/v1-7-app-shell/scheme-b-left-rail.html
 docs/prototypes/v1-7-app-shell/scheme-c-bottom-nav.html
@@ -57,6 +61,16 @@ docs/prototypes/v1-7-app-shell/README.md
 ```
 
 每个 HTML 文件只对应一个方案。每个方案默认打开桌面 / Windows 浏览器视图，iPad 横屏、iPad 竖屏、移动端竖屏通过页面内视图按钮切换，不在同一页面并排展示。
+
+在用户确认倾向方案 D 后，额外交付一套方案 D 实操草图：
+
+- `hybrid-desktop.html`：桌面版，左侧导航菜单。
+- `hybrid-mobile.html`：移动端，底部导航菜单。
+- 这两个页面不显示 A/B/C/D 方案切换。
+- 这两个页面不显示桌面、iPad 横屏、iPad 竖屏、移动端四平台切换。
+- 页面内部通过真实产品式导航在商品、售卖、仪表盘、设置之间切换。
+- 每个菜单页面先只还原首屏布局和数据密度，不实现完整新增、编辑、下单、弹窗等功能。
+- 支持导入 ECRM JSON 备份用于当前原型预览，但不写入正式产品 IndexedDB。
 
 ## 5. 四个方案
 

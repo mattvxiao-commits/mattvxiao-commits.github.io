@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ECRM V1.7 混合模式草图 - 桌面版</title>
+    <link rel="stylesheet" href="./hybrid-real-shell.css" />
+  </head>
+  <body class="hybridPrototype desktopShell" data-platform="desktop">
+    <div class="appShell">
+      <aside class="sideRail" aria-label="主导航">
+        <div class="brandBlock">
+          <div class="brandMark" aria-hidden="true">E</div>
+          <div>
+            <div class="brandLine">
+              <strong>ECRM</strong>
+              <span>v1.7</span>
+            </div>
+            <p data-shop-name>轻量现场经营工具</p>
+          </div>
+        </div>
+        <nav class="mainNav" aria-label="页面导航">
+          <button type="button" class="isActive" data-page="products"><span aria-hidden="true">□</span>商品</button>
+          <button type="button" data-page="sales"><span aria-hidden="true">◇</span>售卖</button>
+          <button type="button" data-page="dashboard"><span aria-hidden="true">▣</span>仪表盘</button>
+          <button type="button" data-page="settings"><span aria-hidden="true">○</span>设置</button>
+        </nav>
+        <div class="railStatus">
+          <span>现场模式</span>
+          <strong>已锁定</strong>
+        </div>
+      </aside>
+
+      <main class="workbench">
+        <div class="topStatus">
+          <div>
+            <span class="eyebrow">Hybrid shell</span>
+            <strong data-page-title>商品</strong>
+          </div>
+          <div class="topStatusActions">
+            <span data-data-status>使用示例数据</span>
+            <label class="backupPreviewButton">
+              导入备份预览
+              <input type="file" accept="application/json,.json" data-backup-input />
+            </label>
+          </div>
+        </div>
+
+        <section class="pageView isActive" data-view="products" aria-labelledby="products-title"></section>
+        <section class="pageView" data-view="sales" aria-labelledby="sales-title"></section>
+        <section class="pageView" data-view="dashboard" aria-labelledby="dashboard-title"></section>
+        <section class="pageView" data-view="settings" aria-labelledby="settings-title"></section>
+      </main>
+    </div>
+
+    <script src="./hybrid-real-shell.js"></script>
+  </body>
+</html>
