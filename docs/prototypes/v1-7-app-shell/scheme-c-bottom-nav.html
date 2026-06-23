@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>方案 C - 现场操作优先版</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="prototypeShell device-desktop" data-shell>
+      <header class="prototypeHeader">
+        <div>
+          <p class="eyebrow">Scheme C</p>
+          <h1>现场操作优先版：顶部状态栏 + 底部主导航</h1>
+          <p>默认展示 Windows / 桌面浏览器效果。重点观察底部主导航与售卖页购物车、收款入口之间是否冲突。</p>
+        </div>
+        <div>
+          <nav class="prototypeNav" aria-label="方案导航">
+            <a href="./scheme-a-current-top-nav.html">A 顶部导航</a>
+            <a href="./scheme-b-left-rail.html">B 左侧导航</a>
+            <a class="current" href="./scheme-c-bottom-nav.html">C 底部导航</a>
+            <a href="./scheme-d-hybrid-responsive.html">D 混合示意</a>
+          </nav>
+          <div class="deviceSwitch" aria-label="视图切换">
+            <button class="isActive" data-device="desktop">桌面</button>
+            <button data-device="ipad-landscape">iPad 横屏</button>
+            <button data-device="ipad-portrait">iPad 竖屏</button>
+            <button data-device="mobile">移动端</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="prototypeMain">
+        <section class="schemeNote">
+          <h2>方案定位</h2>
+          <p>主导航放到底部，顶部只保留品牌、当前页面和现场模式。更偏 iPad / 移动端现场操作体验。</p>
+          <div class="tagRow"><span>现场优先</span><span>减少顶部误触</span><span>底部空间需谨慎</span></div>
+        </section>
+
+        <section class="stage">
+          <div class="deviceLabel"><span data-device-label>当前视图：桌面 / Windows 浏览器</span><span>单方案单视图，不并排展示</span></div>
+          <div class="appFrame schemeC">
+            <div class="appTop"><div class="brand">ECRM <small>售卖</small></div><strong>售卖</strong><span class="statusChip">现场模式已锁定</span></div>
+            <div class="salesLayout">
+              <section>
+                <div class="filterRow"><span class="active">全部</span><span>挂件</span><span>贴纸</span><span>明信片</span><span>订单记录</span></div>
+                <div class="productGrid">
+                  <div class="productTile"></div><div class="productTile"></div><div class="productTile"></div>
+                  <div class="productTile"></div><div class="productTile"></div><div class="productTile"></div>
+                </div>
+              </section>
+              <aside class="cartPanel"><h3>购物车 / 订单复核</h3><p>桌面和横屏保留右侧购物车；竖屏和移动端改为浮动入口。</p></aside>
+            </div>
+            <div class="floatingCart">购物车 3</div>
+            <nav class="bottomNav" aria-label="产品主导航"><span>商品</span><span class="active">售卖</span><span>仪表盘</span><span>设置</span></nav>
+          </div>
+        </section>
+
+        <section class="reviewPanel">
+          <h2>评审重点</h2>
+          <ul>
+            <li>底部导航是否更适合 iPad 现场操作。</li>
+            <li>购物车浮动入口是否和底部导航冲突。</li>
+            <li>把屏幕转向顾客时，误触商品/设置的风险是否降低。</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script>
+      const shell = document.querySelector("[data-shell]");
+      const label = document.querySelector("[data-device-label]");
+      const labels = { desktop: "当前视图：桌面 / Windows 浏览器", "ipad-landscape": "当前视图：iPad 横屏", "ipad-portrait": "当前视图：iPad 竖屏", mobile: "当前视图：移动端竖屏" };
+      document.querySelectorAll("[data-device]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll("[data-device]").forEach((item) => item.classList.remove("isActive"));
+          button.classList.add("isActive");
+          shell.className = `prototypeShell device-${button.dataset.device}`;
+          label.textContent = labels[button.dataset.device];
+        });
+      });
+    </script>
+  </body>
+</html>

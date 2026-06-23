@@ -1,0 +1,78 @@
+<svg width="1280" height="820" viewBox="0 0 1280 820" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="820" fill="#F7F4EE"/>
+  <text x="56" y="58" fill="#194A3F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="14" font-weight="800">Scheme C</text>
+  <text x="56" y="92" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="30" font-weight="800">现场操作优先版：顶部状态栏 + 底部主导航</text>
+  <text x="56" y="122" fill="#70685E" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="15">默认桌面 / Windows 浏览器视图。重点观察底部主导航与购物车、收款路径是否冲突。</text>
+
+  <g transform="translate(56 154)">
+    <rect width="1168" height="594" rx="10" fill="#FFFDF9" stroke="#BFB6AA"/>
+    <rect width="1168" height="62" rx="10" fill="#FFFDF9" stroke="#DED6C9"/>
+    <text x="24" y="30" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="24" font-weight="900">ECRM</text>
+    <text x="24" y="48" fill="#70685E" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12">售卖</text>
+    <text x="558" y="38" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="22" font-weight="850">售卖</text>
+    <rect x="1012" y="16" width="132" height="30" rx="8" fill="#FFF2DC" stroke="#DDAE73"/>
+    <text x="1031" y="36" fill="#8A4512" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="800">现场模式已锁定</text>
+
+    <g transform="translate(24 84)">
+      <rect width="64" height="34" rx="8" fill="#DBE9E4" stroke="#76A093"/>
+      <rect x="74" width="64" height="34" rx="8" fill="#FFFFFF" stroke="#DED6C9"/>
+      <rect x="148" width="64" height="34" rx="8" fill="#FFFFFF" stroke="#DED6C9"/>
+      <rect x="222" width="76" height="34" rx="8" fill="#FFFFFF" stroke="#DED6C9"/>
+      <rect x="308" width="94" height="34" rx="8" fill="#FFFFFF" stroke="#DED6C9"/>
+      <text x="20" y="22" fill="#194A3F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="800">全部</text>
+      <text x="94" y="22" fill="#70685E" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="800">挂件</text>
+      <text x="168" y="22" fill="#70685E" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="800">贴纸</text>
+      <text x="240" y="22" fill="#70685E" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="800">明信片</text>
+      <text x="326" y="22" fill="#70685E" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="800">订单记录</text>
+    </g>
+
+    <g transform="translate(24 136)">
+      <rect width="760" height="128" rx="8" fill="#FFFFFF" stroke="#DED6C9"/>
+      <rect y="148" width="760" height="128" rx="8" fill="#FFFFFF" stroke="#DED6C9"/>
+      <rect y="296" width="760" height="92" rx="8" fill="#FFFFFF" stroke="#DED6C9"/>
+      <g opacity="0.7">
+        <rect x="18" y="18" width="102" height="92" rx="8" fill="#E7E0D5"/>
+        <rect x="18" y="166" width="102" height="92" rx="8" fill="#E7E0D5"/>
+        <rect x="18" y="314" width="102" height="56" rx="8" fill="#E7E0D5"/>
+      </g>
+      <text x="144" y="42" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="17" font-weight="850">商品条目 / 紧凑列表</text>
+      <text x="144" y="190" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="17" font-weight="850">商品条目 / 赠礼标签</text>
+      <text x="144" y="338" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="17" font-weight="850">快速筛选与补充操作</text>
+    </g>
+
+    <g transform="translate(812 136)">
+      <rect width="332" height="388" rx="8" fill="#FFFFFF" stroke="#DED6C9"/>
+      <text x="18" y="36" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="18" font-weight="850">购物车 / 订单复核</text>
+      <rect x="18" y="62" width="296" height="70" rx="8" fill="#F8F5EE" stroke="#DED6C9"/>
+      <rect x="18" y="146" width="296" height="70" rx="8" fill="#F8F5EE" stroke="#DED6C9"/>
+      <rect x="18" y="230" width="296" height="64" rx="8" fill="#DBE9E4" stroke="#C9DCD5"/>
+      <rect x="18" y="314" width="86" height="42" rx="8" fill="#FFFFFF" stroke="#DED6C9"/>
+      <rect x="116" y="314" width="86" height="42" rx="8" fill="#FFFFFF" stroke="#DED6C9"/>
+      <rect x="214" y="314" width="100" height="42" rx="8" fill="#194A3F"/>
+      <text x="244" y="341" fill="#FFFFFF" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="13" font-weight="850">去收款</text>
+    </g>
+
+    <g transform="translate(0 532)">
+      <rect width="1168" height="62" rx="0" fill="#FFFDF9" stroke="#DED6C9"/>
+      <rect x="24" y="12" width="268" height="38" rx="8" fill="#FFFFFF" stroke="#DED6C9"/>
+      <rect x="304" y="12" width="268" height="38" rx="8" fill="#DBE9E4" stroke="#76A093"/>
+      <rect x="584" y="12" width="268" height="38" rx="8" fill="#FFFFFF" stroke="#DED6C9"/>
+      <rect x="864" y="12" width="280" height="38" rx="8" fill="#FFFFFF" stroke="#DED6C9"/>
+      <text x="142" y="36" fill="#70685E" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="13" font-weight="850">商品</text>
+      <text x="422" y="36" fill="#194A3F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="13" font-weight="850">售卖</text>
+      <text x="696" y="36" fill="#70685E" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="13" font-weight="850">仪表盘</text>
+      <text x="990" y="36" fill="#70685E" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="13" font-weight="850">设置</text>
+    </g>
+  </g>
+
+  <g transform="translate(56 770)">
+    <rect width="96" height="28" rx="8" fill="#DBE9E4" stroke="#76A093"/>
+    <rect x="106" width="106" height="28" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+    <rect x="222" width="106" height="28" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+    <rect x="338" width="92" height="28" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+    <text x="34" y="19" fill="#194A3F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="800">桌面</text>
+    <text x="124" y="19" fill="#70685E" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="800">iPad 横屏</text>
+    <text x="240" y="19" fill="#70685E" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="800">iPad 竖屏</text>
+    <text x="362" y="19" fill="#70685E" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="800">移动端</text>
+  </g>
+</svg>

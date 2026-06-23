@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>方案 A - 当前结构进化版</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="prototypeShell device-desktop" data-shell>
+      <header class="prototypeHeader">
+        <div>
+          <p class="eyebrow">Scheme A</p>
+          <h1>当前结构进化版：顶部品牌 + 横向导航</h1>
+          <p>默认展示 Windows / 桌面浏览器效果。通过视图按钮切换 iPad 横屏、iPad 竖屏、移动端。</p>
+        </div>
+        <div>
+          <nav class="prototypeNav" aria-label="方案导航">
+            <a class="current" href="./scheme-a-current-top-nav.html">A 顶部导航</a>
+            <a href="./scheme-b-left-rail.html">B 左侧导航</a>
+            <a href="./scheme-c-bottom-nav.html">C 底部导航</a>
+            <a href="./scheme-d-hybrid-responsive.html">D 混合示意</a>
+          </nav>
+          <div class="deviceSwitch" aria-label="视图切换">
+            <button class="isActive" data-device="desktop">桌面</button>
+            <button data-device="ipad-landscape">iPad 横屏</button>
+            <button data-device="ipad-portrait">iPad 竖屏</button>
+            <button data-device="mobile">移动端</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="prototypeMain">
+        <section class="schemeNote">
+          <h2>方案定位</h2>
+          <p>保留当前产品的顶部品牌和横向主导航，但拆清顶部栏、页面标题区和筛选区边界。适合低风险进入 V1.7a。</p>
+          <div class="tagRow"><span>低风险</span><span>最接近现状</span><span>适合快速落地</span></div>
+        </section>
+
+        <section class="stage">
+          <div class="deviceLabel"><span data-device-label>当前视图：桌面 / Windows 浏览器</span><span>单方案单视图，不并排展示</span></div>
+          <div class="appFrame schemeA">
+            <div class="appTop">
+              <div class="brand">ECRM <small>轻量现场经营工具</small></div>
+              <span class="statusChip">现场模式已锁定</span>
+              <nav class="appNav" aria-label="产品主导航">
+                <span>商品</span><span>售卖</span><span class="active">仪表盘</span><span>设置</span>
+              </nav>
+            </div>
+            <div class="pageHeader">
+              <div><h2>仪表盘</h2><p>统计范围：近 7 天</p></div>
+              <div class="filterRow"><span>今日</span><span>昨天</span><span class="active">近 7 天</span><span>正常销售</span><span>刷新</span></div>
+            </div>
+            <div class="contentGrid">
+              <section class="metricPanel wide"><h3>经营概览 <span class="helpDot">?</span></h3><p>销售额、退款、实收、订单性质。</p></section>
+              <section class="panel"><h3>销售表现 <span class="helpDot">?</span></h3><p>热销 SKU、SPU 销售额、支付方式。</p></section>
+              <section class="panel"><h3>活动成本 <span class="helpDot">?</span></h3><p>满赠、运营赠礼、优惠让利。</p></section>
+              <section class="panel"><h3>库存风险 <span class="helpDot">?</span></h3><p>低库存、售罄、补货建议。</p></section>
+              <section class="panel"><h3>订单异常 <span class="helpDot">?</span></h3><p>退款、作废、备注异常。</p></section>
+              <section class="panel"><h3>页面操作</h3><p>页面标题区承载筛选与刷新，主导航只负责页面切换。</p></section>
+            </div>
+          </div>
+        </section>
+
+        <section class="reviewPanel">
+          <h2>评审重点</h2>
+          <ul>
+            <li>顶部导航是否足够稳定，不再挤压页面内容。</li>
+            <li>现场模式锁定状态是否清楚。</li>
+            <li>仪表盘说明入口是否自然。</li>
+            <li>iPad 竖屏和移动端是否仍保留当前使用习惯。</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script>
+      const shell = document.querySelector("[data-shell]");
+      const label = document.querySelector("[data-device-label]");
+      const labels = {
+        desktop: "当前视图：桌面 / Windows 浏览器",
+        "ipad-landscape": "当前视图：iPad 横屏",
+        "ipad-portrait": "当前视图：iPad 竖屏",
+        mobile: "当前视图：移动端竖屏"
+      };
+      document.querySelectorAll("[data-device]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll("[data-device]").forEach((item) => item.classList.remove("isActive"));
+          button.classList.add("isActive");
+          shell.className = `prototypeShell device-${button.dataset.device}`;
+          label.textContent = labels[button.dataset.device];
+        });
+      });
+    </script>
+  </body>
+</html>

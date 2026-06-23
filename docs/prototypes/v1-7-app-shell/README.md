@@ -1,160 +1,173 @@
 # ECRM V1.7-0 App Shell 可视化草图
 
-## 1. 目的
+## 1. 本轮修正
 
-本目录用于评审 ECRM V1.7 全局 UI 壳层改版方向。
+本轮已取消旧版“一个页面同时展示 4 个方案、每个方案再并排展示 4 个设备”的矩阵式草图。
 
-当前文件是可视化草图，不是最终视觉稿，也不是产品运行代码。它用于在进入 V1.7a 开发前，先确认：
+当前结构改为：
 
-- 顶部品牌区如何组织。
-- 主导航放在顶部、左侧还是底部。
-- 桌面、iPad 横屏、iPad 竖屏、窄屏浏览器如何适配。
-- 现场模式状态放在哪里。
-- 页面标题、操作区、筛选区如何统一。
-- 仪表盘说明小脚标 / 说明弹层入口放在哪里。
+- 一个 HTML 文件只对应一个方案。
+- A/B/C/D 四个方案分别打开查看。
+- 每个方案默认展示桌面 / Windows 浏览器效果。
+- iPad 横屏、iPad 竖屏、移动端竖屏通过页面内按钮切换。
+- 不再把多个方案、多个设备效果同时塞进一个页面。
 
 ## 2. 文件说明
 
 ```text
-docs/prototypes/v1-7-app-shell/index.html
+docs/prototypes/v1-7-app-shell/scheme-a-current-top-nav.html
+docs/prototypes/v1-7-app-shell/scheme-b-left-rail.html
+docs/prototypes/v1-7-app-shell/scheme-c-bottom-nav.html
+docs/prototypes/v1-7-app-shell/scheme-d-hybrid-responsive.html
 docs/prototypes/v1-7-app-shell/styles.css
-docs/prototypes/v1-7-app-shell/figma/v1-7-app-shell-wireframes.svg
+docs/prototypes/v1-7-app-shell/figma/scheme-a-current-top-nav.svg
+docs/prototypes/v1-7-app-shell/figma/scheme-b-left-rail.svg
+docs/prototypes/v1-7-app-shell/figma/scheme-c-bottom-nav.svg
+docs/prototypes/v1-7-app-shell/figma/scheme-d-hybrid-responsive.svg
 docs/prototypes/v1-7-app-shell/README.md
 ```
 
-- `index.html`：浏览器可查看的三套完整方案和一套补充示意。
-- `styles.css`：浏览器草图样式。
-- `figma/v1-7-app-shell-wireframes.svg`：可拖入 Figma 的线框稿。
-- `README.md`：当前说明文件。
+## 3. 浏览器查看入口
 
-## 3. 浏览器查看方式
-
-可以直接双击打开：
+建议分别打开以下文件：
 
 ```text
-docs/prototypes/v1-7-app-shell/index.html
+docs/prototypes/v1-7-app-shell/scheme-a-current-top-nav.html
+docs/prototypes/v1-7-app-shell/scheme-b-left-rail.html
+docs/prototypes/v1-7-app-shell/scheme-c-bottom-nav.html
+docs/prototypes/v1-7-app-shell/scheme-d-hybrid-responsive.html
 ```
 
-也可以在浏览器地址栏打开该本地文件。
+每个页面顶部都有方案切换链接，也有视图切换按钮：
 
-建议查看时重点关注：
+- 桌面。
+- iPad 横屏。
+- iPad 竖屏。
+- 移动端。
 
-- 缩窄浏览器宽度后，导航是否仍然稳定。
-- 页面标题区和筛选区是否清楚。
-- 现场模式状态是否容易理解。
-- 售卖页的购物车入口和主导航是否冲突。
-- 仪表盘说明按钮位置是否自然。
+页面默认打开时显示“桌面 / Windows 浏览器”效果。
 
-## 4. Figma 导入方式
+## 4. 四个方案
 
-将以下 SVG 文件拖入 Figma 画布：
+### 4.1 方案 A：当前结构进化版
+
+文件：
 
 ```text
-docs/prototypes/v1-7-app-shell/figma/v1-7-app-shell-wireframes.svg
+scheme-a-current-top-nav.html
 ```
 
-预期效果：
+重点：
 
-- 可在 Figma 中查看整体方案。
-- 可移动、缩放、复制线框稿。
-- 基础矩形、文字、线条通常可以轻量编辑。
-- 可以用于批注和方案讨论。
+- 顶部品牌 + 横向主导航。
+- 最接近当前产品结构。
+- 改动风险最低。
+- 适合作为 V1.7a 低风险基线。
 
-限制：
+重点评审：
 
-- 这不是原生 `.fig` 文件。
-- 不会自动生成 Auto Layout。
-- 不会自动生成 Figma Components。
-- 不作为最终设计系统文件。
+- 顶部导航是否稳定。
+- 现场模式状态是否清楚。
+- 页面标题区和筛选区是否比当前更规范。
+- 窄屏下横向导航是否仍可接受。
 
-## 5. 方案说明
+### 4.2 方案 B：桌面管理工具版
 
-### 5.1 方案 A：当前结构进化版
+文件：
 
-结构：
+```text
+scheme-b-left-rail.html
+```
 
-- 顶部保留品牌、版本号、现场模式状态。
-- 主导航继续在顶部，但改成稳定横向滚动 tab。
-- 页面标题、操作按钮、筛选区放在内容区顶部。
+重点：
 
-适合：
+- 桌面端使用左侧窄导航。
+- 顶部只承载品牌、摊位、现场模式等状态信息。
+- 页面标题区和筛选区进入内容区。
+- iPad 竖屏、移动端折叠为顶部横向导航。
 
-- 快速进入 V1.7a。
-- 保持当前用户习惯。
-- 降低实现和回归风险。
+重点评审：
 
-主要风险：
+- 左侧导航是否更适合长期扩展。
+- 现场售卖时是否占用过多商品列表空间。
+- iPad 竖屏折叠后的使用感是否自然。
 
-- 顶部导航未来扩展空间有限。
-- 整体仍偏 Web 管理工具。
+### 4.3 方案 C：现场操作优先版
 
-### 5.2 方案 B：桌面管理工具版
+文件：
 
-结构：
+```text
+scheme-c-bottom-nav.html
+```
 
-- 顶部作为状态栏。
-- 桌面和 iPad 横屏使用左侧窄导航。
-- iPad 竖屏和窄屏折叠为顶部横向导航。
+重点：
 
-适合：
-
-- 长期功能扩展。
-- 管理型页面较多的场景。
-- 后续新增订单、库存、活动等模块。
-
-主要风险：
-
-- 和现有结构差异更大。
-- 现场售卖时左侧导航可能占用商品列表宽度。
-
-### 5.3 方案 C：现场操作优先版
-
-结构：
-
-- 顶部保留状态栏和当前页面信息。
-- 主导航放在底部。
+- 顶部状态栏 + 底部主导航。
+- 更接近 iPad / 移动端现场操作。
 - 售卖页突出商品列表、购物车和收款路径。
 
-适合：
+重点评审：
 
-- iPad / 手持现场售卖。
-- 希望降低顶部误触风险。
-- 更 App 化的现场操作体验。
+- 底部导航是否更适合现场操作。
+- 购物车入口是否和底部导航冲突。
+- 转屏给顾客看收款码时，误触主导航风险是否降低。
 
-主要风险：
+### 4.4 方案 D：混合响应式示意
 
-- 底部导航会和购物车、收款操作区竞争空间。
-- 桌面端可能不如顶部或侧边导航自然。
+文件：
 
-### 5.4 方案 D：混合响应式结构示意
+```text
+scheme-d-hybrid-responsive.html
+```
 
-结构：
+重点：
 
 - 桌面使用左侧导航。
-- iPad 竖屏和窄屏使用底部导航。
-- iPad 横屏保留二选一空间。
+- iPad 竖屏和移动端使用底部导航。
+- 作为长期产品化方向参考。
 
-适合：
+重点评审：
 
-- 长期产品化参考。
-- 不建议 V1.7a 一次全量实现。
+- 是否值得承担更高开发成本。
+- 多种导航模式是否增加认知负担。
+- 是否更适合作为 V1.8 或更后续版本。
 
-## 6. 推荐评审顺序
+## 5. Figma 导入
 
-建议按以下顺序评审：
+可将以下 SVG 文件拖入 Figma：
 
-1. 先看方案 A，判断它是否足够解决当前 V1.7 的问题。
-2. 再看方案 B，判断是否值得为了长期扩展承担更大改动。
-3. 再看方案 C，判断现场 iPad 操作是否应该优先于桌面管理感。
-4. 最后看方案 D，作为长期混合响应式方向参考。
+```text
+docs/prototypes/v1-7-app-shell/figma/scheme-a-current-top-nav.svg
+docs/prototypes/v1-7-app-shell/figma/scheme-b-left-rail.svg
+docs/prototypes/v1-7-app-shell/figma/scheme-c-bottom-nav.svg
+docs/prototypes/v1-7-app-shell/figma/scheme-d-hybrid-responsive.svg
+```
+
+说明：
+
+- 每个 SVG 只对应一个方案，默认展示桌面 / Windows 浏览器结构。
+- SVG 用于 Figma 查看、标注和轻量编辑。
+- 它不是原生 `.fig` 文件。
+- 不会自动生成 Auto Layout。
+- 不会自动生成 Figma Components。
+
+## 6. 当前阶段不做内容
+
+V1.7-0 仍然只做草图，不做产品实现：
+
+- 不改 `src` 产品运行代码。
+- 不改业务逻辑。
+- 不改数据库。
+- 不改真实路由。
+- 不推送远端。
 
 ## 7. 下一步
 
-确认草图方向后，应进入：
+建议评审顺序：
 
-1. V1.7 正式中文方案文档。
-2. V1.7a App Shell 基础结构实现。
-3. V1.7b 页面顶部与筛选区规范化。
-4. V1.7c 仪表盘说明体系。
+1. 单独打开方案 A，看是否足够作为 V1.7a 低风险基线。
+2. 单独打开方案 B，看长期扩展价值是否值得更大改动。
+3. 单独打开方案 C，看现场 iPad 操作是否明显更好。
+4. 单独打开方案 D，看是否作为长期方向保留。
 
-如果最终选择混合方案，需要先更新正式方案文档，再开始代码实现。
+确认方向后，再写 V1.7 正式中文方案文档。

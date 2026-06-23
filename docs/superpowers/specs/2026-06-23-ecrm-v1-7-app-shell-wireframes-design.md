@@ -12,7 +12,7 @@ V1.7-0 只做可视化原型，不改产品运行代码。
 
 目标：
 
-1. 至少提供三套完整 App Shell 布局方案进行对比。
+1. 提供 A/B/C/D 四个 App Shell 布局方案进行对比。
 2. 每套方案覆盖桌面宽屏、iPad 横屏、iPad 竖屏、窄屏浏览器四类视口。
 3. 每套方案展示商品、售卖、仪表盘、设置四个核心页面的壳层位置关系。
 4. 明确现场模式状态、受保护页面入口、页面标题区、操作区、筛选区的布局方向。
@@ -44,13 +44,21 @@ docs/prototypes/v1-7-app-shell/
 计划文件：
 
 ```text
-docs/prototypes/v1-7-app-shell/index.html
+docs/prototypes/v1-7-app-shell/scheme-a-current-top-nav.html
+docs/prototypes/v1-7-app-shell/scheme-b-left-rail.html
+docs/prototypes/v1-7-app-shell/scheme-c-bottom-nav.html
+docs/prototypes/v1-7-app-shell/scheme-d-hybrid-responsive.html
 docs/prototypes/v1-7-app-shell/styles.css
-docs/prototypes/v1-7-app-shell/figma/v1-7-app-shell-wireframes.svg
+docs/prototypes/v1-7-app-shell/figma/scheme-a-current-top-nav.svg
+docs/prototypes/v1-7-app-shell/figma/scheme-b-left-rail.svg
+docs/prototypes/v1-7-app-shell/figma/scheme-c-bottom-nav.svg
+docs/prototypes/v1-7-app-shell/figma/scheme-d-hybrid-responsive.svg
 docs/prototypes/v1-7-app-shell/README.md
 ```
 
-## 5. 三套完整方案
+每个 HTML 文件只对应一个方案。每个方案默认打开桌面 / Windows 浏览器视图，iPad 横屏、iPad 竖屏、移动端竖屏通过页面内视图按钮切换，不在同一页面并排展示。
+
+## 5. 四个方案
 
 ### 5.1 方案 A：当前结构进化版
 
@@ -120,9 +128,9 @@ docs/prototypes/v1-7-app-shell/README.md
 - 桌面端看起来可能不如顶部或侧边导航自然。
 - 售卖页需要更严格的操作区边界。
 
-## 6. 补充示意方案 D
+## 6. 方案 D：混合响应式示意
 
-方案 D 不做完整高细节稿，只做结构示意。
+方案 D 作为长期方向参考，细节密度低于 A/B/C，但仍以独立 HTML 和独立 SVG 交付。
 
 定位：混合响应式方案。
 
@@ -139,7 +147,7 @@ docs/prototypes/v1-7-app-shell/README.md
 
 ## 7. 视口覆盖
 
-每套完整方案至少展示四个视口：
+每个方案至少支持四个视口：
 
 - Desktop：1366 x 768。
 - iPad Landscape：1180 x 820。
@@ -150,7 +158,7 @@ docs/prototypes/v1-7-app-shell/README.md
 
 ## 8. 页面覆盖
 
-每套完整方案至少展示以下页面壳层：
+每个方案至少展示以下页面壳层：
 
 - 商品：顶部操作、新增商品、商品列表区域。
 - 售卖：商品筛选、商品列表、购物车入口、订单记录入口、现场模式状态。
@@ -164,13 +172,16 @@ docs/prototypes/v1-7-app-shell/README.md
 本阶段提供 SVG 文件用于 Figma 导入：
 
 ```text
-docs/prototypes/v1-7-app-shell/figma/v1-7-app-shell-wireframes.svg
+docs/prototypes/v1-7-app-shell/figma/scheme-a-current-top-nav.svg
+docs/prototypes/v1-7-app-shell/figma/scheme-b-left-rail.svg
+docs/prototypes/v1-7-app-shell/figma/scheme-c-bottom-nav.svg
+docs/prototypes/v1-7-app-shell/figma/scheme-d-hybrid-responsive.svg
 ```
 
 预期能力：
 
-- 可拖入 Figma 查看。
-- 可缩放、移动、复制整体画板。
+- 每个 SVG 对应一个方案，可分别拖入 Figma 查看。
+- 可缩放、移动、复制单方案画板。
 - 基础矩形、文本、线条可做轻量编辑。
 - 可用于批注和方案评审。
 
@@ -195,10 +206,12 @@ docs/prototypes/v1-7-app-shell/figma/v1-7-app-shell-wireframes.svg
 
 V1.7-0 完成后应满足：
 
-- 浏览器可打开 `index.html` 查看三套完整方案和一套补充示意。
-- 每套完整方案覆盖桌面、iPad 横屏、iPad 竖屏、窄屏四类视口。
+- 浏览器可分别打开 A/B/C/D 四个 HTML 文件查看对应方案。
+- 每个方案默认展示桌面 / Windows 浏览器视图。
+- 每个方案可通过页面内按钮切换桌面、iPad 横屏、iPad 竖屏、移动端竖屏四类视口。
+- 不把多套方案、多种设备效果并排塞在同一个页面里。
 - 草图中可清楚看出主导航、品牌区、页面标题区、筛选区、现场模式状态的位置。
-- Figma-ready SVG 文件存在，可拖入 Figma 查看。
+- Figma-ready SVG 文件按方案拆分存在，可分别拖入 Figma 查看。
 - README 中文说明完整。
 - 不修改 `src` 产品代码。
 - 本地提交，不推送远端。
