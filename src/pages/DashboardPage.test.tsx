@@ -606,9 +606,22 @@ test("switches dashboard accounting scope and shows activity cost metrics", asyn
   ]);
 
   const activityCost = screen.getByLabelText("经营成本口径");
+  const orderNature = screen.getByLabelText("订单性质");
+  expectMetricValue(orderNature, "正常销售", "0");
+  expectMetricValue(orderNature, "销售 + 赠送", "1");
+  expectMetricValue(orderNature, "非销售出库", "0");
+  expectMetricValue(orderNature, "运营赠礼订单", "1");
+  const nonSalesBreakdown = screen.getByLabelText("非销售拆分");
+  expectMetricValue(nonSalesBreakdown, "满赠", "0 / ¥0.00");
+  expectMetricValue(nonSalesBreakdown, "运营赠礼", "2 / ¥4.00");
+  expectMetricValue(nonSalesBreakdown, "人工赠送", "1 / ¥3.00");
+  expectMetricValue(nonSalesBreakdown, "其他出库", "0 / ¥0.00");
   expectMetricValue(activityCost, "销售成本", "¥10.00");
+  expectMetricValue(activityCost, "基础毛利", "¥20.00");
+  expectMetricValue(activityCost, "基础毛利率", "66.7%");
   expectMetricValue(activityCost, "运营活动成本", "¥0.00");
   expectMetricValue(activityCost, "活动后毛利", "¥20.00");
+  expectMetricValue(activityCost, "活动后毛利率", "66.7%");
   expectMetricValue(activityCost, "非经营出库", "¥0.00");
   expectMetricValue(activityCost, "全出库成本", "¥10.00");
   expect(screen.queryByText("运营赠礼商品")).not.toBeInTheDocument();
@@ -619,6 +632,7 @@ test("switches dashboard accounting scope and shows activity cost metrics", asyn
   expectMetricValue(screen.getByLabelText("出库与客单"), "赠品件数", "3");
   expectMetricValue(screen.getByLabelText("经营成本口径"), "运营活动成本", "¥4.00");
   expectMetricValue(screen.getByLabelText("经营成本口径"), "活动后毛利", "¥16.00");
+  expectMetricValue(screen.getByLabelText("经营成本口径"), "活动后毛利率", "53.3%");
   expectMetricValue(screen.getByLabelText("经营成本口径"), "非经营出库", "¥3.00");
   expectMetricValue(screen.getByLabelText("经营成本口径"), "全出库成本", "¥17.00");
   const allScopeDistribution = await screen.findByRole("region", { name: "非销售出库分布" });

@@ -260,6 +260,25 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            <div className="dashboardOperationsStrip" aria-label="订单性质">
+              <div>
+                <span>{dashboard.orderNatureSummary.saleOrderCount}</span>
+                <p>正常销售</p>
+              </div>
+              <div>
+                <span>{dashboard.orderNatureSummary.mixedOrderCount}</span>
+                <p>销售 + 赠送</p>
+              </div>
+              <div>
+                <span>{dashboard.orderNatureSummary.nonSalesOrderCount}</span>
+                <p>非销售出库</p>
+              </div>
+              <div>
+                <span>{dashboard.orderNatureSummary.campaignGiftOrderCount}</span>
+                <p>运营赠礼订单</p>
+              </div>
+            </div>
+
             <div className="dashboardOperationsStrip" aria-label="出库与客单">
               <div>
                 <span>{dashboard.operationsSummary.soldQuantity}</span>
@@ -276,6 +295,33 @@ export default function DashboardPage() {
               <div>
                 <span>{formatMoney(dashboard.operationsSummary.averageOrderValue)}</span>
                 <p>客单价</p>
+              </div>
+            </div>
+
+            <div className="dashboardOperationsStrip dashboardNonSalesBreakdownStrip" aria-label="非销售拆分">
+              <div>
+                <span>
+                  {dashboard.nonSalesBreakdown.tierGiftQuantity} / {formatMoney(dashboard.nonSalesBreakdown.tierGiftCost)}
+                </span>
+                <p>满赠</p>
+              </div>
+              <div>
+                <span>
+                  {dashboard.nonSalesBreakdown.campaignGiftQuantity} / {formatMoney(dashboard.nonSalesBreakdown.campaignGiftCost)}
+                </span>
+                <p>运营赠礼</p>
+              </div>
+              <div>
+                <span>
+                  {dashboard.nonSalesBreakdown.manualGiftQuantity} / {formatMoney(dashboard.nonSalesBreakdown.manualGiftCost)}
+                </span>
+                <p>人工赠送</p>
+              </div>
+              <div>
+                <span>
+                  {dashboard.nonSalesBreakdown.otherNonSalesQuantity} / {formatMoney(dashboard.nonSalesBreakdown.otherNonSalesCost)}
+                </span>
+                <p>其他出库</p>
               </div>
             </div>
 
@@ -308,12 +354,24 @@ export default function DashboardPage() {
                 <p>销售成本</p>
               </div>
               <div>
+                <span>{formatMoney(dashboard.activityCostSummary.basicGrossProfit)}</span>
+                <p>基础毛利</p>
+              </div>
+              <div>
+                <span>{formatPercent(dashboard.activityCostSummary.basicGrossMargin)}</span>
+                <p>基础毛利率</p>
+              </div>
+              <div>
                 <span>{formatMoney(dashboard.activityCostSummary.operatingActivityCost)}</span>
                 <p>运营活动成本</p>
               </div>
               <div>
                 <span>{formatMoney(dashboard.activityCostSummary.activityAdjustedGrossProfit)}</span>
                 <p>活动后毛利</p>
+              </div>
+              <div>
+                <span>{formatPercent(dashboard.activityCostSummary.activityAdjustedGrossMargin)}</span>
+                <p>活动后毛利率</p>
               </div>
               <div>
                 <span>{formatMoney(dashboard.activityCostSummary.nonOperatingOutboundCost)}</span>
