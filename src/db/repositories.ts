@@ -12,6 +12,7 @@ import type {
   RefundReason
 } from "../domain/types";
 import { normalizeFieldLockSettings } from "../domain/fieldLock";
+import { getLineAccounting, getNormalizedOrderLine, deriveOrderNature } from "../domain/orderLines";
 import { normalizeCampaignGiftConfig } from "../domain/settings";
 import { createDefaultSettings, db, type StoredImage } from "./db";
 
@@ -282,13 +283,48 @@ function adjustOrderItemSnapshot(item: OrderItem, input: AdjustOrderAccountingIn
   };
 }
 
+function summarizeAdjustedOrderItems(orderItems: OrderItem[]): Pick<
+  Order,
+  "orderNature" | "salesAmount" | "nonSalesQuantity" | "nonSalesCost" | "operatingActivityCost" | "nonOperatingOutboundCost"
+> {
+  const normalizedItems = orderItems.map(getNormalizedOrderLine);
+  const accountingRows = normalizedItems.map(getLineAccounting);
+  const nonSalesQuantity = normalizedItems
+    .filter((item) => item.revenueType === "non_sales")
+    .reduce((sum, item) => sum + item.quantity, 0);
+
+  return {
+    orderNature: deriveOrderNature(normalizedItems),
+    salesAmount: roundMoney(accountingRows.reduce((sum, row) => sum + row.revenue, 0)),
+    nonSalesQuantity,
+    nonSalesCost: roundMoney(
+      accountingRows.reduce((sum, row) => sum + row.operatingActivityCost + row.nonOperatingOutboundCost, 0)
+    ),
+    operatingActivityCost: roundMoney(accountingRows.reduce((sum, row) => sum + row.operatingActivityCost, 0)),
+    nonOperatingOutboundCost: roundMoney(accountingRows.reduce((sum, row) => sum + row.nonOperatingOutboundCost, 0))
+  };
+}
+
+async function updateOrderAccountingSnapshot(orderId: string, items: OrderItem[]): Promise<void> {
+  const order = await db.orders.get(orderId);
+
+  if (!order) {
+    throw new Error("订单不存在，无法修正统计口径。");
+  }
+
+  await db.orders.put({
+    ...order,
+    ...summarizeAdjustedOrderItems(items)
+  });
+}
+
 export async function adjustOrderItemAccounting(
   input: AdjustOrderItemAccountingInput,
   now = new Date()
 ): Promise<OrderItem> {
   const adjustedAt = now.toISOString();
 
-  return db.transaction("rw", db.orderItems, async () => {
+  return db.transaction("rw", db.orders, db.orderItems, async () => {
     const item = await db.orderItems.get(input.itemId);
 
     if (!item || item.orderId !== input.orderId) {
@@ -297,6 +333,11 @@ export async function adjustOrderItemAccounting(
 
     const adjustedItem = adjustOrderItemSnapshot(item, input, adjustedAt);
     await db.orderItems.put(adjustedItem);
+    const orderItems = await db.orderItems.where("orderId").equals(input.orderId).toArray();
+    await updateOrderAccountingSnapshot(
+      input.orderId,
+      orderItems.map((current) => (current.id === adjustedItem.id ? adjustedItem : current))
+    );
     return adjustedItem;
   });
 }
@@ -304,7 +345,7 @@ export async function adjustOrderItemAccounting(
 export async function adjustOrderAccounting(input: AdjustOrderAccountingInput, now = new Date()): Promise<OrderItem[]> {
   const adjustedAt = now.toISOString();
 
-  return db.transaction("rw", db.orderItems, async () => {
+  return db.transaction("rw", db.orders, db.orderItems, async () => {
     const items = await db.orderItems.where("orderId").equals(input.orderId).toArray();
 
     if (items.length === 0) {
@@ -313,6 +354,7 @@ export async function adjustOrderAccounting(input: AdjustOrderAccountingInput, n
 
     const adjustedItems = items.map((item) => adjustOrderItemSnapshot(item, input, adjustedAt));
     await db.orderItems.bulkPut(adjustedItems);
+    await updateOrderAccountingSnapshot(input.orderId, adjustedItems);
     return adjustedItems;
   });
 }

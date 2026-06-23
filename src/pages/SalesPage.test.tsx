@@ -1519,6 +1519,75 @@ test("adjusts order item accounting from the detail dialog and refreshes selecte
   expect(await screen.findByText("老客赠送")).toBeVisible();
 });
 
+test("refreshes order history nature badge after whole order accounting adjustment", async () => {
+  const paidOrder = order({
+    id: "order-detail",
+    orderNo: "ECRM-DETAIL",
+    orderNature: "sale",
+    createdAt: localIsoDateTime(0, 9, 20),
+    paidAt: localIsoDateTime(0, 9, 25)
+  });
+  const adjustedOrder = {
+    ...paidOrder,
+    orderNature: "non_sales" as const,
+    salesAmount: 0,
+    nonSalesQuantity: 1
+  };
+  const originalItem = orderItem({ id: "item-detail", orderId: "order-detail" });
+  const adjustedItem = {
+    ...originalItem,
+    revenueType: "non_sales" as const,
+    nonSalesReason: "manual_gift" as const,
+    nonSalesNote: "好友赠送",
+    statisticalSubtotal: 0,
+    discountGiveawayAmount: 0,
+    adjustedAt: localIsoDateTime(0, 10, 0)
+  };
+  const originalLog = inventoryLog({ orderId: "order-detail" });
+
+  repositories.listOrders
+    .mockResolvedValueOnce([paidOrder])
+    .mockResolvedValueOnce([adjustedOrder]);
+  repositories.listOrderItems
+    .mockResolvedValueOnce([originalItem])
+    .mockResolvedValueOnce([adjustedItem]);
+  repositories.listInventoryLogsForOrder
+    .mockResolvedValueOnce([originalLog])
+    .mockResolvedValueOnce([originalLog]);
+  repositories.adjustOrderAccounting.mockResolvedValue([adjustedItem]);
+
+  render(<SalesPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: /订单记录/ }));
+  const history = await screen.findByRole("region", { name: "订单记录列表" });
+  const orderButton = within(history).getByRole("button", { name: "查看订单 ECRM-DETAIL" });
+  expect(within(orderButton).getByText("正常销售")).toBeVisible();
+
+  fireEvent.click(orderButton);
+  fireEvent.click(await screen.findByRole("button", { name: "整单修正统计口径" }));
+
+  const adjustDialog = await screen.findByRole("dialog", { name: "整单修正统计口径" });
+  fireEvent.change(within(adjustDialog).getByLabelText("修正为"), { target: { value: "manual_gift" } });
+  fireEvent.change(within(adjustDialog).getByLabelText("非销售备注"), { target: { value: "好友赠送" } });
+  fireEvent.click(within(adjustDialog).getByRole("button", { name: "确认修正" }));
+
+  await waitFor(() =>
+    expect(repositories.adjustOrderAccounting).toHaveBeenCalledWith({
+      orderId: "order-detail",
+      revenueType: "non_sales",
+      nonSalesReason: "manual_gift",
+      nonSalesNote: "好友赠送",
+      campaignNameSnapshot: undefined,
+      adjustmentNote: undefined
+    })
+  );
+  expect(await screen.findByText("统计口径已修正，原始支付、退款和库存流水未改动。")).toBeVisible();
+
+  const refreshedOrderButton = await screen.findByRole("button", { name: "查看订单 ECRM-DETAIL" });
+  expect(within(refreshedOrderButton).getByText("非销售出库")).toHaveClass("orderHistoryChip", "isAccounting");
+  expect(within(refreshedOrderButton).queryByText("正常销售")).not.toBeInTheDocument();
+});
+
 test("keeps accounting adjustment success when detail refresh fails after the write", async () => {
   const paidOrder = order({
     id: "order-detail",

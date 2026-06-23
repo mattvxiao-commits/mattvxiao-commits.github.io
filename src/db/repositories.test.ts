@@ -396,6 +396,16 @@ describe("order item accounting adjustments", () => {
     );
 
     await expect(listInventoryLogsForOrder("order-1")).resolves.toEqual(beforeLogs);
+    await expect(db.orders.get("order-1")).resolves.toEqual(
+      expect.objectContaining({
+        orderNature: "mixed",
+        salesAmount: 8,
+        nonSalesQuantity: 1,
+        nonSalesCost: 0,
+        operatingActivityCost: 0,
+        nonOperatingOutboundCost: 0
+      })
+    );
   });
 
   test("adjusts one item back to sale and recalculates discount giveaway for discount add-ons", async () => {
@@ -473,6 +483,16 @@ describe("order item accounting adjustments", () => {
         adjustedAt: "2026-06-18T11:00:00.000Z"
       })
     ]);
+    await expect(db.orders.get("order-1")).resolves.toEqual(
+      expect.objectContaining({
+        orderNature: "non_sales",
+        salesAmount: 0,
+        nonSalesQuantity: 3,
+        nonSalesCost: 0,
+        operatingActivityCost: 0,
+        nonOperatingOutboundCost: 0
+      })
+    );
   });
 
   test("rejects manual and other non-sales adjustments without notes", async () => {
