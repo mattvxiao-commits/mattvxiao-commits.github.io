@@ -139,6 +139,7 @@ a {
   display: flex;
   flex: 1 1 420px;
   gap: 6px;
+  align-items: center;
   justify-content: flex-end;
   max-width: 100%;
   overflow-x: auto;
@@ -3002,10 +3003,14 @@ p {
   .nav {
     width: 100%;
     justify-content: flex-start;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
   }
 
   .nav a {
-    flex: 1 0 auto;
+    flex: 0 0 auto;
+    min-width: 92px;
+    scroll-snap-align: start;
   }
 
   .page {
