@@ -676,6 +676,10 @@ p {
   color: #8a4512;
 }
 
+.notranslate {
+  unicode-bidi: plaintext;
+}
+
 .formError {
   grid-column: 1 / -1;
   font-size: 14px;
@@ -1543,6 +1547,18 @@ p {
   font-size: 11px;
 }
 
+.orderHistoryChip.isAccounting {
+  border-color: rgba(47, 111, 94, 0.22);
+  background: rgba(219, 233, 228, 0.72);
+  color: var(--accent-strong);
+}
+
+.orderHistoryChip.isWarning {
+  border-color: rgba(168, 95, 24, 0.3);
+  background: #fff7eb;
+  color: #8a4512;
+}
+
 .orderHistoryChip.isDanger {
   border-color: rgba(175, 54, 38, 0.28);
   background: rgba(175, 54, 38, 0.08);
@@ -2380,6 +2396,29 @@ p {
 .dialogField textarea {
   min-height: 72px;
   resize: vertical;
+}
+
+.quickOptionGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.quickOptionButton {
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.dialogErrorSlot {
+  min-height: 18px;
+  margin: 0;
+  color: #9f2f1d;
+  font-size: 12px;
+  font-weight: 850;
 }
 
 .orderDetailDialog {
