@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>方案 D - 混合响应式示意</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="prototypeShell device-desktop" data-shell>
+      <header class="prototypeHeader">
+        <div>
+          <p class="eyebrow">Scheme D</p>
+          <h1>混合响应式示意：桌面左侧导航 + 小屏底部导航</h1>
+          <p>默认展示 Windows / 桌面浏览器效果。此方案是长期方向参考，不建议 V1.7a 一次全量实现。</p>
+        </div>
+        <div>
+          <nav class="prototypeNav" aria-label="方案导航">
+            <a href="./scheme-a-current-top-nav.html">A 顶部导航</a>
+            <a href="./scheme-b-left-rail.html">B 左侧导航</a>
+            <a href="./scheme-c-bottom-nav.html">C 底部导航</a>
+            <a class="current" href="./scheme-d-hybrid-responsive.html">D 混合示意</a>
+          </nav>
+          <div class="deviceSwitch" aria-label="视图切换">
+            <button class="isActive" data-device="desktop">桌面</button>
+            <button data-device="ipad-landscape">iPad 横屏</button>
+            <button data-device="ipad-portrait">iPad 竖屏</button>
+            <button data-device="mobile">移动端</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="prototypeMain">
+        <section class="schemeNote">
+          <h2>方案定位</h2>
+          <p>桌面端使用左侧导航，iPad 竖屏和移动端切到底部导航。它最接近长期成熟产品形态，但开发和测试成本最高。</p>
+          <div class="tagRow"><span>长期方向</span><span>响应式最完整</span><span>不建议一步到位</span></div>
+        </section>
+
+        <section class="stage">
+          <div class="deviceLabel"><span data-device-label>当前视图：桌面 / Windows 浏览器</span><span>单方案单视图，不并排展示</span></div>
+          <div class="appFrame schemeD">
+            <aside class="sideNav" aria-label="产品主导航">
+              <strong>ECRM</strong><span>商品</span><span>售卖</span><span class="active">仪表盘</span><span>设置</span>
+            </aside>
+            <section>
+              <div class="hybridTop"><div class="brand">ECRM <small>混合响应式</small></div><span class="statusChip">现场模式已锁定</span></div>
+              <div class="pageHeader">
+                <div><h2>仪表盘</h2><p>桌面左侧导航，小屏底部导航。</p></div>
+                <div class="filterRow"><span class="active">近 7 天</span><span>正常销售</span><span>刷新</span></div>
+              </div>
+              <div class="contentGrid">
+                <section class="metricPanel wide"><h3>经营概览 <span class="helpDot">?</span></h3><p>桌面端内容最大化，小屏端转为底部导航。</p></section>
+                <section class="panel"><h3>Desktop</h3><p>左侧导航。</p></section>
+                <section class="panel"><h3>iPad 横屏</h3><p>可选择左侧窄导航。</p></section>
+                <section class="panel"><h3>iPad 竖屏 / 移动端</h3><p>底部导航。</p></section>
+              </div>
+            </section>
+            <nav class="bottomNav mobileBottom" aria-label="移动端主导航"><span>商品</span><span>售卖</span><span class="active">仪表盘</span><span>设置</span></nav>
+          </div>
+        </section>
+
+        <section class="reviewPanel">
+          <h2>评审重点</h2>
+          <ul>
+            <li>是否值得为长期成熟形态承担更高开发成本。</li>
+            <li>桌面、iPad、移动端三套导航切换是否会增加认知负担。</li>
+            <li>是否适合作为 V1.8 或更后续版本，而不是 V1.7a。</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script>
+      const shell = document.querySelector("[data-shell]");
+      const label = document.querySelector("[data-device-label]");
+      const labels = { desktop: "当前视图：桌面 / Windows 浏览器", "ipad-landscape": "当前视图：iPad 横屏", "ipad-portrait": "当前视图：iPad 竖屏", mobile: "当前视图：移动端竖屏" };
+      document.querySelectorAll("[data-device]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll("[data-device]").forEach((item) => item.classList.remove("isActive"));
+          button.classList.add("isActive");
+          shell.className = `prototypeShell device-${button.dataset.device}`;
+          label.textContent = labels[button.dataset.device];
+        });
+      });
+    </script>
+  </body>
+</html>
