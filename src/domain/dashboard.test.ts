@@ -425,6 +425,47 @@ describe("buildDashboardModel", () => {
     });
   });
 
+  test("正常销售口径的订单数和客单价只统计含销售明细订单", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [
+        order({ id: "sale-order", payableAmount: 30 }),
+        order({ id: "manual-gift-order", payableAmount: 0, paidAt: "2026-06-15T10:00:00.000Z" })
+      ],
+      orderItems: [
+        item({
+          id: "sale-item",
+          orderId: "sale-order",
+          productId: "sale-sku",
+          quantity: 1,
+          lineTotal: 30,
+          unitCostSnapshot: 10,
+          costTotal: 10
+        }),
+        item({
+          id: "manual-gift-item",
+          orderId: "manual-gift-order",
+          productId: "gift-sku",
+          productNameSnapshot: "人工赠送商品",
+          quantity: 2,
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "manual_gift",
+          unitCostSnapshot: 3,
+          costTotal: 6
+        })
+      ],
+      refunds: [],
+      products: [],
+      accountingScope: "sales"
+    });
+
+    expect(model.summary.paidAmount).toBe(30);
+    expect(model.summary.paidOrderCount).toBe(1);
+    expect(model.operationsSummary.averageOrderValue).toBe(30);
+    expect(model.operationsSummary.outboundQuantity).toBe(1);
+  });
+
   test("全部活动口径展示运营活动成本和非经营出库成本", () => {
     const model = buildDashboardModel({
       dateRange: todayRange,
@@ -521,6 +562,97 @@ describe("buildDashboardModel", () => {
       ["满赠商品", 1],
       ["其他出库商品", 1]
     ]);
+  });
+
+  test("全部活动口径提供订单性质和非销售出库数量成本拆分", () => {
+    const model = buildDashboardModel({
+      dateRange: todayRange,
+      orders: [
+        order({ id: "mixed-order", payableAmount: 30 }),
+        order({ id: "manual-only", payableAmount: 0, paidAt: "2026-06-15T10:00:00.000Z" })
+      ],
+      orderItems: [
+        item({
+          id: "sale-item",
+          orderId: "mixed-order",
+          productId: "sale-sku",
+          productNameSnapshot: "正常销售商品",
+          quantity: 1,
+          lineTotal: 30,
+          unitCostSnapshot: 10,
+          costTotal: 10
+        }),
+        item({
+          id: "tier-gift",
+          orderId: "mixed-order",
+          productId: "tier-gift",
+          productNameSnapshot: "满赠商品",
+          quantity: 1,
+          lineType: "gift",
+          lineTotal: 0,
+          unitCostSnapshot: 2,
+          costTotal: 2
+        }),
+        item({
+          id: "campaign-gift",
+          orderId: "mixed-order",
+          productId: "campaign-gift",
+          productNameSnapshot: "运营赠礼商品",
+          quantity: 2,
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "campaign_gift",
+          unitCostSnapshot: 2,
+          costTotal: 4
+        }),
+        item({
+          id: "manual-gift",
+          orderId: "manual-only",
+          productId: "manual-gift",
+          productNameSnapshot: "人工赠送商品",
+          quantity: 3,
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "manual_gift",
+          unitCostSnapshot: 3,
+          costTotal: 9
+        }),
+        item({
+          id: "other-outbound",
+          orderId: "manual-only",
+          productId: "other-outbound",
+          productNameSnapshot: "其他出库商品",
+          quantity: 1,
+          lineTotal: 0,
+          revenueType: "non_sales",
+          nonSalesReason: "other_non_sales",
+          unitCostSnapshot: 5,
+          costTotal: 5
+        })
+      ],
+      refunds: [],
+      products: [],
+      accountingScope: "all"
+    });
+
+    expect(model.orderNatureSummary).toEqual({
+      saleOrderCount: 0,
+      mixedOrderCount: 1,
+      nonSalesOrderCount: 1,
+      campaignGiftOrderCount: 1,
+      manualGiftOrderCount: 1,
+      otherNonSalesOrderCount: 1
+    });
+    expect(model.nonSalesBreakdown).toEqual({
+      tierGiftQuantity: 1,
+      campaignGiftQuantity: 2,
+      manualGiftQuantity: 3,
+      otherNonSalesQuantity: 1,
+      tierGiftCost: 2,
+      campaignGiftCost: 4,
+      manualGiftCost: 9,
+      otherNonSalesCost: 5
+    });
   });
 
   test("指定非销售口径只展示对应原因的明细分布", () => {

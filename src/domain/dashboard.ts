@@ -1,5 +1,5 @@
 import type { Order, OrderItem, OrderRefund, PaymentMethod, Product } from "./types";
-import { getLineAccounting, getNormalizedOrderLine } from "./orderLines";
+import { deriveOrderNature, getLineAccounting, getNormalizedOrderLine } from "./orderLines";
 
 export type DashboardRangePreset = "today" | "yesterday" | "last3days" | "last7days" | "custom";
 
@@ -103,14 +103,36 @@ export type DashboardActivityCostSummary = {
   discountGiveawayAmount: number;
   salesCost: number;
   basicGrossProfit: number;
+  basicGrossMargin: number;
   tierGiftCost: number;
   campaignGiftCost: number;
   operatingActivityCost: number;
   activityAdjustedGrossProfit: number;
+  activityAdjustedGrossMargin: number;
   manualGiftCost: number;
   otherNonSalesCost: number;
   nonOperatingOutboundCost: number;
   fullOutboundCost: number;
+};
+
+export type DashboardOrderNatureSummary = {
+  saleOrderCount: number;
+  mixedOrderCount: number;
+  nonSalesOrderCount: number;
+  campaignGiftOrderCount: number;
+  manualGiftOrderCount: number;
+  otherNonSalesOrderCount: number;
+};
+
+export type DashboardNonSalesBreakdown = {
+  tierGiftQuantity: number;
+  campaignGiftQuantity: number;
+  manualGiftQuantity: number;
+  otherNonSalesQuantity: number;
+  tierGiftCost: number;
+  campaignGiftCost: number;
+  manualGiftCost: number;
+  otherNonSalesCost: number;
 };
 
 export type DashboardProfitSkuRow = {
@@ -183,6 +205,8 @@ export type DashboardModel = {
   profitSpuRows: DashboardProfitSpuRow[];
   lowProfitSkuRows: DashboardProfitSkuRow[];
   activityCostSummary: DashboardActivityCostSummary;
+  orderNatureSummary: DashboardOrderNatureSummary;
+  nonSalesBreakdown: DashboardNonSalesBreakdown;
   nonSalesReasonRows: DashboardGiftRow[];
   lowStockRows: DashboardLowStockRow[];
   soldOutRows: DashboardInventoryRiskRow[];
@@ -362,6 +386,38 @@ function getRangeOrderItemsByOrderId(rangePaidOrderIds: Set<string>, orderItems:
   }
 
   return itemsByOrderId;
+}
+
+function getRangeOrderItems(rangePaidOrderIds: Set<string>, orderItems: OrderItem[]): OrderItem[] {
+  return orderItems.filter((item) => rangePaidOrderIds.has(item.orderId));
+}
+
+function hasScopedOrderContribution(items: OrderItem[], accountingScope: DashboardAccountingScope): boolean {
+  if (accountingScope === "all") {
+    return items.length > 0;
+  }
+
+  if (items.length === 0) {
+    return accountingScope === "sales";
+  }
+
+  return items.some((item) => {
+    const normalized = getNormalizedOrderLine(item);
+
+    if (accountingScope === "sales") {
+      return normalized.revenueType === "sale";
+    }
+
+    return normalized.revenueType === "non_sales" && normalized.nonSalesReason === accountingScope;
+  });
+}
+
+function calculateScopedOrderCount(
+  rangePaidOrders: Order[],
+  itemsByOrderId: Map<string, OrderItem[]>,
+  accountingScope: DashboardAccountingScope
+): number {
+  return rangePaidOrders.filter((order) => hasScopedOrderContribution(itemsByOrderId.get(order.id) ?? [], accountingScope)).length;
 }
 
 function hasExplicitAccountingMetadata(item: OrderItem): boolean {
@@ -588,17 +644,19 @@ function buildGiftConsumptionRows(orderItems: OrderItem[]): DashboardGiftRow[] {
 }
 
 function buildActivityCostSummary(orderItems: OrderItem[]): DashboardActivityCostSummary {
-  return orderItems.reduce(
+  const summary = orderItems.reduce(
     (summary, item) => {
       const accounting = getLineAccounting(item);
       const nextSummary = {
         discountGiveawayAmount: roundMoney(summary.discountGiveawayAmount + accounting.discountGiveawayAmount),
         salesCost: roundMoney(summary.salesCost + accounting.salesCost),
         basicGrossProfit: roundMoney(summary.basicGrossProfit + accounting.basicGrossProfit),
+        basicGrossMargin: 0,
         tierGiftCost: roundMoney(summary.tierGiftCost + accounting.tierGiftCost),
         campaignGiftCost: roundMoney(summary.campaignGiftCost + accounting.campaignGiftCost),
         operatingActivityCost: roundMoney(summary.operatingActivityCost + accounting.operatingActivityCost),
         activityAdjustedGrossProfit: 0,
+        activityAdjustedGrossMargin: 0,
         manualGiftCost: roundMoney(summary.manualGiftCost + accounting.manualGiftCost),
         otherNonSalesCost: roundMoney(summary.otherNonSalesCost + accounting.otherNonSalesCost),
         nonOperatingOutboundCost: roundMoney(summary.nonOperatingOutboundCost + accounting.nonOperatingOutboundCost),
@@ -611,14 +669,94 @@ function buildActivityCostSummary(orderItems: OrderItem[]): DashboardActivityCos
       discountGiveawayAmount: 0,
       salesCost: 0,
       basicGrossProfit: 0,
+      basicGrossMargin: 0,
       tierGiftCost: 0,
       campaignGiftCost: 0,
       operatingActivityCost: 0,
       activityAdjustedGrossProfit: 0,
+      activityAdjustedGrossMargin: 0,
       manualGiftCost: 0,
       otherNonSalesCost: 0,
       nonOperatingOutboundCost: 0,
       fullOutboundCost: 0
+    }
+  );
+
+  const revenue = orderItems.reduce((sum, item) => roundMoney(sum + getLineAccounting(item).revenue), 0);
+
+  return {
+    ...summary,
+    basicGrossMargin: calculateGrossMargin(summary.basicGrossProfit, revenue),
+    activityAdjustedGrossMargin: calculateGrossMargin(summary.activityAdjustedGrossProfit, revenue)
+  };
+}
+
+function buildOrderNatureSummary(
+  rangePaidOrders: Order[],
+  itemsByOrderId: Map<string, OrderItem[]>
+): DashboardOrderNatureSummary {
+  return rangePaidOrders.reduce(
+    (summary, order) => {
+      const items = itemsByOrderId.get(order.id) ?? [];
+      const nature = deriveOrderNature(items);
+      const nonSalesReasons = new Set(
+        items
+          .map((item) => getNormalizedOrderLine(item))
+          .filter((item) => item.revenueType === "non_sales")
+          .map((item) => item.nonSalesReason)
+      );
+
+      return {
+        saleOrderCount: summary.saleOrderCount + (nature === "sale" ? 1 : 0),
+        mixedOrderCount: summary.mixedOrderCount + (nature === "mixed" ? 1 : 0),
+        nonSalesOrderCount: summary.nonSalesOrderCount + (nature === "non_sales" ? 1 : 0),
+        campaignGiftOrderCount: summary.campaignGiftOrderCount + (nonSalesReasons.has("campaign_gift") ? 1 : 0),
+        manualGiftOrderCount: summary.manualGiftOrderCount + (nonSalesReasons.has("manual_gift") ? 1 : 0),
+        otherNonSalesOrderCount: summary.otherNonSalesOrderCount + (nonSalesReasons.has("other_non_sales") ? 1 : 0)
+      };
+    },
+    {
+      saleOrderCount: 0,
+      mixedOrderCount: 0,
+      nonSalesOrderCount: 0,
+      campaignGiftOrderCount: 0,
+      manualGiftOrderCount: 0,
+      otherNonSalesOrderCount: 0
+    }
+  );
+}
+
+function buildNonSalesBreakdown(orderItems: OrderItem[]): DashboardNonSalesBreakdown {
+  return orderItems.reduce(
+    (breakdown, item) => {
+      const normalized = getNormalizedOrderLine(item);
+      const accounting = getLineAccounting(item);
+
+      if (normalized.revenueType !== "non_sales") {
+        return breakdown;
+      }
+
+      return {
+        tierGiftQuantity: breakdown.tierGiftQuantity + (normalized.nonSalesReason === "tier_gift" ? item.quantity : 0),
+        campaignGiftQuantity: breakdown.campaignGiftQuantity + (normalized.nonSalesReason === "campaign_gift" ? item.quantity : 0),
+        manualGiftQuantity: breakdown.manualGiftQuantity + (normalized.nonSalesReason === "manual_gift" ? item.quantity : 0),
+        otherNonSalesQuantity:
+          breakdown.otherNonSalesQuantity + (normalized.nonSalesReason === "other_non_sales" ? item.quantity : 0),
+        tierGiftCost: roundMoney(breakdown.tierGiftCost + accounting.tierGiftCost),
+        campaignGiftCost: roundMoney(breakdown.campaignGiftCost + accounting.campaignGiftCost),
+        manualGiftCost: roundMoney(breakdown.manualGiftCost + accounting.manualGiftCost),
+        otherNonSalesCost: roundMoney(breakdown.otherNonSalesCost + accounting.otherNonSalesCost)
+      };
+    },
+    {
+      tierGiftQuantity: 0,
+      campaignGiftQuantity: 0,
+      manualGiftQuantity: 0,
+      otherNonSalesQuantity: 0,
+      tierGiftCost: 0,
+      campaignGiftCost: 0,
+      manualGiftCost: 0,
+      otherNonSalesCost: 0
     }
   );
 }
@@ -997,7 +1135,9 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
   );
   const rangePaidOrderIds = new Set(rangePaidOrders.map((order) => order.id));
   const rangeOrderItemsByOrderId = getRangeOrderItemsByOrderId(rangePaidOrderIds, input.orderItems);
+  const rangeOrderItems = getRangeOrderItems(rangePaidOrderIds, input.orderItems);
   const scopedOrderItems = getScopedOrderItems(rangePaidOrderIds, input.orderItems, accountingScope);
+  const scopedPaidOrderCount = calculateScopedOrderCount(rangePaidOrders, rangeOrderItemsByOrderId, accountingScope);
   const rangeRefunds = input.refunds.filter((refund) => isInDateRange(refund.createdAt, input.dateRange));
   const allRefundTotalsByOrder = sumRefundsByOrder(input.refunds);
   const paidAmount = calculatePaidAmount(rangePaidOrders, rangeOrderItemsByOrderId, accountingScope);
@@ -1023,7 +1163,7 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
       paidAmount,
       refundAmount,
       netAmount,
-      paidOrderCount: rangePaidOrders.length,
+      paidOrderCount: scopedPaidOrderCount,
       cancelledOrderCount: rangeCancelledOrders.length,
       partialRefundOrderCount: afterSalesRefundStates.filter(
         ({ order, refundedAmount }) => refundedAmount > 0 && refundedAmount < order.payableAmount
@@ -1033,7 +1173,7 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
       ).length,
       notedCancelledOrderCount: rangeCancelledOrders.filter((order) => Boolean(order.cancelNote?.trim())).length
     },
-    operationsSummary: buildOperationsSummary(scopedOrderItems, netAmount, rangePaidOrders.length),
+    operationsSummary: buildOperationsSummary(scopedOrderItems, netAmount, scopedPaidOrderCount),
     paymentMethodRows: buildPaymentMethodRows(rangePaidOrders),
     promotionSummary: buildPromotionSummary(rangePaidOrders, scopedOrderItems),
     giftTierRows: buildGiftTierRows(rangePaidOrders),
@@ -1043,6 +1183,8 @@ export function buildDashboardModel(input: DashboardInput): DashboardModel {
     giftConsumptionRows: buildGiftConsumptionRows(scopedOrderItems),
     ...profitMetrics,
     activityCostSummary,
+    orderNatureSummary: buildOrderNatureSummary(rangePaidOrders, rangeOrderItemsByOrderId),
+    nonSalesBreakdown: buildNonSalesBreakdown(rangeOrderItems),
     nonSalesReasonRows: buildNonSalesReasonRows(scopedOrderItems),
     lowStockRows: buildLowStockRows(input.products, soldQuantityByProduct),
     ...inventoryRiskRows,
