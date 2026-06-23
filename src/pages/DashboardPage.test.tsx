@@ -17,6 +17,18 @@ function expectMetricValue(region: HTMLElement, label: string, value: string) {
   expect(within(region).getByText(label).previousElementSibling).toHaveTextContent(value);
 }
 
+function getMetricStrip(label: string) {
+  const metricStrip = screen
+    .getAllByLabelText(label)
+    .find((element) => element.classList.contains("dashboardMetricStrip"));
+
+  if (!metricStrip) {
+    throw new Error(`未找到指标条：${label}`);
+  }
+
+  return metricStrip as HTMLElement;
+}
+
 function paidOrder(overrides: Partial<Order> = {}): Order {
   return {
     id: "order-1",
@@ -176,7 +188,7 @@ test("loads full dashboard data and renders core sections", async () => {
 
   expect(screen.getByText("统计范围：今日")).toBeVisible();
 
-  const businessOverview = screen.getByLabelText("经营概览");
+  const businessOverview = getMetricStrip("经营概览");
   expect(businessOverview).toHaveClass("dashboardMetricStrip");
   expectMetricValue(businessOverview, "销售额", "¥130.00");
   expect(within(businessOverview).getByText("销售额")).toBeVisible();
@@ -484,7 +496,7 @@ test("shows dashboard empty states after successful empty load", async () => {
   expect(screen.getByText("暂无补货建议。")).toBeVisible();
   expect(screen.getByText("当前范围暂无异常订单。")).toBeVisible();
 
-  expect(screen.getByLabelText("经营概览")).toBeVisible();
+  expect(getMetricStrip("经营概览")).toBeVisible();
   expect(screen.getByLabelText("售后概览")).toBeVisible();
   const operationsOverview = screen.getByLabelText("出库与客单");
   expect(operationsOverview).toBeVisible();
@@ -548,6 +560,44 @@ test("groups dashboard filters by time range, custom dates, and accounting scope
   const scopeRow = within(filterPanel).getByRole("group", { name: "统计口径" });
   expect(scopeRow).toHaveClass("dashboardFilterRow");
   expect(within(scopeRow).getByRole("group", { name: "口径选项" })).toHaveClass("dashboardScopeSwitch");
+});
+
+test("groups dashboard modules by review sections with internal navigation", async () => {
+  render(<DashboardPage />);
+
+  expect(await screen.findByText("统计范围：今日")).toBeVisible();
+
+  const sectionNav = screen.getByRole("navigation", { name: "仪表盘分区" });
+  expect(within(sectionNav).getAllByRole("link").map((link) => link.textContent)).toEqual([
+    "概览",
+    "销售",
+    "活动",
+    "毛利",
+    "库存",
+    "异常"
+  ]);
+
+  const groups = screen.getAllByTestId("dashboard-review-group");
+  expect(groups.map((group) => group.querySelector(".dashboardReviewGroupHeader h2")?.textContent)).toEqual([
+    "经营概览",
+    "销售表现",
+    "活动成本",
+    "毛利分析",
+    "库存风险",
+    "订单异常"
+  ]);
+
+  expect(within(groups[0]).getByLabelText("经营概览")).toBeVisible();
+  expect(within(groups[0]).getByLabelText("售后概览")).toBeVisible();
+  expect(within(groups[0]).getByLabelText("订单性质")).toBeVisible();
+  expect(within(groups[1]).getByLabelText("出库与客单")).toBeVisible();
+  expect(within(groups[1]).getByRole("region", { name: "支付方式" })).toBeVisible();
+  expect(within(groups[2]).getByLabelText("活动效果")).toBeVisible();
+  expect(within(groups[2]).getByLabelText("非销售拆分")).toBeVisible();
+  expect(within(groups[2]).getByLabelText("经营成本口径")).toBeVisible();
+  expect(within(groups[3]).getByRole("region", { name: "毛利概览" })).toBeVisible();
+  expect(within(groups[4]).getByRole("region", { name: "低库存 SKU" })).toBeVisible();
+  expect(within(groups[5]).getByRole("region", { name: "异常订单" })).toBeVisible();
 });
 
 test("switches dashboard accounting scope and shows activity cost metrics", async () => {
@@ -675,14 +725,14 @@ test("defaults to today and switches to yesterday using already loaded data", as
 
   expect((await screen.findAllByText("今日商品"))[0]).toBeVisible();
   expect(screen.getByText("统计范围：今日")).toBeVisible();
-  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥80.00");
+  expectMetricValue(getMetricStrip("经营概览"), "销售额", "¥80.00");
   expectMetricValue(screen.getByLabelText("毛利概览指标"), "毛利", "¥30.00");
   expect(screen.queryByText("昨天商品")).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("button", { name: "昨天" }));
 
   expect(screen.getByText("统计范围：昨天")).toBeVisible();
-  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥30.00");
+  expectMetricValue(getMetricStrip("经营概览"), "销售额", "¥30.00");
   expectMetricValue(screen.getByLabelText("毛利概览指标"), "毛利", "¥20.00");
   expect(screen.getAllByText("昨天商品")[0]).toBeVisible();
   expect(screen.queryByText("今日商品")).not.toBeInTheDocument();
@@ -704,17 +754,17 @@ test("supports last 3 days and last 7 days ranges", async () => {
   render(<DashboardPage />);
 
   expect(await screen.findByText("统计范围：今日")).toBeVisible();
-  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥10.00");
+  expectMetricValue(getMetricStrip("经营概览"), "销售额", "¥10.00");
 
   fireEvent.click(screen.getByRole("button", { name: "近 3 天" }));
 
   expect(screen.getByText("统计范围：近 3 天")).toBeVisible();
-  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥30.00");
+  expectMetricValue(getMetricStrip("经营概览"), "销售额", "¥30.00");
 
   fireEvent.click(screen.getByRole("button", { name: "近 7 天" }));
 
   expect(screen.getByText("统计范围：近 7 天")).toBeVisible();
-  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥60.00");
+  expectMetricValue(getMetricStrip("经营概览"), "销售额", "¥60.00");
   expect(repositories.listOrders).toHaveBeenCalledTimes(1);
 });
 
@@ -740,7 +790,7 @@ test("supports custom date range and shows an error when end date is before star
   fireEvent.change(endDate, { target: { value: "2026-06-12" } });
 
   expect(screen.getByText("统计范围：2026-06-12 至 2026-06-12")).toBeVisible();
-  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥25.00");
+  expectMetricValue(getMetricStrip("经营概览"), "销售额", "¥25.00");
 
   fireEvent.change(endDate, { target: { value: "2026-06-11" } });
 
@@ -764,7 +814,7 @@ test("initializes custom range to today instead of keeping the previous range", 
   fireEvent.click(screen.getByRole("button", { name: "昨天" }));
 
   expect(screen.getByText("统计范围：昨天")).toBeVisible();
-  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥20.00");
+  expectMetricValue(getMetricStrip("经营概览"), "销售额", "¥20.00");
 
   fireEvent.click(screen.getByRole("button", { name: "自定义" }));
 
@@ -773,7 +823,7 @@ test("initializes custom range to today instead of keeping the previous range", 
   expect(startDate).toHaveValue("2026-06-15");
   expect(endDate).toHaveValue("2026-06-15");
   expect(screen.getByText("统计范围：2026-06-15 至 2026-06-15")).toBeVisible();
-  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥10.00");
+  expectMetricValue(getMetricStrip("经营概览"), "销售额", "¥10.00");
   expect(repositories.listOrders).toHaveBeenCalledTimes(1);
 });
 
@@ -794,19 +844,19 @@ test("resets custom range to today every time custom is selected", async () => {
   fireEvent.change(screen.getByLabelText("结束日期"), { target: { value: "2026-06-12" } });
 
   expect(screen.getByText("统计范围：2026-06-12 至 2026-06-12")).toBeVisible();
-  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥30.00");
+  expectMetricValue(getMetricStrip("经营概览"), "销售额", "¥30.00");
 
   fireEvent.click(screen.getByRole("button", { name: "昨天" }));
 
   expect(screen.getByText("统计范围：昨天")).toBeVisible();
-  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥20.00");
+  expectMetricValue(getMetricStrip("经营概览"), "销售额", "¥20.00");
 
   fireEvent.click(screen.getByRole("button", { name: "自定义" }));
 
   expect(screen.getByLabelText("开始日期")).toHaveValue("2026-06-15");
   expect(screen.getByLabelText("结束日期")).toHaveValue("2026-06-15");
   expect(screen.getByText("统计范围：2026-06-15 至 2026-06-15")).toBeVisible();
-  expectMetricValue(screen.getByLabelText("经营概览"), "销售额", "¥10.00");
+  expectMetricValue(getMetricStrip("经营概览"), "销售额", "¥10.00");
   expect(repositories.listOrders).toHaveBeenCalledTimes(1);
 });
 
