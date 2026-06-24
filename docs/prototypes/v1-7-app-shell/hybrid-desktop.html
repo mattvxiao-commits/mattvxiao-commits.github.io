@@ -13,7 +13,7 @@
           <div class="brandMark" aria-hidden="true">E</div>
         </div>
         <nav class="mainNav" aria-label="页面导航">
-          <button type="button" data-page="mode"><span class="navIcon navIconLock" aria-hidden="true"></span><em>模式</em></button>
+          <button type="button" data-action="show-mode-tip"><span class="navIcon navIconLock isLocked" aria-hidden="true" data-field-lock-icon></span><em>模式</em></button>
           <button type="button" class="isActive" data-page="products"><span class="navIcon navIconBox" aria-hidden="true"></span><em>商品</em></button>
           <button type="button" data-page="sales"><span class="navIcon navIconCart" aria-hidden="true"></span><em>售卖</em></button>
           <button type="button" data-page="orders"><span class="navIcon navIconOrder" aria-hidden="true"></span><em>订单</em></button>
@@ -21,10 +21,10 @@
           <button type="button" data-page="settings"><span class="navIcon navIconGear" aria-hidden="true"></span><em>设置</em></button>
         </nav>
         <div class="railFutureSlot" aria-hidden="true"><span>—</span><span>—</span></div>
+        <div class="modeTip" data-mode-tip role="status" aria-live="polite"></div>
       </aside>
 
       <main class="workbench">
-        <section class="pageView" data-view="mode" aria-labelledby="mode-title"></section>
         <section class="pageView isActive" data-view="products" aria-labelledby="products-title"></section>
         <section class="pageView" data-view="sales" aria-labelledby="sales-title"></section>
         <section class="pageView" data-view="orders" aria-labelledby="orders-title"></section>

@@ -1987,3 +1987,421 @@ p {
     grid-template-columns: 1fr;
   }
 }
+
+/* V1.7 feedback pass: formal shell details */
+.desktopShell .mainNav button[data-action="show-mode-tip"] {
+  position: relative;
+}
+
+.navIconLock.isUnlocked::before {
+  left: 9px;
+  top: 1px;
+  transform: rotate(28deg);
+  transform-origin: left bottom;
+}
+
+.modeTip {
+  position: absolute;
+  left: 74px;
+  top: 70px;
+  z-index: 90;
+  width: max-content;
+  max-width: 260px;
+  min-height: 34px;
+  display: none;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid rgba(47, 111, 94, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 253, 250, 0.98);
+  box-shadow: 0 14px 36px rgba(36, 31, 26, 0.16);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.modeTip.isVisible {
+  display: inline-flex;
+}
+
+.fieldGrid.twoColumns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.productToggleControl {
+  min-height: 58px;
+  justify-content: flex-start;
+}
+
+.productToggleControl input {
+  width: 18px;
+  height: 18px;
+}
+
+.productForm [readonly] {
+  background: #f8f5ee;
+  color: var(--muted-strong);
+}
+
+.cartDrawerLayer {
+  display: none;
+}
+
+.desktopShell.isCartExpanded .cartDrawerLayer,
+.topNavShell.isCartExpanded .cartDrawerLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: block;
+}
+
+.cartBackdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: rgba(36, 31, 26, 0.24);
+  cursor: default;
+}
+
+.desktopShell .cartPanel.cartExpandedBody,
+.topNavShell .cartPanel.cartExpandedBody {
+  position: absolute;
+  right: 18px;
+  bottom: 78px;
+  z-index: 2;
+  width: min(520px, calc(100vw - 120px));
+  max-height: min(690px, calc(100vh - 108px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: 9px;
+  overflow: hidden;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgba(47, 111, 94, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 253, 250, 0.99);
+  box-shadow: 0 22px 70px rgba(36, 31, 26, 0.24);
+}
+
+.cartPanelHeader {
+  align-items: center;
+}
+
+.cartPanelHeader > div {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.cartScrollArea {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.cartLineList {
+  display: grid;
+  gap: 6px;
+}
+
+.cartLine.cartLineDense {
+  position: relative;
+  grid-template-columns: auto 42px minmax(0, 1fr) auto auto;
+  gap: 8px;
+  min-height: 62px;
+  align-items: center;
+}
+
+.cartLine.cartLineDense > .lineTypeBadge {
+  align-self: start;
+  margin-top: 1px;
+}
+
+.lineNote {
+  color: var(--warning) !important;
+}
+
+.cartWarning {
+  display: grid;
+  gap: 3px;
+  padding: 8px 9px;
+  border: 1px solid rgba(168, 95, 24, 0.22);
+  border-radius: 8px;
+  background: #fff7ea;
+}
+
+.cartWarning strong {
+  color: #7a3d10;
+  font-size: 12px;
+}
+
+.cartWarning p {
+  color: var(--muted-strong);
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.cartFooter {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.checkoutReviewLines {
+  display: grid;
+  gap: 6px;
+}
+
+.checkoutReview .cartLine {
+  grid-template-columns: auto 42px minmax(0, 1fr) auto;
+}
+
+.checkoutReviewFooter,
+.checkoutSummaryGrid,
+.dashboardOperationsStrip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--line);
+}
+
+.checkoutReviewFooter div,
+.checkoutSummaryGrid div,
+.dashboardOperationsStrip div {
+  min-height: 54px;
+  display: grid;
+  gap: 5px;
+  align-content: center;
+  padding: 9px 10px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.checkoutReviewFooter span,
+.checkoutSummaryGrid span,
+.dashboardOperationsStrip p {
+  color: var(--muted-strong);
+  font-size: 11px;
+  font-weight: 820;
+}
+
+.checkoutReviewFooter strong,
+.checkoutSummaryGrid strong,
+.dashboardOperationsStrip span {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.dashboardOperationsStrip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.orderPageList {
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(340px, 1fr));
+  gap: 8px;
+}
+
+.orderPageList .orderRow {
+  min-height: 56px;
+}
+
+.orderPageList .orderOpenButton {
+  min-height: 54px;
+  padding: 7px 9px;
+}
+
+.orderMeta {
+  align-items: center;
+  gap: 7px;
+}
+
+.orderMeta strong {
+  margin-left: 8px;
+  min-width: 68px;
+  text-align: right;
+}
+
+.orderChip.payment-wechat {
+  border-color: rgba(47, 111, 94, 0.3);
+  background: #e7f4ee;
+  color: #17624f;
+}
+
+.orderChip.payment-alipay {
+  border-color: rgba(52, 103, 190, 0.3);
+  background: #e9f1ff;
+  color: #2456a3;
+}
+
+.orderChip.payment-cash {
+  border-color: rgba(168, 95, 24, 0.28);
+  background: #fff2dc;
+  color: #8a4512;
+}
+
+.orderChip.payment-other {
+  border-color: rgba(112, 104, 94, 0.28);
+  background: #f1eee8;
+  color: #51493f;
+}
+
+.orderDetailDialog {
+  width: min(1160px, calc(100vw - 48px));
+}
+
+.orderDetailSection,
+.orderDetailActions {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.orderDetailMetrics,
+.inventorySummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--line);
+}
+
+.orderDetailMetrics div,
+.inventorySummaryGrid div {
+  min-height: 54px;
+  display: grid;
+  gap: 5px;
+  align-content: center;
+  padding: 9px 10px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.orderDetailMetrics dt,
+.inventorySummaryGrid span,
+.orderDetailLine span,
+.inventoryLogRow span,
+.refundRecordRow span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 820;
+}
+
+.orderDetailMetrics dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.orderDetailList,
+.refundRecordList {
+  display: grid;
+  gap: 6px;
+}
+
+.orderDetailLine,
+.inventoryLogRow,
+.refundRecordRow {
+  display: grid;
+  grid-template-columns: minmax(170px, 1.5fr) repeat(4, minmax(86px, 1fr));
+  gap: 8px;
+  align-items: center;
+  padding: 8px 9px;
+  border: 1px solid rgba(222, 214, 201, 0.82);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.orderDetailLine > div,
+.inventoryLogRow > div,
+.refundRecordRow > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.orderDetailLine strong,
+.inventoryLogRow strong,
+.refundRecordRow strong {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.orderDetailLineMain strong {
+  font-size: 13px;
+}
+
+.inventoryDetails {
+  display: grid;
+  gap: 8px;
+}
+
+.inventoryDetails summary {
+  cursor: pointer;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fieldLockSettings {
+  grid-column: 1 / -1;
+}
+
+.fieldStatusBadge {
+  min-height: 38px;
+  width: fit-content;
+  padding: 0 10px;
+}
+
+.lockRangeBox {
+  display: grid;
+  gap: 7px;
+}
+
+.lockRangeBox > span {
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.fieldLockActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fieldLockActions button {
+  min-height: 36px;
+}
+
+@media (max-width: 1080px) {
+  .orderPageList {
+    grid-template-columns: 1fr;
+  }
+
+  .orderDetailMetrics,
+  .inventorySummaryGrid,
+  .orderDetailLine,
+  .inventoryLogRow,
+  .refundRecordRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
