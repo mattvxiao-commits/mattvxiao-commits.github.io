@@ -1326,3 +1326,664 @@ p {
     grid-template-columns: 1fr;
   }
 }
+
+/* V1.7 hybrid desktop full prototype */
+.desktopShell .appShell {
+  grid-template-columns: 82px minmax(0, 1fr);
+}
+
+.desktopShell .workbench {
+  width: min(100%, calc(100vw - 82px));
+  padding: 14px 16px 76px;
+}
+
+.desktopShell .sideRail {
+  width: 82px;
+  gap: 12px;
+  padding: 12px 8px;
+  background: rgba(255, 253, 250, 0.97);
+}
+
+.desktopShell .brandBlock {
+  justify-content: center;
+}
+
+.desktopShell .brandMark {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  font-size: 17px;
+}
+
+.desktopShell .railCollapseButton,
+.desktopShell .brandLine,
+.desktopShell .brandBlock p,
+.desktopShell .railStatus {
+  display: none;
+}
+
+.desktopShell .mainNav {
+  gap: 10px;
+  justify-items: center;
+  padding-top: 4px;
+}
+
+.desktopShell .mainNav button {
+  width: 58px;
+  min-height: 62px;
+  display: grid;
+  grid-template-rows: 26px auto;
+  gap: 4px;
+  justify-items: center;
+  align-items: center;
+  padding: 7px 4px 6px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+}
+
+.desktopShell .mainNav button:hover {
+  border-color: rgba(47, 111, 94, 0.18);
+  background: rgba(47, 111, 94, 0.06);
+}
+
+.desktopShell .mainNav button.isActive {
+  border-color: rgba(47, 111, 94, 0.36);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.desktopShell .mainNav button em {
+  display: block;
+  font-style: normal;
+  letter-spacing: 0;
+}
+
+.navIcon {
+  position: relative;
+  display: block;
+  width: 24px;
+  height: 24px;
+  color: currentColor;
+}
+
+.navIcon::before,
+.navIcon::after {
+  position: absolute;
+  content: "";
+  display: block;
+}
+
+.navIconLock::before {
+  left: 6px;
+  top: 2px;
+  width: 12px;
+  height: 10px;
+  border: 2px solid currentColor;
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+}
+
+.navIconLock::after {
+  left: 4px;
+  bottom: 3px;
+  width: 16px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+}
+
+.navIconBox::before {
+  inset: 4px;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+}
+
+.navIconBox::after {
+  left: 7px;
+  right: 7px;
+  top: 4px;
+  height: 7px;
+  border-bottom: 2px solid currentColor;
+}
+
+.navIconCart::before {
+  left: 3px;
+  top: 6px;
+  width: 17px;
+  height: 10px;
+  border: 2px solid currentColor;
+  border-top: 0;
+  border-radius: 0 0 4px 4px;
+  transform: skewX(-8deg);
+}
+
+.navIconCart::after {
+  left: 7px;
+  bottom: 3px;
+  width: 12px;
+  height: 4px;
+  border-right: 3px solid currentColor;
+  border-left: 3px solid currentColor;
+  border-radius: 999px;
+}
+
+.navIconOrder::before {
+  inset: 3px 5px;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+}
+
+.navIconOrder::after {
+  left: 9px;
+  right: 9px;
+  top: 9px;
+  height: 8px;
+  border-top: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+}
+
+.navIconChart::before {
+  left: 5px;
+  right: 5px;
+  bottom: 4px;
+  height: 14px;
+  border-bottom: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+}
+
+.navIconChart::after {
+  left: 9px;
+  bottom: 7px;
+  width: 3px;
+  height: 7px;
+  background: currentColor;
+  box-shadow: 5px -4px 0 currentColor, 10px -1px 0 currentColor;
+}
+
+.navIconGear::before {
+  inset: 4px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  box-shadow:
+    0 -4px 0 -1px currentColor,
+    0 4px 0 -1px currentColor,
+    4px 0 0 -1px currentColor,
+    -4px 0 0 -1px currentColor;
+}
+
+.navIconGear::after {
+  left: 10px;
+  top: 10px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.desktopShell .railFutureSlot {
+  min-height: 96px;
+  display: grid;
+  gap: 8px;
+  align-content: end;
+  justify-items: center;
+  color: rgba(112, 104, 94, 0.42);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.desktopShell.isRailCollapsed .appShell,
+.isRailCollapsed.desktopShell .appShell {
+  grid-template-columns: 82px minmax(0, 1fr);
+}
+
+.desktopShell.isRailCollapsed .workbench,
+.isRailCollapsed.desktopShell .workbench {
+  width: min(100%, calc(100vw - 82px));
+}
+
+.desktopShell .pageHeader {
+  gap: 10px;
+  align-items: center;
+  padding-bottom: 8px;
+}
+
+.desktopShell .pageHeader h1 {
+  font-size: 24px;
+}
+
+.desktopShell .salesFilterStack {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.desktopShell .salesFilterStack .toolbarRow {
+  margin-bottom: 0;
+}
+
+.seriesFilter {
+  padding: 0;
+}
+
+.desktopShell .controlGroup {
+  gap: 6px;
+}
+
+.desktopShell .filterChip,
+.desktopShell .statusBadge,
+.desktopShell .chip,
+.desktopShell .orderChip {
+  min-height: 26px;
+}
+
+.desktopShell .salesProductList {
+  grid-template-columns: repeat(auto-fit, minmax(316px, 1fr));
+}
+
+.desktopShell .productCard {
+  min-height: 76px;
+  grid-template-columns: 60px minmax(0, 1fr) auto;
+}
+
+.desktopShell .productThumb {
+  width: 60px;
+  height: 60px;
+}
+
+.desktopShell .salesProductRow {
+  min-height: 72px;
+  grid-template-columns: 58px minmax(0, 1fr) 38px;
+}
+
+.desktopShell .salesThumb {
+  width: 58px;
+  height: 58px;
+}
+
+.modalHost:empty {
+  display: none;
+}
+
+.hasModal {
+  overflow: hidden;
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(36, 31, 26, 0.34);
+  backdrop-filter: blur(6px);
+}
+
+.prototypeDialog {
+  width: min(920px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  display: grid;
+  gap: 14px;
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid rgba(222, 214, 201, 0.96);
+  border-radius: 10px;
+  background: rgba(255, 253, 250, 0.99);
+  box-shadow: 0 24px 70px rgba(36, 31, 26, 0.22);
+}
+
+.productDialog {
+  width: min(980px, calc(100vw - 48px));
+}
+
+.checkoutDialog,
+.orderDetailDialog {
+  width: min(1080px, calc(100vw - 48px));
+}
+
+.fieldLockDialog {
+  width: min(560px, calc(100vw - 48px));
+}
+
+.dialogHeader {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.dialogHeader h2 {
+  margin-top: 2px;
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.dialogHeader p:not(.eyebrow) {
+  margin-top: 4px;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.iconButton {
+  flex: 0 0 auto;
+  width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 8px;
+  color: var(--muted-strong);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.productForm {
+  display: grid;
+  gap: 12px;
+}
+
+.fieldHint,
+.cartEmpty,
+.emptyStateText {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.45;
+}
+
+.dialogActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 2px;
+}
+
+.modeHero {
+  width: min(880px, 100%);
+}
+
+.cartLine {
+  grid-template-columns: 42px minmax(0, 1fr) auto auto;
+  align-items: center;
+  min-height: 58px;
+  padding: 7px;
+}
+
+.cartThumb {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(47, 111, 94, 0.1), rgba(168, 95, 24, 0.08)),
+    #fff;
+  color: var(--accent-strong);
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.cartThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.cartLineMain {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.cartLineMain strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.18;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cartLineMain span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 820;
+}
+
+.cartLineControls {
+  display: inline-grid;
+  grid-template-columns: 26px 24px 26px;
+  gap: 4px;
+  align-items: center;
+  justify-items: center;
+}
+
+.cartLineControls button {
+  width: 26px;
+  min-height: 26px;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.cartLineControls span {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.cartLineAmount {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.lineTypeBadge {
+  width: fit-content;
+  min-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  border: 1px solid rgba(47, 111, 94, 0.18);
+  border-radius: 7px;
+  background: rgba(219, 233, 228, 0.74);
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.lineTypeBadge.isNonSale {
+  border-color: rgba(168, 95, 24, 0.22);
+  background: #fff2dc;
+  color: #8a4512;
+}
+
+.nonSalesActions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.nonSalesActions button {
+  min-height: 32px;
+  padding: 0 6px;
+  font-size: 11px;
+}
+
+.checkoutBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(300px, 0.82fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.checkoutReview,
+.paymentPanel,
+.orderDetailBody {
+  display: grid;
+  gap: 10px;
+}
+
+.checkoutReview {
+  min-height: 460px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.checkoutReview .cartLines {
+  max-height: 318px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.checkoutReview .cartLine {
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+}
+
+.paymentPanel {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.qrPreview {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  min-height: 300px;
+  border: 1px solid rgba(47, 111, 94, 0.28);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(36, 31, 26, 0.12) 10px, transparent 10px) 0 0 / 22px 22px,
+    linear-gradient(rgba(36, 31, 26, 0.12) 10px, transparent 10px) 0 0 / 22px 22px,
+    #fff;
+  color: var(--accent-strong);
+  text-align: center;
+}
+
+.qrPreview strong {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 253, 250, 0.92);
+  font-size: 18px;
+}
+
+.qrPreview span {
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(255, 253, 250, 0.9);
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.orderDetailBody .dashboardMetricStrip {
+  grid-column: auto;
+}
+
+.orderOpenButton {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 62px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+}
+
+.orderOpenButton:hover {
+  background: rgba(47, 111, 94, 0.06);
+}
+
+.orderOpenButton h3 {
+  margin: 0;
+}
+
+.orderOpenButton strong {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.nonSalesList {
+  display: grid;
+  gap: 7px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.nonSalesProductOption {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 54px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.nonSalesProductOption span:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.nonSalesProductOption strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nonSalesProductOption em,
+.nonSalesProductOption span:last-child {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 820;
+}
+
+@media (max-width: 920px) {
+  .desktopShell .appShell {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .desktopShell .workbench {
+    width: min(100%, calc(100vw - 76px));
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .desktopShell .sideRail {
+    width: 76px;
+  }
+
+  .checkoutBody,
+  .settingsGrid,
+  .dashboardGrid,
+  .dashboardGroupGrid,
+  .fieldGrid.threeColumns {
+    grid-template-columns: 1fr;
+  }
+}
