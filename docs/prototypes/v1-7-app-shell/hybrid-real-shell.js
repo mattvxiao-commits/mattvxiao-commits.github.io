@@ -579,11 +579,15 @@
   }
 
   function renderOrdersPage() {
-    const sortedOrders = paidOrders()
+    const chronologicalOrders = paidOrders()
       .slice()
-      .sort((left, right) => new Date(right.paidAt || right.createdAt || 0) - new Date(left.paidAt || left.createdAt || 0))
-      .slice(0, 16);
-    const rows = sortedOrders.map(renderOrderRow).join("");
+      .sort((left, right) => new Date(left.paidAt || left.createdAt || 0) - new Date(right.paidAt || right.createdAt || 0))
+      .slice(-16);
+    const orderPairs = [];
+    for (let index = 0; index < chronologicalOrders.length; index += 2) {
+      orderPairs.push(chronologicalOrders.slice(index, index + 2));
+    }
+    const rows = orderPairs.reverse().flat().map(renderOrderRow).join("");
     return `
       <div class="pageHeader">
         <div class="pageHeaderCopy">
