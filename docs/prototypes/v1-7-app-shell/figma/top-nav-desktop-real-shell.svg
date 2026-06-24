@@ -1,0 +1,61 @@
+<svg width="1440" height="900" viewBox="0 0 1440 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1440" height="900" fill="#F7F4EE"/>
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" stroke="#FFFFFF" stroke-opacity="0.55"/>
+    </pattern>
+  </defs>
+  <rect width="1440" height="900" fill="url(#grid)"/>
+  <rect x="0" y="0" width="1440" height="54" fill="#F7F4EE" stroke="#DED6C9"/>
+  <rect x="16" y="10" width="34" height="34" rx="8" fill="#DBE9E4" stroke="#9DBFB4"/>
+  <text x="63" y="25" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="18" font-weight="900">ECRM</text>
+  <rect x="114" y="12" width="42" height="18" rx="9" fill="#FFFDF9" stroke="#9DBFB4"/>
+  <text x="123" y="25" fill="#194A3F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="10" font-weight="800">v1.7</text>
+  <text x="63" y="40" fill="#70685E" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="11">ECRM 摊位</text>
+  <g transform="translate(1095 9)" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="13" font-weight="850">
+    <rect width="72" height="36" rx="8" fill="#DBE9E4" stroke="#76A093"/>
+    <rect x="80" width="72" height="36" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+    <rect x="160" width="88" height="36" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+    <rect x="256" width="72" height="36" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+    <text x="20" y="23" fill="#194A3F">商品</text>
+    <text x="100" y="23" fill="#51493F">售卖</text>
+    <text x="178" y="23" fill="#51493F">仪表盘</text>
+    <text x="276" y="23" fill="#51493F">设置</text>
+  </g>
+
+  <g transform="translate(160 74)">
+    <rect width="1120" height="36" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+    <g font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="850">
+      <text x="22" y="23" fill="#241F1A">16</text><text x="45" y="23" fill="#51493F">全部商品</text>
+      <line x1="128" y1="0" x2="128" y2="36" stroke="#DED6C9"/>
+      <text x="150" y="23" fill="#241F1A">16</text><text x="173" y="23" fill="#51493F">启用中</text>
+      <line x1="250" y1="0" x2="250" y2="36" stroke="#DED6C9"/>
+      <text x="272" y="23" fill="#241F1A">15</text><text x="295" y="23" fill="#51493F">可售卖</text>
+      <line x1="372" y1="0" x2="372" y2="36" stroke="#DED6C9"/>
+      <text x="394" y="23" fill="#241F1A">879</text><text x="425" y="23" fill="#51493F">总库存</text>
+    </g>
+    <g transform="translate(760 -4)">
+      <text x="0" y="-10" fill="#51493F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="850">排序</text>
+      <rect width="170" height="42" rx="8" fill="#FFFFFF" stroke="#DED6C9"/>
+      <rect x="182" width="126" height="42" rx="8" fill="#173F36"/>
+      <text x="15" y="27" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="13">创建时间</text>
+      <text x="219" y="27" fill="#FFFFFF" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="13" font-weight="900">新增商品</text>
+    </g>
+  </g>
+
+  <g transform="translate(160 132)">
+    <rect width="1120" height="70" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+    <rect x="12" y="10" width="52" height="52" rx="8" fill="#F1F4EF" stroke="#DED6C9"/>
+    <text x="30" y="44" fill="#194A3F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="24" font-weight="900">角</text>
+    <text x="78" y="31" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="16" font-weight="900">角色亚克力挂件 黑猫款</text>
+    <text x="78" y="52" fill="#51493F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12">亚克力挂件 · 售价 ¥25.00 · 编码 ACRY-24001-BLK · 成本 ¥8.00 · 库存 36</text>
+  </g>
+  <g transform="translate(160 214)">
+    <rect width="1120" height="70" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+    <rect x="12" y="10" width="52" height="52" rx="8" fill="#F1F4EF" stroke="#DED6C9"/>
+    <text x="30" y="44" fill="#194A3F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="24" font-weight="900">贴</text>
+    <text x="78" y="31" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="16" font-weight="900">主题贴纸包 春日款</text>
+    <text x="78" y="52" fill="#51493F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12">贴纸 · 售价 ¥10.00 · 可赠品 · 库存 58</text>
+  </g>
+  <text x="160" y="820" fill="#8A4512" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="14" font-weight="800">顶部导航压缩版：页面标题/英文/说明区移除，右侧操作与筛选整体左移贴边。</text>
+</svg>

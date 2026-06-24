@@ -19,11 +19,14 @@ docs/prototypes/v1-7-app-shell/hybrid-desktop.html
 docs/prototypes/v1-7-app-shell/hybrid-mobile.html
 docs/prototypes/v1-7-app-shell/hybrid-real-shell.css
 docs/prototypes/v1-7-app-shell/hybrid-real-shell.js
+docs/prototypes/v1-7-app-shell/top-nav-desktop.html
 docs/prototypes/v1-7-app-shell/scheme-a-current-top-nav.html
 docs/prototypes/v1-7-app-shell/scheme-b-left-rail.html
 docs/prototypes/v1-7-app-shell/scheme-c-bottom-nav.html
 docs/prototypes/v1-7-app-shell/scheme-d-hybrid-responsive.html
 docs/prototypes/v1-7-app-shell/styles.css
+docs/prototypes/v1-7-app-shell/figma/top-nav-desktop-real-shell.svg
+docs/prototypes/v1-7-app-shell/figma/hybrid-desktop-real-shell.svg
 docs/prototypes/v1-7-app-shell/figma/scheme-a-current-top-nav.svg
 docs/prototypes/v1-7-app-shell/figma/scheme-b-left-rail.svg
 docs/prototypes/v1-7-app-shell/figma/scheme-c-bottom-nav.svg
@@ -57,7 +60,25 @@ docs/prototypes/v1-7-app-shell/hybrid-mobile.html
 1. `hybrid-desktop.html`：确认桌面左侧导航、顶部状态栏和各页面首屏结构。
 2. `hybrid-mobile.html`：确认移动端底部导航、首屏密度和购物车区域占位。
 
-## 4. A/B/C/D 方案对比入口
+## 4. 顶部导航压缩实操草图入口
+
+为对比当前顶部导航方案的压缩改法，新增一版桌面 HTML：
+
+```text
+docs/prototypes/v1-7-app-shell/top-nav-desktop.html
+```
+
+规则：
+
+- 只做桌面版，不做移动端版。
+- 保留顶部品牌区和顶部主导航。
+- 各页面移除导航下方的大标题、英文标题和说明文字。
+- 商品页商品统计与列表左移。
+- 售卖页 SPU 筛选区左移。
+- 仪表盘日期筛选和统计口径筛选水平对齐。
+- 设置页现场模式模块提升到最高，保存设置按钮下移到现场模式与下方设置模块之间。
+
+## 5. A/B/C/D 方案对比入口
 
 以下文件保留为前一轮方案对比稿，用于回看不同方向。正式评审方案 D 实操效果时，优先使用上方两个 `hybrid-*` 文件。
 
@@ -79,9 +100,9 @@ docs/prototypes/v1-7-app-shell/scheme-d-hybrid-responsive.html
 
 页面默认打开时显示“桌面 / Windows 浏览器”效果。
 
-## 5. 四个方案
+## 6. 四个方案
 
-### 5.1 方案 A：当前结构进化版
+### 6.1 方案 A：当前结构进化版
 
 文件：
 
@@ -103,7 +124,7 @@ scheme-a-current-top-nav.html
 - 页面标题区和筛选区是否比当前更规范。
 - 窄屏下横向导航是否仍可接受。
 
-### 5.2 方案 B：桌面管理工具版
+### 6.2 方案 B：桌面管理工具版
 
 文件：
 
@@ -124,7 +145,7 @@ scheme-b-left-rail.html
 - 现场售卖时是否占用过多商品列表空间。
 - iPad 竖屏折叠后的使用感是否自然。
 
-### 5.3 方案 C：现场操作优先版
+### 6.3 方案 C：现场操作优先版
 
 文件：
 
@@ -144,7 +165,7 @@ scheme-c-bottom-nav.html
 - 购物车入口是否和底部导航冲突。
 - 转屏给顾客看收款码时，误触主导航风险是否降低。
 
-### 5.4 方案 D：混合响应式示意
+### 6.4 方案 D：混合响应式示意
 
 文件：
 
@@ -164,11 +185,13 @@ scheme-d-hybrid-responsive.html
 - 多种导航模式是否增加认知负担。
 - 是否更适合作为 V1.8 或更后续版本。
 
-## 6. Figma 导入
+## 7. Figma 导入
 
 可将以下 SVG 文件拖入 Figma：
 
 ```text
+docs/prototypes/v1-7-app-shell/figma/top-nav-desktop-real-shell.svg
+docs/prototypes/v1-7-app-shell/figma/hybrid-desktop-real-shell.svg
 docs/prototypes/v1-7-app-shell/figma/scheme-a-current-top-nav.svg
 docs/prototypes/v1-7-app-shell/figma/scheme-b-left-rail.svg
 docs/prototypes/v1-7-app-shell/figma/scheme-c-bottom-nav.svg
@@ -183,7 +206,7 @@ docs/prototypes/v1-7-app-shell/figma/scheme-d-hybrid-responsive.svg
 - 不会自动生成 Auto Layout。
 - 不会自动生成 Figma Components。
 
-## 7. 当前阶段不做内容
+## 8. 当前阶段不做内容
 
 V1.7-0 仍然只做草图，不做产品实现：
 
@@ -193,13 +216,14 @@ V1.7-0 仍然只做草图，不做产品实现：
 - 不改真实路由。
 - 不推送远端。
 
-## 8. 下一步
+## 9. 下一步
 
 建议评审顺序：
 
-1. 打开 `hybrid-desktop.html`，检查桌面版左侧导航和四个菜单首屏。
-2. 打开 `hybrid-mobile.html`，检查移动端底部导航和四个菜单首屏。
-3. 在设置页导入 JSON 备份，检查真实商品、订单、仪表盘数据密度。
-4. 确认方案 D 混合壳层是否进入 V1.7 正式实现。
+1. 打开 `top-nav-desktop.html`，检查顶部导航压缩版是否解决空间浪费。
+2. 打开 `hybrid-desktop.html`，检查方案 D 左侧导航修正版。
+3. 打开 `hybrid-mobile.html`，检查移动端底部导航和四个菜单首屏。
+4. 在设置页导入 JSON 备份，检查真实商品、订单、仪表盘数据密度。
+5. 确认 V1.7 正式实现采用顶部导航压缩版，还是方案 D 混合壳层。
 
 确认方向后，再写 V1.7 正式中文方案文档。

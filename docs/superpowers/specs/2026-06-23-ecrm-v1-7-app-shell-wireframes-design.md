@@ -48,6 +48,7 @@ docs/prototypes/v1-7-app-shell/hybrid-desktop.html
 docs/prototypes/v1-7-app-shell/hybrid-mobile.html
 docs/prototypes/v1-7-app-shell/hybrid-real-shell.css
 docs/prototypes/v1-7-app-shell/hybrid-real-shell.js
+docs/prototypes/v1-7-app-shell/top-nav-desktop.html
 docs/prototypes/v1-7-app-shell/scheme-a-current-top-nav.html
 docs/prototypes/v1-7-app-shell/scheme-b-left-rail.html
 docs/prototypes/v1-7-app-shell/scheme-c-bottom-nav.html
@@ -71,6 +72,21 @@ docs/prototypes/v1-7-app-shell/README.md
 - 页面内部通过真实产品式导航在商品、售卖、仪表盘、设置之间切换。
 - 每个菜单页面先只还原首屏布局和数据密度，不实现完整新增、编辑、下单、弹窗等功能。
 - 支持导入 ECRM JSON 备份用于当前原型预览，但不写入正式产品 IndexedDB。
+
+在用户追加顶部导航方案对比后，额外交付 `top-nav-desktop.html`：
+
+- 只做桌面版。
+- 保留当前产品顶部品牌和顶部导航菜单。
+- 移除各页面导航下方的大标题、英文标题和说明文字。
+- 商品、售卖、仪表盘、设置首屏按用户截图反馈压缩和左移。
+- 该文件与方案 D 实操草图共享静态预览数据和 JSON 备份预览能力。
+
+对应 Figma-ready SVG：
+
+```text
+docs/prototypes/v1-7-app-shell/figma/top-nav-desktop-real-shell.svg
+docs/prototypes/v1-7-app-shell/figma/hybrid-desktop-real-shell.svg
+```
 
 ## 5. 四个方案
 

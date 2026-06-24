@@ -2,6 +2,7 @@
   const pageTitles = {
     products: "商品",
     sales: "售卖",
+    orders: "订单",
     dashboard: "仪表盘",
     settings: "设置"
   };
@@ -210,6 +211,10 @@
     return state.orders.filter((order) => order.status === "paid");
   }
 
+  function isDesktopHybridShell() {
+    return document.body.classList.contains("desktopShell");
+  }
+
   function productImage(product, className) {
     const src = product.imageId ? state.imageMap.get(product.imageId) : undefined;
     if (src) {
@@ -304,19 +309,6 @@
         <button type="button" class="addButton" aria-label="加入购物车">+</button>
       </article>
     `).join("");
-    const orderRows = paidOrders().slice(0, 4).map((order) => `
-      <article class="orderRow">
-        <div>
-          <h3>${escapeHtml(order.orderNo)}</h3>
-          <p>${formatOrderTime(order.paidAt || order.createdAt)} / ${escapeHtml(paymentLabels[order.paymentMethod] || "未记录")}</p>
-        </div>
-        <div class="orderMeta">
-          <span class="orderChip isGreen">${order.status === "paid" ? "已支付" : "其他"}</span>
-          <span class="orderChip ${order.orderNature === "mixed" ? "isWarning" : ""}">${orderNatureLabel(order)}</span>
-          <strong>${formatMoney(order.payableAmount)}</strong>
-        </div>
-      </article>
-    `).join("");
 
     return `
       <div class="pageHeader">
@@ -334,27 +326,33 @@
       <div class="salesLayout">
         <div>
           <div class="salesProductList">${productRows || `<p class="salesProductRow">当前没有可售商品。</p>`}</div>
-          <section class="orderHistoryBlock">
-            <div class="panelHeading">
-              <h2>订单记录</h2>
-              <span class="chip">${paidOrders().length} 笔</span>
-            </div>
-            <div class="orderList">${orderRows || `<p class="orderRow">暂无订单记录。</p>`}</div>
-          </section>
+          ${isDesktopHybridShell() ? "" : renderOrderHistoryBlock()}
         </div>
-        <aside class="cartPreview">
+        ${renderCartPreview(cartLines, payable)}
+      </div>
+    `;
+  }
+
+  function renderCartPreview(cartLines, payable) {
+    const lines = cartLines.map((product, index) => `
+      <div class="cartLine">
+        <div><strong>${escapeHtml(product.name)}</strong><span>${escapeHtml(product.spu)} / x${index === 1 ? 2 : 1}</span></div>
+        <strong>${formatMoney(Number(product.salePrice || 0) * (index === 1 ? 2 : 1))}</strong>
+      </div>
+    `).join("");
+
+    return `
+      <aside class="cartPreview" data-cart-preview>
+        <button type="button" class="cartCollapsedButton" data-toggle-cart>
+          <span>购物车</span>
+          <strong>${cartLines.length} 件 / ${formatMoney(payable)}</strong>
+        </button>
+        <div class="cartExpandedBody">
           <div class="panelHeading">
             <h2>购物车</h2>
             <span class="chip">${cartLines.length} 件</span>
           </div>
-          <div class="cartLines">
-            ${cartLines.map((product, index) => `
-              <div class="cartLine">
-                <div><strong>${escapeHtml(product.name)}</strong><span>${escapeHtml(product.spu)} / x${index === 1 ? 2 : 1}</span></div>
-                <strong>${formatMoney(Number(product.salePrice || 0) * (index === 1 ? 2 : 1))}</strong>
-              </div>
-            `).join("")}
-          </div>
+          <div class="cartLines">${lines}</div>
           <div class="cartTotal">
             <div><span>加购/满赠</span><strong>${getSettings().promotion?.enabled ? "已启用" : "未启用"}</strong></div>
             <div class="payable"><span>应收</span><strong>${formatMoney(payable)}</strong></div>
@@ -364,8 +362,59 @@
             <button type="button" class="secondaryButton">暂存</button>
             <button type="button" class="primaryButton">收款</button>
           </div>
-        </aside>
+        </div>
+      </aside>
+    `;
+  }
+
+  function renderOrderHistoryBlock() {
+    const rows = paidOrders().slice(0, 4).map(renderOrderRow).join("");
+
+    return `
+      <section class="orderHistoryBlock">
+        <div class="panelHeading">
+          <h2>订单记录</h2>
+          <span class="chip">${paidOrders().length} 笔</span>
+        </div>
+        <div class="orderList">${rows || `<p class="orderRow">暂无订单记录。</p>`}</div>
+      </section>
+    `;
+  }
+
+  function renderOrderRow(order) {
+    return `
+      <article class="orderRow">
+        <div>
+          <h3>${escapeHtml(order.orderNo)}</h3>
+          <p>${formatOrderTime(order.paidAt || order.createdAt)} / ${escapeHtml(paymentLabels[order.paymentMethod] || "未记录")}</p>
+        </div>
+        <div class="orderMeta">
+          <span class="orderChip isGreen">${order.status === "paid" ? "已支付" : "其他"}</span>
+          <span class="orderChip ${order.orderNature === "mixed" ? "isWarning" : ""}">${orderNatureLabel(order)}</span>
+          <strong>${formatMoney(order.payableAmount)}</strong>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderOrdersPage() {
+    const rows = paidOrders().slice(0, 10).map(renderOrderRow).join("");
+
+    return `
+      <div class="pageHeader">
+        <div class="pageHeaderCopy">
+          <p class="eyebrow">Orders</p>
+          <h1 id="orders-title">订单</h1>
+          <p>订单记录独立成页，避免混在售卖页首屏造成操作干扰。</p>
+        </div>
+        <div class="controlGroup">
+          <span class="filterChip isActive">今日</span>
+          <span class="filterChip">全部状态</span>
+          <span class="filterChip">全部方式</span>
+          <button type="button" class="secondaryButton">刷新</button>
+        </div>
       </div>
+      <div class="orderList orderPageList">${rows || `<p class="orderRow">暂无订单记录。</p>`}</div>
     `;
   }
 
@@ -419,6 +468,8 @@
             <span class="filterChip isActive">正常销售</span>
             <span class="filterChip">全部活动</span>
             <span class="filterChip">运营赠礼</span>
+            <span class="filterChip">人工赠送</span>
+            <span class="filterChip">其他出库</span>
             <button type="button" class="secondaryButton">刷新</button>
           </div>
         </div>
@@ -523,6 +574,7 @@
           </div>
           <div class="backupActions"><button type="button" class="secondaryButton">立即重新锁定</button><button type="button" class="dangerButton">关闭现场模式</button></div>
         </section>
+        <div class="settingsSaveBridge"><button type="button" class="primaryButton">保存设置</button></div>
         <section class="settingsSection">
           <div class="sectionTitle"><div><h2>基础信息</h2><p>用于订单抬头和编号前缀。</p></div></div>
           <div class="fieldGrid">
@@ -583,6 +635,7 @@
     const renderers = {
       products: renderProductsPage,
       sales: renderSalesPage,
+      orders: renderOrdersPage,
       dashboard: renderDashboardPage,
       settings: renderSettingsPage
     };
@@ -599,6 +652,7 @@
     });
 
     bindBackupInputs();
+    bindCartToggle();
   }
 
   function switchPage(page) {
@@ -617,6 +671,27 @@
   function bindNavigation() {
     document.querySelectorAll("[data-page]").forEach((button) => {
       button.addEventListener("click", () => switchPage(button.dataset.page));
+    });
+  }
+
+  function bindRailCollapse() {
+    document.querySelectorAll("[data-collapse-rail]").forEach((button) => {
+      button.addEventListener("click", () => {
+        document.body.classList.toggle("isRailCollapsed");
+        button.textContent = document.body.classList.contains("isRailCollapsed") ? "展开" : "收起菜单";
+      });
+    });
+  }
+
+  function bindCartToggle() {
+    document.querySelectorAll("[data-toggle-cart]").forEach((button) => {
+      if (button.dataset.bound === "true") {
+        return;
+      }
+      button.dataset.bound = "true";
+      button.addEventListener("click", () => {
+        document.body.classList.toggle("isCartExpanded");
+      });
     });
   }
 
@@ -655,5 +730,6 @@
   }
 
   bindNavigation();
+  bindRailCollapse();
   renderAll();
 })();

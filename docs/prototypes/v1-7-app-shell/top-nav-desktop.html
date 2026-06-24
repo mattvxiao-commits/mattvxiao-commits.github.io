@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ECRM V1.7 顶部导航压缩草图 - 桌面版</title>
+    <link rel="stylesheet" href="./hybrid-real-shell.css" />
+  </head>
+  <body class="hybridPrototype topNavShell" data-platform="desktop">
+    <div class="appShell">
+      <header class="topNavBar" aria-label="顶部导航">
+        <div class="brandBlock">
+          <div class="brandMark" aria-hidden="true">店</div>
+          <div>
+            <div class="brandLine">
+              <strong>ECRM</strong>
+              <span>v1.7</span>
+            </div>
+            <p data-shop-name>轻量现场经营工具</p>
+          </div>
+        </div>
+        <nav class="topMainNav" aria-label="页面导航">
+          <button type="button" class="isActive" data-page="products"><span aria-hidden="true">▧</span>商品</button>
+          <button type="button" data-page="sales"><span aria-hidden="true">◇</span>售卖</button>
+          <button type="button" data-page="dashboard"><span aria-hidden="true">▣</span>仪表盘</button>
+          <button type="button" data-page="settings"><span aria-hidden="true">○</span>设置</button>
+        </nav>
+      </header>
+
+      <main class="workbench">
+        <section class="pageView isActive" data-view="products" aria-labelledby="products-title"></section>
+        <section class="pageView" data-view="sales" aria-labelledby="sales-title"></section>
+        <section class="pageView" data-view="dashboard" aria-labelledby="dashboard-title"></section>
+        <section class="pageView" data-view="settings" aria-labelledby="settings-title"></section>
+      </main>
+    </div>
+
+    <script src="./hybrid-real-shell.js"></script>
+  </body>
+</html>
