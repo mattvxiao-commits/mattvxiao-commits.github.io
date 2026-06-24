@@ -1989,8 +1989,74 @@ p {
 }
 
 /* V1.7 feedback pass: formal shell details */
-.desktopShell .mainNav button[data-action="show-mode-tip"] {
+.desktopShell .mainNav .modeStatusButton {
   position: relative;
+  width: 66px;
+  min-height: 70px;
+  grid-template-rows: 1fr;
+  overflow: visible;
+  margin: 0 -4px 2px;
+  border-color: rgba(112, 104, 94, 0.24);
+  background: rgba(255, 253, 250, 0.78);
+}
+
+.desktopShell .mainNav .modeStatusButton:hover {
+  border-color: rgba(168, 95, 24, 0.32);
+  background: rgba(255, 242, 220, 0.72);
+}
+
+.desktopShell .mainNav .modeStatusButton .navIcon {
+  position: absolute;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  color: rgba(81, 73, 63, 0.72);
+  transform: translateX(-50%);
+}
+
+.desktopShell .mainNav .modeStatusButton em {
+  position: relative;
+  z-index: 2;
+  width: max-content;
+  max-width: 64px;
+  display: block;
+  color: #3c352d;
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1.05;
+  text-align: center;
+  text-shadow:
+    1px 0 0 rgba(255, 253, 250, 0.98),
+    -1px 0 0 rgba(255, 253, 250, 0.98),
+    0 1px 0 rgba(255, 253, 250, 0.98),
+    0 -1px 0 rgba(255, 253, 250, 0.98),
+    1px 1px 0 rgba(255, 253, 250, 0.98),
+    -1px 1px 0 rgba(255, 253, 250, 0.98);
+}
+
+.desktopShell .mainNav .modeStatusButton.isUnlockedMode .navIcon {
+  top: 14px;
+  margin-left: 6px;
+}
+
+.desktopShell .mainNav .modeStatusButton.isUnlockedMode em {
+  margin-top: 32px;
+}
+
+.desktopShell .mainNav .modeStatusButton.isLockedMode {
+  border-color: rgba(168, 95, 24, 0.36);
+  background: #fff2dc;
+}
+
+.desktopShell .mainNav .modeStatusButton.isLockedMode .navIcon {
+  top: 10px;
+  color: #7a3d10;
+  transform: translateX(-50%) scale(1.08);
+}
+
+.desktopShell .mainNav .modeStatusButton.isLockedMode em {
+  margin-top: 31px;
+  color: #6f330c;
 }
 
 .navIconLock.isUnlocked::before {

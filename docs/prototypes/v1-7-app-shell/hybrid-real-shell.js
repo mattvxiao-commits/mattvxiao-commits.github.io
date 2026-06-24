@@ -180,7 +180,7 @@
           defaultSpu: "赠礼小卡",
           requireSaleLine: true
         },
-        fieldLock: { enabled: true, failedAttempts: 0 }
+        fieldLock: { enabled: false, failedAttempts: 0 }
       }
     ]
   };
@@ -973,10 +973,19 @@
 
   function updateFieldLockIcon() {
     const icon = document.querySelector("[data-field-lock-icon]");
+    const label = document.querySelector("[data-field-lock-label]");
+    const button = document.querySelector("[data-mode-status-button]");
     if (!icon) return;
     const enabled = getSettings().fieldLock?.enabled !== false;
     icon.classList.toggle("isLocked", enabled);
     icon.classList.toggle("isUnlocked", !enabled);
+    if (label) {
+      label.textContent = enabled ? "现场模式" : "未锁定";
+    }
+    if (button) {
+      button.classList.toggle("isLockedMode", enabled);
+      button.classList.toggle("isUnlockedMode", !enabled);
+    }
   }
 
   function showModeTip() {
