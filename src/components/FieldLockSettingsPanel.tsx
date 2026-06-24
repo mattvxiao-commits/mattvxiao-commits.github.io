@@ -122,47 +122,59 @@ export default function FieldLockSettingsPanel({ fieldLock, onSave }: FieldLockS
 
       <div className="fieldLockCompactGrid">
         <div className="fieldLockConfigColumn">
-          <div className="settingsFieldGrid fieldLockInputs">
-            <label>
-              <span>设置现场模式 PIN</span>
-              <input
-                value={pin}
-                type="password"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={4}
-                onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 4))}
-              />
-            </label>
-            <label>
-              <span>确认现场模式 PIN</span>
-              <input
-                value={confirmPin}
-                type="password"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={4}
-                onChange={(event) => setConfirmPin(event.target.value.replace(/\D/g, "").slice(0, 4))}
-              />
-            </label>
+          <div className="fieldLockSubsection" role="group" aria-label="现场模式 PIN">
+            <div className="fieldLockSubsectionHeader">
+              <span>PIN</span>
+              <p>4 位数字，仅保存在当前设备。</p>
+            </div>
+            <div className="settingsFieldGrid fieldLockInputs">
+              <label>
+                <span>设置现场模式 PIN</span>
+                <input
+                  value={pin}
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={4}
+                  onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 4))}
+                />
+              </label>
+              <label>
+                <span>确认现场模式 PIN</span>
+                <input
+                  value={confirmPin}
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={4}
+                  onChange={(event) => setConfirmPin(event.target.value.replace(/\D/g, "").slice(0, 4))}
+                />
+              </label>
+            </div>
           </div>
 
-          <div className="fieldLockScopeGroup" role="group" aria-label="锁定范围">
-            {scopeOptions.map((option) => (
-              <label className="checkControl" key={option.value}>
-                <input
-                  type="checkbox"
-                  checked={protectedScopes.includes(option.value)}
-                  aria-label={`锁定${option.label}`}
-                  onChange={(event) => toggleScope(option.value, event.target.checked)}
-                />
-                <span>{option.label}</span>
-              </label>
-            ))}
+          <div className="fieldLockSubsection fieldLockScopeGroup" role="group" aria-label="锁定范围">
+            <div className="fieldLockSubsectionHeader">
+              <span>锁定范围</span>
+              <p>控制现场模式重新锁定后需要 PIN 的页面和详情。</p>
+            </div>
+            <div className="fieldLockScopeOptions">
+              {scopeOptions.map((option) => (
+                <label className="checkControl" key={option.value}>
+                  <input
+                    type="checkbox"
+                    checked={protectedScopes.includes(option.value)}
+                    aria-label={`锁定${option.label}`}
+                    onChange={(event) => toggleScope(option.value, event.target.checked)}
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="dialogActions fieldLockActions">
+        <div className="dialogActions fieldLockActions" role="group" aria-label="现场模式操作">
           <button type="button" className="primaryButton" onClick={() => void handleEnable()} disabled={isSaving}>
             {isSaving ? "保存中..." : fieldLock.enabled ? "更新 PIN" : "开启现场模式"}
           </button>
