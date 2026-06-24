@@ -43,23 +43,67 @@ beforeEach(() => {
   pwaUpdate.listeners.clear();
 });
 
-test("renders the app shell navigation and redirects to products by default", async () => {
+test("renders the left app shell navigation and redirects to products by default", async () => {
   render(
     <MemoryRouter>
       <App />
     </MemoryRouter>
   );
 
-  const nav = screen.getByRole("navigation", { name: "主导航" });
+  const nav = screen.getByRole("navigation", { name: "应用导航" });
 
   expect(nav).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "商品" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "售卖" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "仪表盘" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "订单" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "数据" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "设置" })).toBeInTheDocument();
   expect(
     await screen.findByRole("heading", { level: 1, name: "商品" })
   ).toBeVisible();
+});
+
+test("shows field mode status as a non-navigation rail item", async () => {
+  render(
+    <MemoryRouter initialEntries={["/sales"]}>
+      <App />
+    </MemoryRouter>
+  );
+
+  const fieldModeButton = await screen.findByRole("button", { name: "现场模式状态：未锁定" });
+
+  expect(fieldModeButton).toBeVisible();
+  expect(screen.queryByRole("link", { name: /未锁定/ })).not.toBeInTheDocument();
+
+  fireEvent.click(fieldModeButton);
+
+  expect(await screen.findByRole("status")).toHaveTextContent("现场模式未开启");
+  expect(screen.getByRole("heading", { level: 1, name: "售卖" })).toBeVisible();
+});
+
+test("shows locked field mode status tip when field mode requires unlock", async () => {
+  repositories.getSettings.mockResolvedValue({
+    ...createDefaultSettings(),
+    fieldLock: {
+      enabled: true,
+      pinHash: "secret-hash",
+      pinSalt: "secret-salt",
+      failedAttempts: 0
+    }
+  });
+
+  render(
+    <MemoryRouter initialEntries={["/sales"]}>
+      <App />
+    </MemoryRouter>
+  );
+
+  const fieldModeButton = await screen.findByRole("button", { name: "现场模式状态：现场模式" });
+
+  fireEvent.click(fieldModeButton);
+
+  expect(await screen.findByRole("status")).toHaveTextContent("现场模式已启动，页面已锁定");
+  expect(screen.getByRole("heading", { level: 1, name: "售卖" })).toBeVisible();
 });
 
 test("shows the running app version in the top bar", async () => {

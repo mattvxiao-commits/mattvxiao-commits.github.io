@@ -1,9 +1,12 @@
 import {
   BarChart3,
+  ClipboardList,
+  LockKeyhole,
   PackageSearch,
   ReceiptText,
   Settings,
   Store,
+  UnlockKeyhole,
 } from "lucide-react";
 import { type MouseEvent, type ReactElement, useEffect, useRef, useState } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
@@ -40,11 +43,20 @@ const pages = [
     stats: ["快速开单", "待收款", "离线队列"],
   },
   {
+    to: "/orders",
+    label: "订单",
+    icon: ClipboardList,
+    eyebrow: "Orders",
+    title: "订单",
+    summary: "订单记录独立页将在 V1.7b 承接当前售卖页内的订单记录能力。",
+    stats: ["订单记录", "售后状态", "统计口径"],
+  },
+  {
     to: "/dashboard",
-    label: "仪表盘",
+    label: "数据",
     icon: BarChart3,
-    eyebrow: "Overview",
-    title: "仪表盘",
+    eyebrow: "Data",
+    title: "数据",
     summary: "查看今日销售、热卖商品与摊位经营状态的工作区占位。",
     stats: ["今日收入", "热卖商品", "同步状态"],
   },
@@ -101,14 +113,20 @@ export default function App() {
   const [pendingPath, setPendingPath] = useState<string>();
   const [isLockDialogOpen, setIsLockDialogOpen] = useState(false);
   const [isUpdatePromptVisible, setIsUpdatePromptVisible] = useState(false);
+  const [fieldModeTip, setFieldModeTip] = useState<string>();
   const suppressNextUnlockDialogRef = useRef(false);
+  const fieldModeTipTimerRef = useRef<number | undefined>(undefined);
   const location = useLocation();
   const navigate = useNavigate();
   const brandSubtitle = settings?.shopName.trim() || defaultBrandSubtitle;
+  const isFieldModeEnabled = settings?.fieldLock.enabled === true;
+  const fieldModeLabel = isFieldModeEnabled ? "现场模式" : "未锁定";
+  const FieldModeIcon = isFieldModeEnabled ? LockKeyhole : UnlockKeyhole;
 
   useEffect(() => {
     return () => {
       revokeImageUrls();
+      window.clearTimeout(fieldModeTipTimerRef.current);
     };
   }, []);
 
@@ -223,6 +241,18 @@ export default function App() {
     void applyPwaUpdate();
   }
 
+  function handleFieldModeStatusClick() {
+    const nextTip = isFieldModeEnabled
+      ? "现场模式已启动，页面已锁定"
+      : "现场模式未开启";
+
+    window.clearTimeout(fieldModeTipTimerRef.current);
+    setFieldModeTip(nextTip);
+    fieldModeTipTimerRef.current = window.setTimeout(() => {
+      setFieldModeTip(undefined);
+    }, 3000);
+  }
+
   function renderProtectedPage(path: string, element: ReactElement) {
     if (!isProtectedPath(path)) {
       return element;
@@ -241,45 +271,63 @@ export default function App() {
 
   return (
     <div className="appShell">
-      <header className="topBar">
-        <div className="brandBlock">
-          <div className="brandMark" aria-hidden="true">
-            <Store size={21} strokeWidth={2.4} />
+      <aside className="appRail" aria-label="ECRM 应用侧栏">
+        <div className="railBrandBlock">
+          <div className="railBrandMark" aria-hidden="true">
+            <Store size={20} strokeWidth={2.4} />
           </div>
-          <div>
+          <div className="railBrandText">
             <div className="brandLine">
               <div className="brand">ECRM</div>
-              <span className="versionBadge">v{__APP_VERSION__}</span>
             </div>
-            <div className="subtitle">{brandSubtitle}</div>
+            <span className="versionBadge">v{__APP_VERSION__}</span>
+            <div className="subtitle railSubtitle">{brandSubtitle}</div>
           </div>
         </div>
-        <nav className="nav" aria-label="主导航">
+        <div className="fieldModeRailSlot">
+          <button
+            type="button"
+            className={isFieldModeEnabled ? "fieldModeRailButton isLocked" : "fieldModeRailButton"}
+            aria-label={`现场模式状态：${fieldModeLabel}`}
+            onClick={handleFieldModeStatusClick}
+          >
+            <FieldModeIcon size={24} strokeWidth={2.1} aria-hidden="true" />
+            <span>{fieldModeLabel}</span>
+          </button>
+          {fieldModeTip ? (
+            <div className="fieldModeRailTip" role="status">
+              {fieldModeTip}
+            </div>
+          ) : null}
+        </div>
+        <nav className="railNav" aria-label="应用导航">
           {pages.map((page) => {
             const Icon = page.icon;
             return (
               <NavLink key={page.to} to={page.to} onClick={(event) => handleNavClick(event, page.to)}>
-                <Icon size={18} strokeWidth={2.2} aria-hidden="true" />
+                <Icon size={21} strokeWidth={2.15} aria-hidden="true" />
                 <span>{page.label}</span>
               </NavLink>
             );
           })}
         </nav>
-      </header>
-      <PwaUpdatePrompt
-        isVisible={isUpdatePromptVisible}
-        onApply={handleApplyUpdate}
-        onDismiss={handleDismissUpdatePrompt}
-      />
-      <main>
+        <div className="railFooter" aria-hidden="true" />
+      </aside>
+      <main className="appMain">
+        <PwaUpdatePrompt
+          isVisible={isUpdatePromptVisible}
+          onApply={handleApplyUpdate}
+          onDismiss={handleDismissUpdatePrompt}
+        />
         <Routes>
           <Route path="/" element={<Navigate to="/products" replace />} />
           <Route path="/products" element={renderProtectedPage("/products", <ProductsPage />)} />
           <Route path="/sales" element={<SalesPage />} />
+          <Route path="/orders" element={<PagePlaceholder page={pages[2]} />} />
           <Route path="/dashboard" element={renderProtectedPage("/dashboard", <DashboardPage />)} />
           <Route path="/settings" element={renderProtectedPage("/settings", <SettingsPage />)} />
           {pages.map((page) => (
-            page.to === "/products" || page.to === "/sales" || page.to === "/dashboard" || page.to === "/settings" ? null :
+            page.to === "/products" || page.to === "/sales" || page.to === "/orders" || page.to === "/dashboard" || page.to === "/settings" ? null :
             <Route
               key={page.to}
               path={page.to}
