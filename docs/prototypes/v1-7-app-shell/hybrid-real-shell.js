@@ -583,12 +583,7 @@
       .slice()
       .sort((left, right) => new Date(right.paidAt || right.createdAt || 0) - new Date(left.paidAt || left.createdAt || 0))
       .slice(0, 16);
-    const orderedForTwoColumns = [];
-    for (let index = 0; index < sortedOrders.length; index += 2) {
-      if (sortedOrders[index + 1]) orderedForTwoColumns.push(sortedOrders[index + 1]);
-      orderedForTwoColumns.push(sortedOrders[index]);
-    }
-    const rows = orderedForTwoColumns.map(renderOrderRow).join("");
+    const rows = sortedOrders.map(renderOrderRow).join("");
     return `
       <div class="pageHeader">
         <div class="pageHeaderCopy">
