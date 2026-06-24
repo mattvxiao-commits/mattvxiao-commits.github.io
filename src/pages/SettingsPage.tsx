@@ -11,6 +11,7 @@ import {
   saveImage,
   saveSettings
 } from "../db/repositories";
+import { normalizeFieldLockSettings } from "../domain/fieldLock";
 import { buildOrderExportSheets } from "../domain/orderExport";
 import { displayProductCode } from "../domain/productCode";
 import { createDefaultCampaignGiftConfig, normalizeCampaignGiftConfig } from "../domain/settings";
@@ -923,6 +924,7 @@ export default function SettingsPage() {
 function normalizeSettingsForSave(settings: AppSettings): AppSettings {
   return {
     ...settings,
-    campaignGift: normalizeCampaignGiftConfig(settings.campaignGift)
+    campaignGift: normalizeCampaignGiftConfig(settings.campaignGift),
+    fieldLock: normalizeFieldLockSettings(settings.fieldLock)
   };
 }

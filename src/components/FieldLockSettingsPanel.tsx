@@ -1,16 +1,31 @@
 import { ShieldCheck } from "lucide-react";
 import { useState } from "react";
-import { relockFieldLock, setFieldLockPin, unlockFieldLock } from "../domain/fieldLock";
-import type { FieldLockSettings } from "../domain/types";
+import {
+  defaultFieldLockProtectedScopes,
+  normalizeFieldLockSettings,
+  relockFieldLock,
+  setFieldLockPin,
+  unlockFieldLock
+} from "../domain/fieldLock";
+import type { FieldLockScope, FieldLockSettings } from "../domain/types";
 
 type FieldLockSettingsPanelProps = {
   fieldLock: FieldLockSettings;
   onSave: (fieldLock: FieldLockSettings, action: "enable" | "relock" | "disable") => Promise<void>;
 };
 
+const scopeOptions: Array<{ value: FieldLockScope; label: string }> = [
+  { value: "products", label: "商品页" },
+  { value: "orderDetail", label: "订单详情" },
+  { value: "dashboard", label: "数据页" },
+  { value: "settings", label: "设置页" }
+];
+
 export default function FieldLockSettingsPanel({ fieldLock, onSave }: FieldLockSettingsPanelProps) {
+  const normalizedFieldLock = normalizeFieldLockSettings(fieldLock);
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
+  const [protectedScopes, setProtectedScopes] = useState<FieldLockScope[]>(normalizedFieldLock.protectedScopes);
   const [error, setError] = useState<string>();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -18,7 +33,16 @@ export default function FieldLockSettingsPanel({ fieldLock, onSave }: FieldLockS
     setError(undefined);
     setIsSaving(true);
     try {
-      const nextFieldLock = unlockFieldLock(await setFieldLockPin(fieldLock, pin, confirmPin));
+      const nextFieldLock = unlockFieldLock(
+        await setFieldLockPin(
+          {
+            ...normalizedFieldLock,
+            protectedScopes
+          },
+          pin,
+          confirmPin
+        )
+      );
       await onSave(nextFieldLock, "enable");
       setPin("");
       setConfirmPin("");
@@ -36,10 +60,12 @@ export default function FieldLockSettingsPanel({ fieldLock, onSave }: FieldLockS
       await onSave(
         {
           enabled: false,
+          protectedScopes: [...defaultFieldLockProtectedScopes],
           failedAttempts: 0
         },
         "disable"
       );
+      setProtectedScopes([...defaultFieldLockProtectedScopes]);
     } catch {
       setError("现场模式关闭失败，请重试。");
     } finally {
@@ -51,7 +77,13 @@ export default function FieldLockSettingsPanel({ fieldLock, onSave }: FieldLockS
     setError(undefined);
     setIsSaving(true);
     try {
-      await onSave(relockFieldLock(fieldLock), "relock");
+      await onSave(
+        relockFieldLock({
+          ...normalizedFieldLock,
+          protectedScopes
+        }),
+        "relock"
+      );
     } catch {
       setError("现场模式重新锁定失败，请重试。");
     } finally {
@@ -65,6 +97,16 @@ export default function FieldLockSettingsPanel({ fieldLock, onSave }: FieldLockS
       : "已开启"
     : "未开启";
 
+  function toggleScope(scope: FieldLockScope, checked: boolean) {
+    setProtectedScopes((current) => {
+      if (checked) {
+        return current.includes(scope) ? current : [...current, scope];
+      }
+
+      return current.filter((item) => item !== scope);
+    });
+  }
+
   return (
     <section className="settingsSection wideSection fieldLockSettings" aria-labelledby="field-lock-settings-title">
       <div className="sectionTitle">
@@ -74,34 +116,50 @@ export default function FieldLockSettingsPanel({ fieldLock, onSave }: FieldLockS
             <h2 id="field-lock-settings-title">现场模式</h2>
             <span className={fieldLock.enabled ? "stateChip isActive" : "stateChip"}>{stateLabel}</span>
           </div>
-          <p>开启后，商品、设置、仪表盘需要输入 4 位数字 PIN 才能进入。</p>
+          <p>开启后，所选管理范围需要输入 4 位数字 PIN 才能查看或操作。</p>
         </div>
       </div>
 
       <div className="fieldLockCompactGrid">
-        <div className="settingsFieldGrid fieldLockInputs">
-          <label>
-            <span>设置现场模式 PIN</span>
-            <input
-              value={pin}
-              type="password"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={4}
-              onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 4))}
-            />
-          </label>
-          <label>
-            <span>确认现场模式 PIN</span>
-            <input
-              value={confirmPin}
-              type="password"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={4}
-              onChange={(event) => setConfirmPin(event.target.value.replace(/\D/g, "").slice(0, 4))}
-            />
-          </label>
+        <div className="fieldLockConfigColumn">
+          <div className="settingsFieldGrid fieldLockInputs">
+            <label>
+              <span>设置现场模式 PIN</span>
+              <input
+                value={pin}
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 4))}
+              />
+            </label>
+            <label>
+              <span>确认现场模式 PIN</span>
+              <input
+                value={confirmPin}
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                onChange={(event) => setConfirmPin(event.target.value.replace(/\D/g, "").slice(0, 4))}
+              />
+            </label>
+          </div>
+
+          <div className="fieldLockScopeGroup" role="group" aria-label="锁定范围">
+            {scopeOptions.map((option) => (
+              <label className="checkControl" key={option.value}>
+                <input
+                  type="checkbox"
+                  checked={protectedScopes.includes(option.value)}
+                  aria-label={`锁定${option.label}`}
+                  onChange={(event) => toggleScope(option.value, event.target.checked)}
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
         </div>
 
         <div className="dialogActions fieldLockActions">

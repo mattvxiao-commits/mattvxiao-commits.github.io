@@ -86,6 +86,7 @@ test("shows locked field mode status tip when field mode requires unlock", async
   repositories.getSettings.mockResolvedValue({
     ...createDefaultSettings(),
     fieldLock: {
+      ...createDefaultSettings().fieldLock,
       enabled: true,
       pinHash: "secret-hash",
       pinSalt: "secret-salt",
@@ -167,6 +168,30 @@ test("locks products navigation when field mode is enabled", async () => {
   expect(screen.queryByRole("heading", { level: 1, name: "商品" })).not.toBeInTheDocument();
 });
 
+test("does not lock products navigation when products are removed from the field mode scope", async () => {
+  repositories.getSettings.mockResolvedValue({
+    ...createDefaultSettings(),
+    fieldLock: {
+      enabled: true,
+      pinHash: "secret-hash",
+      pinSalt: "secret-salt",
+      failedAttempts: 0,
+      protectedScopes: ["settings"]
+    }
+  });
+
+  render(
+    <MemoryRouter initialEntries={["/sales"]}>
+      <App />
+    </MemoryRouter>
+  );
+
+  fireEvent.click(await screen.findByRole("link", { name: "商品" }));
+
+  expect(await screen.findByRole("heading", { level: 1, name: "商品" })).toBeVisible();
+  expect(screen.queryByRole("dialog", { name: "管理页面已锁定" })).not.toBeInTheDocument();
+});
+
 test("unlocks protected navigation with correct PIN", async () => {
   repositories.getSettings.mockResolvedValue({
     ...createDefaultSettings(),
@@ -190,6 +215,7 @@ test("silently returns to sales when field mode is relocked from settings", asyn
   const unlockedSettings = {
     ...createDefaultSettings(),
     fieldLock: {
+      ...createDefaultSettings().fieldLock,
       enabled: true,
       pinHash: "secret-hash",
       pinSalt: "secret-salt",

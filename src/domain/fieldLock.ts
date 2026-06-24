@@ -1,9 +1,11 @@
-import type { FieldLockSettings } from "./types";
+import type { FieldLockScope, FieldLockSettings } from "./types";
 
 const FOUR_DIGIT_PIN_PATTERN = /^\d{4}$/;
 const UNLOCK_DURATION_MS = 5 * 60 * 1000;
 const LOCKOUT_DURATION_MS = 30 * 1000;
 const MAX_FAILED_ATTEMPTS = 5;
+export const defaultFieldLockProtectedScopes: FieldLockScope[] = ["products", "orderDetail", "dashboard", "settings"];
+const fieldLockScopeSet = new Set<FieldLockScope>(defaultFieldLockProtectedScopes);
 
 type PinValidationResult = { valid: true } | { valid: false; message: string };
 
@@ -16,6 +18,7 @@ export type FieldLockVerifyResult = {
 export function createDefaultFieldLockSettings(): FieldLockSettings {
   return {
     enabled: false,
+    protectedScopes: [...defaultFieldLockProtectedScopes],
     failedAttempts: 0
   };
 }
@@ -28,6 +31,7 @@ export function normalizeFieldLockSettings(value: unknown): FieldLockSettings {
   const record = value as Partial<FieldLockSettings>;
   return {
     enabled: record.enabled === true,
+    protectedScopes: normalizeProtectedScopes(record.protectedScopes),
     pinHash: typeof record.pinHash === "string" ? record.pinHash : undefined,
     pinSalt: typeof record.pinSalt === "string" ? record.pinSalt : undefined,
     unlockExpiresAt: typeof record.unlockExpiresAt === "string" ? record.unlockExpiresAt : undefined,
@@ -36,6 +40,26 @@ export function normalizeFieldLockSettings(value: unknown): FieldLockSettings {
       : 0,
     lockedUntil: typeof record.lockedUntil === "string" ? record.lockedUntil : undefined
   };
+}
+
+export function normalizeProtectedScopes(value: unknown): FieldLockScope[] {
+  if (!Array.isArray(value)) {
+    return [...defaultFieldLockProtectedScopes];
+  }
+
+  const nextScopes: FieldLockScope[] = [];
+  for (const item of value) {
+    if (fieldLockScopeSet.has(item as FieldLockScope) && !nextScopes.includes(item as FieldLockScope)) {
+      nextScopes.push(item as FieldLockScope);
+    }
+  }
+
+  return nextScopes;
+}
+
+export function fieldLockProtectsScope(settings: FieldLockSettings, scope: FieldLockScope): boolean {
+  const normalized = normalizeFieldLockSettings(settings);
+  return normalized.enabled && normalized.protectedScopes.includes(scope);
 }
 
 export function validateFieldLockPinFormat(pin: string): PinValidationResult {

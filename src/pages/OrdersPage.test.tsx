@@ -168,3 +168,23 @@ test("requires field mode PIN before opening order detail", async () => {
 
   await waitFor(() => expect(repositories.listOrderItems).toHaveBeenCalledWith("locked-order"));
 });
+
+test("opens order detail without PIN when order detail is removed from the field mode scope", async () => {
+  repositories.getSettings.mockResolvedValue({
+    ...settings,
+    fieldLock: {
+      ...(await setFieldLockPin(settings.fieldLock, "2580", "2580")),
+      protectedScopes: ["settings"]
+    }
+  });
+  repositories.listOrders.mockResolvedValue([order({ id: "unlocked-order", orderNo: "ECRM-UNLOCKED" })]);
+  repositories.listOrderItems.mockResolvedValue([orderItem({ orderId: "unlocked-order" })]);
+
+  render(<OrdersPage />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "查看订单 ECRM-UNLOCKED" }));
+
+  expect(await screen.findByRole("dialog", { name: /订单详情/ })).toBeVisible();
+  expect(screen.queryByRole("dialog", { name: "管理页面已锁定" })).not.toBeInTheDocument();
+  expect(repositories.listOrderItems).toHaveBeenCalledWith("unlocked-order");
+});

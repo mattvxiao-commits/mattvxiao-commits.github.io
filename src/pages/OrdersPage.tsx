@@ -16,7 +16,7 @@ import {
   saveSettings,
   voidPaidOrder
 } from "../db/repositories";
-import { requiresFieldLockUnlock, verifyFieldLockPin } from "../domain/fieldLock";
+import { fieldLockProtectsScope, requiresFieldLockUnlock, verifyFieldLockPin } from "../domain/fieldLock";
 import { formatMoney } from "../domain/money";
 import {
   dateRangeLabels,
@@ -181,7 +181,11 @@ export default function OrdersPage() {
   }
 
   function requestOrderDetail(order: Order) {
-    if (settings && requiresFieldLockUnlock(settings.fieldLock)) {
+    if (
+      settings &&
+      fieldLockProtectsScope(settings.fieldLock, "orderDetail") &&
+      requiresFieldLockUnlock(settings.fieldLock)
+    ) {
       setOrderPendingUnlock(order);
       setIsOrderUnlockOpen(true);
       return;

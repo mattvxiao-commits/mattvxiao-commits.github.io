@@ -13,8 +13,13 @@ import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "reac
 import FieldLockDialog from "./components/FieldLockDialog";
 import PwaUpdatePrompt from "./components/PwaUpdatePrompt";
 import { getSettings, saveSettings } from "./db/repositories";
-import { normalizeFieldLockSettings, requiresFieldLockUnlock, verifyFieldLockPin } from "./domain/fieldLock";
-import type { AppSettings } from "./domain/types";
+import {
+  fieldLockProtectsScope,
+  normalizeFieldLockSettings,
+  requiresFieldLockUnlock,
+  verifyFieldLockPin
+} from "./domain/fieldLock";
+import type { AppSettings, FieldLockScope } from "./domain/types";
 import DashboardPage from "./pages/DashboardPage";
 import OrdersPage from "./pages/OrdersPage";
 import ProductsPage from "./pages/ProductsPage";
@@ -72,7 +77,11 @@ const pages = [
   },
 ];
 
-const protectedPagePaths = new Set(["/products", "/settings", "/dashboard"]);
+const protectedPageScopes: Partial<Record<string, FieldLockScope>> = {
+  "/products": "products",
+  "/dashboard": "dashboard",
+  "/settings": "settings"
+};
 const defaultBrandSubtitle = "Booth POS 摊位工具";
 
 type PagePlaceholderProps = {
@@ -174,7 +183,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!settings || !isProtectedPath(location.pathname)) {
+    if (!settings || !isProtectedPath(settings.fieldLock, location.pathname)) {
       return;
     }
 
@@ -194,7 +203,7 @@ export default function App() {
   }, [location.pathname, navigate, settings]);
 
   function shouldLockPath(path: string): boolean {
-    return Boolean(settings && isProtectedPath(path) && requiresFieldLockUnlock(settings.fieldLock));
+    return Boolean(settings && isProtectedPath(settings.fieldLock, path) && requiresFieldLockUnlock(settings.fieldLock));
   }
 
   function handleNavClick(event: MouseEvent<HTMLAnchorElement>, path: string) {
@@ -255,12 +264,17 @@ export default function App() {
   }
 
   function renderProtectedPage(path: string, element: ReactElement) {
-    if (!isProtectedPath(path)) {
+    const scope = protectedPageScopes[path];
+    if (!scope) {
       return element;
     }
 
     if (!settings) {
       return <p className="emptyState">正在加载现场模式...</p>;
+    }
+
+    if (!fieldLockProtectsScope(settings.fieldLock, scope)) {
+      return element;
     }
 
     if (requiresFieldLockUnlock(settings.fieldLock)) {
@@ -347,6 +361,7 @@ export default function App() {
   );
 }
 
-function isProtectedPath(path: string): boolean {
-  return protectedPagePaths.has(path);
+function isProtectedPath(fieldLock: AppSettings["fieldLock"], path: string): boolean {
+  const scope = protectedPageScopes[path];
+  return Boolean(scope && fieldLockProtectsScope(fieldLock, scope));
 }

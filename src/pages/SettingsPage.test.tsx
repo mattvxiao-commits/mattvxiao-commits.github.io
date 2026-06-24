@@ -111,6 +111,13 @@ test("运营赠礼可以切换指定 SKU 和指定 SPU", async () => {
 test("enables and saves field mode immediately after setting matching four digit PIN", async () => {
   render(<SettingsPage />);
 
+  expect(await screen.findByRole("group", { name: "锁定范围" })).toBeVisible();
+  expect(screen.getByLabelText("锁定商品页")).toBeChecked();
+  expect(screen.getByLabelText("锁定订单详情")).toBeChecked();
+  expect(screen.getByLabelText("锁定数据页")).toBeChecked();
+  expect(screen.getByLabelText("锁定设置页")).toBeChecked();
+
+  fireEvent.click(screen.getByLabelText("锁定商品页"));
   fireEvent.change(await screen.findByLabelText("设置现场模式 PIN"), { target: { value: "2580" } });
   fireEvent.change(screen.getByLabelText("确认现场模式 PIN"), { target: { value: "2580" } });
   fireEvent.click(screen.getByRole("button", { name: "开启现场模式" }));
@@ -124,6 +131,7 @@ test("enables and saves field mode immediately after setting matching four digit
     pinSalt: expect.any(String),
     unlockExpiresAt: expect.any(String)
   }));
+  expect(savedSettings.fieldLock.protectedScopes).toEqual(["orderDetail", "dashboard", "settings"]);
   expect(JSON.stringify(savedSettings)).not.toContain("2580");
 });
 
@@ -176,10 +184,11 @@ test("disables field mode immediately from settings page", async () => {
 
   await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalledTimes(1));
   const savedSettings = repositories.saveSettings.mock.calls[0][0] as AppSettings;
-  expect(savedSettings.fieldLock).toEqual({
+  expect(savedSettings.fieldLock).toEqual(expect.objectContaining({
     enabled: false,
     failedAttempts: 0
-  });
+  }));
+  expect(savedSettings.fieldLock.protectedScopes).toEqual(["products", "orderDetail", "dashboard", "settings"]);
 });
 
 test("keeps and warns about a configured discount SPU that is missing from products", async () => {

@@ -70,8 +70,11 @@ export type PromotionConfig = {
   giftTiers: GiftTierConfig[];
 };
 
+export type FieldLockScope = "products" | "orderDetail" | "dashboard" | "settings";
+
 export type FieldLockSettings = {
   enabled: boolean;
+  protectedScopes: FieldLockScope[];
   pinHash?: string;
   pinSalt?: string;
   unlockExpiresAt?: string;
