@@ -188,6 +188,17 @@ export function filterAndSortOrders(orders: Order[], filters: OrderHistoryFilter
     .sort((left, right) => orderBusinessTime(right).localeCompare(orderBusinessTime(left)));
 }
 
+export function sortOrdersForPairedColumns(orders: Order[]): Order[] {
+  const chronologicalOrders = [...orders].sort((left, right) => orderBusinessTime(left).localeCompare(orderBusinessTime(right)));
+  const pairs: Order[][] = [];
+
+  for (let index = 0; index < chronologicalOrders.length; index += 2) {
+    pairs.push(chronologicalOrders.slice(index, index + 2));
+  }
+
+  return pairs.reverse().flat();
+}
+
 function isInDateRange(value: string, range: OrderDateRange, now: Date): boolean {
   if (range === "all") {
     return true;

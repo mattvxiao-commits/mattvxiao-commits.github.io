@@ -1385,6 +1385,160 @@ p {
   font-weight: 800;
 }
 
+.ordersPage {
+  width: min(1180px, calc(100vw - var(--app-rail-width) - 32px));
+  margin: 0 auto;
+  padding: 10px 0 76px;
+}
+
+.ordersHeader {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.ordersHeader h1 {
+  font-size: clamp(22px, 3vw, 30px);
+  line-height: 1.05;
+}
+
+.ordersHeader p:not(.eyebrow) {
+  margin-top: 2px;
+  max-width: 680px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.ordersRefreshButton {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.ordersFilterBar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) repeat(3, minmax(132px, 0.6fr));
+  gap: 8px;
+  align-items: end;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid rgba(222, 214, 201, 0.94);
+  border-radius: 8px;
+  background: rgba(255, 253, 250, 0.9);
+}
+
+.ordersFilterBar label {
+  display: grid;
+  gap: 6px;
+}
+
+.ordersFilterBar label > span {
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.ordersFilterBar input,
+.ordersFilterBar select {
+  min-height: 34px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+
+.ordersSearchInput {
+  position: relative;
+}
+
+.ordersSearchInput svg {
+  position: absolute;
+  top: 50%;
+  left: 9px;
+  color: var(--muted);
+  transform: translateY(-50%);
+}
+
+.ordersSearchInput input {
+  padding-left: 30px;
+}
+
+.ordersListPanel {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ordersListHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+}
+
+.ordersListHeader h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.ordersListHeader span {
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.ordersGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ordersGridItem {
+  min-width: 0;
+}
+
+.ordersOpenButton {
+  min-height: 70px;
+  padding: 9px 10px;
+}
+
+.ordersHistoryMeta {
+  gap: 5px 6px;
+}
+
+.ordersAmount {
+  margin-left: 10px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.orderHistoryChip.isPayment-wechat {
+  border-color: rgba(47, 111, 94, 0.28);
+  background: rgba(219, 233, 228, 0.88);
+  color: #194a3f;
+}
+
+.orderHistoryChip.isPayment-alipay {
+  border-color: rgba(45, 96, 184, 0.28);
+  background: rgba(226, 235, 255, 0.88);
+  color: #244f9a;
+}
+
+.orderHistoryChip.isPayment-cash {
+  border-color: rgba(168, 95, 24, 0.28);
+  background: rgba(255, 241, 219, 0.92);
+  color: #8a5419;
+}
+
+.orderHistoryChip.isPayment-other {
+  border-color: rgba(107, 95, 84, 0.28);
+  background: rgba(238, 233, 226, 0.9);
+  color: #51493f;
+}
+
 .salesPage {
   width: min(1280px, calc(100vw - var(--app-rail-width) - 32px));
   margin: 0 auto;
@@ -3231,6 +3385,21 @@ p {
   .salesPage {
     width: min(100% - 20px, 1280px);
     padding-top: 14px;
+  }
+
+  .ordersPage {
+    width: min(100% - 20px, 1180px);
+    padding-top: 14px;
+  }
+
+  .ordersHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ordersFilterBar,
+  .ordersGrid {
+    grid-template-columns: 1fr;
   }
 
   .settingsHeader {

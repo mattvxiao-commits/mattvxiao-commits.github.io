@@ -16,6 +16,7 @@ import { getSettings, saveSettings } from "./db/repositories";
 import { normalizeFieldLockSettings, requiresFieldLockUnlock, verifyFieldLockPin } from "./domain/fieldLock";
 import type { AppSettings } from "./domain/types";
 import DashboardPage from "./pages/DashboardPage";
+import OrdersPage from "./pages/OrdersPage";
 import ProductsPage from "./pages/ProductsPage";
 import SalesPage from "./pages/SalesPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -323,7 +324,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/products" replace />} />
           <Route path="/products" element={renderProtectedPage("/products", <ProductsPage />)} />
           <Route path="/sales" element={<SalesPage />} />
-          <Route path="/orders" element={<PagePlaceholder page={pages[2]} />} />
+          <Route path="/orders" element={<OrdersPage />} />
           <Route path="/dashboard" element={renderProtectedPage("/dashboard", <DashboardPage />)} />
           <Route path="/settings" element={renderProtectedPage("/settings", <SettingsPage />)} />
           {pages.map((page) => (

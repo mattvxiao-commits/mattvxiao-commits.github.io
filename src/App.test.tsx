@@ -32,6 +32,7 @@ vi.mock("./utils/pwaUpdate", () => ({
 }));
 vi.mock("./pages/ProductsPage", () => ({ default: () => <h1>商品</h1> }));
 vi.mock("./pages/SalesPage", () => ({ default: () => <h1>售卖</h1> }));
+vi.mock("./pages/OrdersPage", () => ({ default: () => <h1>订单</h1> }));
 vi.mock("./pages/DashboardPage", () => ({ default: () => <h1>仪表盘</h1> }));
 vi.mock("./pages/SettingsPage", () => ({ default: () => <h1>设置</h1> }));
 

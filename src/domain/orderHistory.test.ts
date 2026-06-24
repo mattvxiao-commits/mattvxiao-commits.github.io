@@ -12,6 +12,7 @@ import {
   orderNatureLabels,
   orderStatusLabels,
   paymentMethodLabels,
+  sortOrdersForPairedColumns,
   type OrderDateRange,
   type OrderHistoryFilters
 } from "./orderHistory";
@@ -141,6 +142,47 @@ describe("order history filters", () => {
     );
 
     expect(result.map((item) => item.id)).toEqual(["paid-newest", "created-middle", "paid-oldest"]);
+  });
+
+  test("sorts paired desktop order columns by newest pair first and left-old right-new inside each pair", () => {
+    const orders = Array.from({ length: 8 }, (_, index) => {
+      const sequence = index + 1;
+      return order({
+        id: String(sequence).padStart(3, "0"),
+        orderNo: `ECRM-${String(sequence).padStart(3, "0")}`,
+        paidAt: `2026-06-17T09:${String(sequence).padStart(2, "0")}:00.000Z`
+      });
+    });
+
+    expect(sortOrdersForPairedColumns(orders).map((item) => item.id)).toEqual([
+      "007",
+      "008",
+      "005",
+      "006",
+      "003",
+      "004",
+      "001",
+      "002"
+    ]);
+  });
+
+  test("keeps the unpaired newest order in the first left column when order count is odd", () => {
+    const orders = Array.from({ length: 5 }, (_, index) => {
+      const sequence = index + 1;
+      return order({
+        id: String(sequence).padStart(3, "0"),
+        orderNo: `ECRM-${String(sequence).padStart(3, "0")}`,
+        paidAt: `2026-06-17T09:${String(sequence).padStart(2, "0")}:00.000Z`
+      });
+    });
+
+    expect(sortOrdersForPairedColumns(orders).map((item) => item.id)).toEqual([
+      "005",
+      "003",
+      "004",
+      "001",
+      "002"
+    ]);
   });
 
   test("returns no after-sales badges for paid orders", () => {
