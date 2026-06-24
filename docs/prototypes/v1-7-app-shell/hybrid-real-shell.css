@@ -1992,10 +1992,11 @@ p {
 .desktopShell .mainNav .modeStatusButton {
   position: relative;
   width: 66px;
-  min-height: 70px;
+  min-height: 46px;
   grid-template-rows: 1fr;
   overflow: visible;
-  margin: 0 -4px 2px;
+  margin: 0 -4px 4px;
+  padding: 4px 3px;
   border-color: rgba(112, 104, 94, 0.24);
   background: rgba(255, 253, 250, 0.78);
 }
@@ -2008,8 +2009,8 @@ p {
 .desktopShell .mainNav .modeStatusButton .navIcon {
   position: absolute;
   left: 50%;
-  width: 34px;
-  height: 34px;
+  width: 27px;
+  height: 27px;
   color: rgba(81, 73, 63, 0.72);
   transform: translateX(-50%);
 }
@@ -2035,12 +2036,12 @@ p {
 }
 
 .desktopShell .mainNav .modeStatusButton.isUnlockedMode .navIcon {
-  top: 14px;
+  top: 10px;
   margin-left: 6px;
 }
 
 .desktopShell .mainNav .modeStatusButton.isUnlockedMode em {
-  margin-top: 32px;
+  margin-top: 26px;
 }
 
 .desktopShell .mainNav .modeStatusButton.isLockedMode {
@@ -2049,13 +2050,13 @@ p {
 }
 
 .desktopShell .mainNav .modeStatusButton.isLockedMode .navIcon {
-  top: 10px;
+  top: 8px;
   color: #7a3d10;
-  transform: translateX(-50%) scale(1.08);
+  transform: translateX(-50%);
 }
 
 .desktopShell .mainNav .modeStatusButton.isLockedMode em {
-  margin-top: 31px;
+  margin-top: 25px;
   color: #6f330c;
 }
 
