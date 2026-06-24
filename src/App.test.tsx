@@ -82,6 +82,25 @@ test("shows field mode status as a non-navigation rail item", async () => {
   expect(screen.getByRole("heading", { level: 1, name: "售卖" })).toBeVisible();
 });
 
+test("keeps the same navigation contract for the responsive app shell", async () => {
+  render(
+    <MemoryRouter initialEntries={["/sales"]}>
+      <App />
+    </MemoryRouter>
+  );
+
+  const rail = await screen.findByRole("complementary", { name: "ECRM 应用侧栏" });
+  const nav = screen.getByRole("navigation", { name: "应用导航" });
+
+  expect(rail).toContainElement(screen.getByRole("button", { name: "现场模式状态：未锁定" }));
+  expect(nav).toContainElement(screen.getByRole("link", { name: "商品" }));
+  expect(nav).toContainElement(screen.getByRole("link", { name: "售卖" }));
+  expect(nav).toContainElement(screen.getByRole("link", { name: "订单" }));
+  expect(nav).toContainElement(screen.getByRole("link", { name: "数据" }));
+  expect(nav).toContainElement(screen.getByRole("link", { name: "设置" }));
+  expect(screen.queryByRole("link", { name: /未锁定/ })).not.toBeInTheDocument();
+});
+
 test("shows locked field mode status tip when field mode requires unlock", async () => {
   repositories.getSettings.mockResolvedValue({
     ...createDefaultSettings(),
