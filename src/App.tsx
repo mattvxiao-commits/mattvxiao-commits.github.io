@@ -15,6 +15,7 @@ import PwaUpdatePrompt from "./components/PwaUpdatePrompt";
 import { getSettings, saveSettings } from "./db/repositories";
 import {
   fieldLockProtectsScope,
+  isFieldLockTemporarilyUnlocked,
   normalizeFieldLockSettings,
   requiresFieldLockUnlock,
   verifyFieldLockPin
@@ -130,8 +131,16 @@ export default function App() {
   const navigate = useNavigate();
   const brandSubtitle = settings?.shopName.trim() || defaultBrandSubtitle;
   const isFieldModeEnabled = settings?.fieldLock.enabled === true;
-  const fieldModeLabel = isFieldModeEnabled ? "现场模式" : "未锁定";
-  const FieldModeIcon = isFieldModeEnabled ? LockKeyhole : UnlockKeyhole;
+  const isFieldModeTemporaryUnlocked = Boolean(
+    settings?.fieldLock && isFieldLockTemporarilyUnlocked(settings.fieldLock)
+  );
+  const fieldModeStatusLabel = !isFieldModeEnabled
+    ? "未锁定"
+    : isFieldModeTemporaryUnlocked
+      ? "现场模式-临时解锁"
+      : "现场模式";
+  const fieldModeVisibleLabel = isFieldModeTemporaryUnlocked ? "临时解锁" : fieldModeStatusLabel;
+  const FieldModeIcon = isFieldModeEnabled && !isFieldModeTemporaryUnlocked ? LockKeyhole : UnlockKeyhole;
 
   useEffect(() => {
     return () => {
@@ -252,9 +261,11 @@ export default function App() {
   }
 
   function handleFieldModeStatusClick() {
-    const nextTip = isFieldModeEnabled
-      ? "现场模式已启动，页面已锁定"
-      : "现场模式未开启";
+    const nextTip = !isFieldModeEnabled
+      ? "现场模式未开启"
+      : isFieldModeTemporaryUnlocked
+        ? "现场模式已启动，当前为临时解锁"
+        : "现场模式已启动，页面已锁定";
 
     window.clearTimeout(fieldModeTipTimerRef.current);
     setFieldModeTip(nextTip);
@@ -302,12 +313,16 @@ export default function App() {
         <div className="fieldModeRailSlot">
           <button
             type="button"
-            className={isFieldModeEnabled ? "fieldModeRailButton isLocked" : "fieldModeRailButton"}
-            aria-label={`现场模式状态：${fieldModeLabel}`}
+            className={[
+              "fieldModeRailButton",
+              isFieldModeEnabled && !isFieldModeTemporaryUnlocked ? "isLocked" : "",
+              isFieldModeTemporaryUnlocked ? "isTemporaryUnlocked" : ""
+            ].filter(Boolean).join(" ")}
+            aria-label={`现场模式状态：${fieldModeStatusLabel}`}
             onClick={handleFieldModeStatusClick}
           >
             <FieldModeIcon size={24} strokeWidth={2.1} aria-hidden="true" />
-            <span>{fieldModeLabel}</span>
+            <span>{fieldModeVisibleLabel}</span>
           </button>
           {fieldModeTip ? (
             <div className="fieldModeRailTip" role="status">

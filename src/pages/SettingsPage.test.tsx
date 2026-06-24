@@ -123,6 +123,7 @@ test("enables and saves field mode immediately after setting matching four digit
   fireEvent.click(screen.getByRole("button", { name: "开启现场模式" }));
 
   await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalledTimes(1));
+  expect(await screen.findByText("现场模式已保存并启动，进入临时解锁状态。")).toBeVisible();
   expect(await screen.findByText("已开启 · 临时解锁")).toBeVisible();
   const savedSettings = repositories.saveSettings.mock.calls.at(-1)?.[0] as AppSettings;
   expect(savedSettings.fieldLock).toEqual(expect.objectContaining({

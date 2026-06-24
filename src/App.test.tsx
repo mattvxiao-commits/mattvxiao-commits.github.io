@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, test, vi } from "vitest";
 import App from "./App";
 import { createDefaultSettings } from "./db/db";
-import { setFieldLockPin } from "./domain/fieldLock";
+import { setFieldLockPin, unlockFieldLock } from "./domain/fieldLock";
 import { notifyPwaUpdateReadyForTest } from "./utils/pwaUpdate";
 import { notifySettingsUpdated } from "./utils/settingsEvents";
 
@@ -105,6 +105,34 @@ test("shows locked field mode status tip when field mode requires unlock", async
   fireEvent.click(fieldModeButton);
 
   expect(await screen.findByRole("status")).toHaveTextContent("现场模式已启动，页面已锁定");
+  expect(screen.getByRole("heading", { level: 1, name: "售卖" })).toBeVisible();
+});
+
+test("shows temporary unlocked field mode status tip when field mode is enabled but unlocked", async () => {
+  repositories.getSettings.mockResolvedValue({
+    ...createDefaultSettings(),
+    fieldLock: unlockFieldLock({
+      ...createDefaultSettings().fieldLock,
+      enabled: true,
+      pinHash: "secret-hash",
+      pinSalt: "secret-salt",
+      failedAttempts: 0
+    })
+  });
+
+  render(
+    <MemoryRouter initialEntries={["/sales"]}>
+      <App />
+    </MemoryRouter>
+  );
+
+  const fieldModeButton = await screen.findByRole("button", { name: "现场模式状态：现场模式-临时解锁" });
+
+  expect(fieldModeButton).toBeVisible();
+
+  fireEvent.click(fieldModeButton);
+
+  expect(await screen.findByRole("status")).toHaveTextContent("现场模式已启动，当前为临时解锁");
   expect(screen.getByRole("heading", { level: 1, name: "售卖" })).toBeVisible();
 });
 

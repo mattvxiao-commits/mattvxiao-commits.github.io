@@ -281,7 +281,7 @@ export default function SettingsPage() {
       await saveSettings(nextSettings);
       setSettings(nextSettings);
       notifySettingsUpdated(nextSettings, { suppressUnlockDialog: action === "relock" });
-      setStatus({ kind: "success", text: fieldLock.enabled ? "现场模式已保存并生效。" : "现场模式已关闭。" });
+      setStatus({ kind: "success", text: getFieldLockStatusText(fieldLock, action) });
     } catch {
       setStatus({ kind: "error", text: "现场模式保存失败，请重试。" });
       throw new Error("现场模式保存失败");
@@ -927,4 +927,18 @@ function normalizeSettingsForSave(settings: AppSettings): AppSettings {
     campaignGift: normalizeCampaignGiftConfig(settings.campaignGift),
     fieldLock: normalizeFieldLockSettings(settings.fieldLock)
   };
+}
+
+function getFieldLockStatusText(fieldLock: AppSettings["fieldLock"], action: "enable" | "relock" | "disable"): string {
+  if (!fieldLock.enabled || action === "disable") {
+    return "现场模式已关闭。";
+  }
+
+  if (action === "relock") {
+    return "现场模式已重新锁定。";
+  }
+
+  return fieldLock.unlockExpiresAt
+    ? "现场模式已保存并启动，进入临时解锁状态。"
+    : "现场模式已保存并生效。";
 }

@@ -1,4 +1,4 @@
-import { ShieldCheck } from "lucide-react";
+import { Info, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import {
   defaultFieldLockProtectedScopes,
@@ -28,6 +28,7 @@ export default function FieldLockSettingsPanel({ fieldLock, onSave }: FieldLockS
   const [protectedScopes, setProtectedScopes] = useState<FieldLockScope[]>(normalizedFieldLock.protectedScopes);
   const [error, setError] = useState<string>();
   const [isSaving, setIsSaving] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   async function handleEnable() {
     setError(undefined);
@@ -115,10 +116,26 @@ export default function FieldLockSettingsPanel({ fieldLock, onSave }: FieldLockS
           <div className="sectionTitleLine">
             <h2 id="field-lock-settings-title">现场模式</h2>
             <span className={fieldLock.enabled ? "stateChip isActive" : "stateChip"}>{stateLabel}</span>
+            <button
+              type="button"
+              className="inlineInfoButton"
+              aria-label="查看现场模式说明"
+              aria-expanded={isHelpOpen}
+              onClick={() => setIsHelpOpen((current) => !current)}
+            >
+              <Info size={14} aria-hidden="true" />
+            </button>
           </div>
           <p>开启后，所选管理范围需要输入 4 位数字 PIN 才能查看或操作。</p>
         </div>
       </div>
+
+      {isHelpOpen ? (
+        <div className="fieldLockHelpPanel" role="note">
+          <p>临时解锁表示现场模式已开启，但当前设备短时间内仍可进入已勾选的管理范围。</p>
+          <p>需要立即锁定时，可在售卖页标题右侧点击重新锁定，或在本模块点击立即重新锁定。</p>
+        </div>
+      ) : null}
 
       <div className="fieldLockCompactGrid">
         <div className="fieldLockConfigColumn">

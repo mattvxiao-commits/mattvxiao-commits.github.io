@@ -178,6 +178,23 @@ a {
   color: var(--accent-strong);
 }
 
+.fieldModeRailButton.isTemporaryUnlocked {
+  border-color: rgba(181, 126, 38, 0.34);
+  background: #fff2d7;
+  color: #8a5419;
+}
+
+.fieldModeRailButton.isTemporaryUnlocked svg {
+  top: 5px;
+  left: 20px;
+  opacity: 0.72;
+  transform: translateY(5px);
+}
+
+.fieldModeRailButton.isTemporaryUnlocked span {
+  color: #8a5419;
+}
+
 .fieldModeRailTip {
   position: absolute;
   top: 6px;
@@ -3186,6 +3203,17 @@ p {
   flex-wrap: wrap;
 }
 
+.inlineInfoButton {
+  width: 26px;
+  min-height: 26px;
+  height: 26px;
+  padding: 0;
+  border-color: rgba(47, 111, 94, 0.22);
+  border-radius: 8px;
+  color: var(--accent-strong);
+  background: rgba(219, 233, 228, 0.72);
+}
+
 .sectionTitle p {
   margin-top: 4px;
   font-size: 13px;
@@ -3213,6 +3241,24 @@ p {
 
 .fieldLockSettings {
   gap: 8px;
+}
+
+.fieldLockHelpPanel {
+  display: grid;
+  gap: 4px;
+  margin-top: -2px;
+  padding: 9px 11px;
+  border: 1px solid rgba(47, 111, 94, 0.18);
+  border-radius: 8px;
+  background: rgba(219, 233, 228, 0.42);
+  color: var(--accent-strong);
+}
+
+.fieldLockHelpPanel p {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 780;
+  line-height: 1.45;
 }
 
 .fieldLockCompactGrid {

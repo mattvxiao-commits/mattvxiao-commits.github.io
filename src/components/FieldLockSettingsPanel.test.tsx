@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import { createDefaultFieldLockSettings } from "../domain/fieldLock";
 import FieldLockSettingsPanel from "./FieldLockSettingsPanel";
@@ -21,4 +21,15 @@ test("groups field mode PIN, lock scope, and actions for compact settings layout
   expect(within(scopeGroup).getByLabelText("锁定设置页")).toBeChecked();
 
   expect(within(screen.getByRole("group", { name: "现场模式操作" })).getByRole("button", { name: "开启现场模式" })).toBeVisible();
+});
+
+test("explains temporary unlock state and relock paths from field mode help", () => {
+  render(<FieldLockSettingsPanel fieldLock={createDefaultFieldLockSettings()} onSave={vi.fn()} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "查看现场模式说明" }));
+  const helpPanel = screen.getByRole("note");
+
+  expect(within(helpPanel).getByText(/临时解锁/)).toBeVisible();
+  expect(within(helpPanel).getByText(/重新锁定/)).toBeVisible();
+  expect(within(helpPanel).getByText(/立即重新锁定/)).toBeVisible();
 });
