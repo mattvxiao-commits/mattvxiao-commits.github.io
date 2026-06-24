@@ -446,6 +446,7 @@ export default function SalesPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [refunds, setRefunds] = useState<OrderRefund[]>([]);
   const [settings, setSettings] = useState<AppSettings>();
+  const [selectedSeries, setSelectedSeries] = useState("全部");
   const [selectedSpu, setSelectedSpu] = useState("全部");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("wechat");
   const [mode, setMode] = useState<SalesMode>("cart");
@@ -559,9 +560,37 @@ export default function SalesPage() {
     [products]
   );
 
+  const seriesList = useMemo(() => {
+    const seriesValues = Array.from(
+      new Set(
+        sellableProducts
+          .map((product) => product.series?.trim() ?? "")
+          .filter((series) => series.length > 0)
+      )
+    ).sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+
+    return ["全部", ...seriesValues];
+  }, [sellableProducts]);
+
+  const shouldShowSeriesFilter = seriesList.length > 2;
+
+  useEffect(() => {
+    if (!seriesList.includes(selectedSeries)) {
+      setSelectedSeries("全部");
+    }
+  }, [selectedSeries, seriesList]);
+
+  const seriesFilteredProducts = useMemo(
+    () =>
+      selectedSeries === "全部"
+        ? sellableProducts
+        : sellableProducts.filter((product) => product.series?.trim() === selectedSeries),
+    [sellableProducts, selectedSeries]
+  );
+
   const spuList = useMemo(
-    () => ["全部", ...Array.from(new Set(sellableProducts.map((product) => product.spu))).sort((a, b) => a.localeCompare(b, "zh-Hans-CN"))],
-    [sellableProducts]
+    () => ["全部", ...Array.from(new Set(seriesFilteredProducts.map((product) => product.spu))).sort((a, b) => a.localeCompare(b, "zh-Hans-CN"))],
+    [seriesFilteredProducts]
   );
 
   useEffect(() => {
@@ -571,8 +600,8 @@ export default function SalesPage() {
   }, [selectedSpu, spuList]);
 
   const visibleProducts = useMemo(
-    () => sellableProducts.filter((product) => selectedSpu === "全部" || product.spu === selectedSpu),
-    [sellableProducts, selectedSpu]
+    () => seriesFilteredProducts.filter((product) => selectedSpu === "全部" || product.spu === selectedSpu),
+    [seriesFilteredProducts, selectedSpu]
   );
   const hasSaleCartLine = useMemo(
     () => cartItems.some((item) => item.revenueType !== "non_sales" && item.quantity > 0),
@@ -1057,18 +1086,35 @@ export default function SalesPage() {
         </div>
         {mode !== "checkout" ? (
           <div className="salesHeaderControls">
-            <div className="spuFilter" role="group" aria-label="按 SPU 筛选商品">
-              {spuList.map((spu) => (
-                <button
-                  type="button"
-                  aria-pressed={selectedSpu === spu}
-                  className={selectedSpu === spu ? "isSelected" : ""}
-                  key={spu}
-                  onClick={() => setSelectedSpu(spu)}
-                >
-                  {spu}
-                </button>
-              ))}
+            <div className="salesFilterStack">
+              {shouldShowSeriesFilter ? (
+                <div className="spuFilter seriesFilter" role="group" aria-label="按系列筛选商品">
+                  {seriesList.map((series) => (
+                    <button
+                      type="button"
+                      aria-pressed={selectedSeries === series}
+                      className={selectedSeries === series ? "isSelected" : ""}
+                      key={series}
+                      onClick={() => setSelectedSeries(series)}
+                    >
+                      {series}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <div className="spuFilter" role="group" aria-label="按 SPU 筛选商品">
+                {spuList.map((spu) => (
+                  <button
+                    type="button"
+                    aria-pressed={selectedSpu === spu}
+                    className={selectedSpu === spu ? "isSelected" : ""}
+                    key={spu}
+                    onClick={() => setSelectedSpu(spu)}
+                  >
+                    {spu}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="salesHeaderActions">
               <button type="button" className="secondaryButton" disabled={isLoading} onClick={() => void refreshSalesData()}>

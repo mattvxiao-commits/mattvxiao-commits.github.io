@@ -3,6 +3,7 @@ export type ProductStatus = "active" | "inactive";
 export type Product = {
   id: string;
   name: string;
+  series?: string;
   spu: string;
   spuCode?: string;
   skuCode?: string;

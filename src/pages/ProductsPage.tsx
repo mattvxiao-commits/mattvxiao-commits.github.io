@@ -289,6 +289,7 @@ export default function ProductsPage() {
               </div>
               <div className="productFacts">
                 <span className="productSpuChip">{product.spu}</span>
+                {product.series ? <span>系列 {product.series}</span> : null}
                 <span>售价 {formatMoney(product.salePrice)}</span>
                 <span>编码 {displayProductCode(product.productCode)}</span>
                 <span>成本 {formatMoney(product.costPrice)}</span>

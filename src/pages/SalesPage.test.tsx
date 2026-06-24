@@ -313,6 +313,48 @@ test("renders multiple products in the compact list without switching to image g
   expect(screen.queryByRole("list", { name: "售卖商品图片网格" })).not.toBeInTheDocument();
 });
 
+test("shows series filter only when products have multiple series and links SPU options to the selected series", async () => {
+  repositories.listProducts.mockResolvedValue([
+    product({ id: "a-badge", name: "作品A徽章", series: "作品A", spu: "徽章", salePrice: 15, stockQty: 8 }),
+    product({ id: "b-badge", name: "作品B徽章", series: "作品B", spu: "徽章", salePrice: 16, stockQty: 8 }),
+    product({ id: "b-sticker", name: "作品B贴纸", series: "作品B", spu: "贴纸", salePrice: 8, stockQty: 8 })
+  ]);
+
+  render(<SalesPage />);
+
+  const seriesFilter = await screen.findByRole("group", { name: "按系列筛选商品" });
+  expect(within(seriesFilter).getByRole("button", { name: "全部" })).toHaveAttribute("aria-pressed", "true");
+  expect(within(seriesFilter).getByRole("button", { name: "作品A" })).toBeVisible();
+  expect(within(seriesFilter).getByRole("button", { name: "作品B" })).toBeVisible();
+
+  fireEvent.click(within(seriesFilter).getByRole("button", { name: "作品B" }));
+
+  const spuFilter = screen.getByRole("group", { name: "按 SPU 筛选商品" });
+  expect(within(spuFilter).getByRole("button", { name: "徽章" })).toBeVisible();
+  expect(within(spuFilter).getByRole("button", { name: "贴纸" })).toBeVisible();
+  expect(screen.queryByRole("heading", { level: 2, name: "作品A徽章" })).not.toBeInTheDocument();
+  expect(screen.getByRole("heading", { level: 2, name: "作品B徽章" })).toBeVisible();
+  expect(screen.getByRole("heading", { level: 2, name: "作品B贴纸" })).toBeVisible();
+
+  fireEvent.click(within(spuFilter).getByRole("button", { name: "贴纸" }));
+
+  expect(screen.queryByRole("heading", { level: 2, name: "作品B徽章" })).not.toBeInTheDocument();
+  expect(screen.getByRole("heading", { level: 2, name: "作品B贴纸" })).toBeVisible();
+});
+
+test("does not show series filter when sellable products have fewer than two series", async () => {
+  repositories.listProducts.mockResolvedValue([
+    product({ id: "no-series", name: "无系列商品", series: "", spu: "徽章", stockQty: 8 }),
+    product({ id: "single-series", name: "单系列商品", series: "作品A", spu: "贴纸", stockQty: 8 })
+  ]);
+
+  render(<SalesPage />);
+
+  expect(await screen.findByRole("heading", { level: 2, name: "无系列商品" })).toBeVisible();
+  expect(screen.getByRole("heading", { level: 2, name: "单系列商品" })).toBeVisible();
+  expect(screen.queryByRole("group", { name: "按系列筛选商品" })).not.toBeInTheDocument();
+});
+
 test("opens and closes the cart drawer from the floating cart button", async () => {
   render(<SalesPage />);
 
