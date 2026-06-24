@@ -73,6 +73,10 @@ p {
   grid-template-columns: 176px minmax(0, 1fr);
 }
 
+.topNavShell .appShell {
+  display: block;
+}
+
 .sideRail {
   position: sticky;
   top: 0;
@@ -83,6 +87,14 @@ p {
   padding: 14px 12px;
   border-right: 1px solid rgba(222, 214, 201, 0.9);
   background: rgba(255, 253, 250, 0.95);
+}
+
+.railCollapseButton {
+  min-height: 32px;
+  padding: 0 10px;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 850;
 }
 
 .brandBlock {
@@ -160,6 +172,10 @@ p {
   text-align: left;
 }
 
+.mainNav button em {
+  font-style: normal;
+}
+
 .mainNav button.isActive,
 .bottomNav button.isActive {
   border-color: rgba(47, 111, 94, 0.45);
@@ -194,7 +210,14 @@ p {
 }
 
 .desktopShell .workbench {
-  width: min(1220px, calc(100vw - 176px));
+  width: min(100%, calc(100vw - 176px));
+  padding-top: 18px;
+}
+
+.topNavShell .workbench {
+  width: min(1180px, calc(100vw - 28px));
+  margin: 0 auto;
+  padding: 14px 0 80px;
 }
 
 .topStatus {
@@ -280,6 +303,30 @@ p {
   align-items: flex-end;
   justify-content: space-between;
   padding: 0 0 10px;
+}
+
+.topNavShell .pageHeaderCopy {
+  display: none;
+}
+
+.topNavShell .pageHeader {
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 0;
+  padding: 0 0 8px;
+}
+
+.topNavShell [data-view="sales"] .pageHeader,
+.topNavShell [data-view="settings"] .pageHeader {
+  display: none;
+}
+
+.topNavShell [data-view="products"] .pageHeader {
+  justify-content: flex-start;
+}
+
+.topNavShell [data-view="dashboard"] .pageHeader {
+  justify-content: flex-start;
 }
 
 .pageHeaderCopy {
@@ -388,6 +435,25 @@ p {
   justify-content: space-between;
   flex-wrap: wrap;
   margin-bottom: 8px;
+}
+
+.topNavShell .toolbarRow {
+  justify-content: space-between;
+  margin-top: 0;
+}
+
+.topNavShell [data-view="sales"] .toolbarRow {
+  justify-content: flex-start;
+}
+
+.topNavShell .dashboardToolbar {
+  grid-template-columns: auto auto;
+  align-items: center;
+  justify-items: start;
+}
+
+.topNavShell .dashboardToolbar .controlGroup {
+  align-items: center;
 }
 
 .controlGroup {
@@ -534,6 +600,11 @@ p {
   align-items: start;
 }
 
+.desktopShell .salesLayout {
+  grid-template-columns: minmax(0, 1fr);
+  padding-right: 0;
+}
+
 .salesProductList {
   grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
 }
@@ -596,6 +667,64 @@ p {
   border-radius: 8px;
   background: rgba(255, 253, 250, 0.96);
   box-shadow: var(--shadow);
+}
+
+.desktopShell .cartPreview,
+.topNavShell .cartPreview {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  top: auto;
+  z-index: 20;
+  width: auto;
+  min-width: 220px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.cartCollapsedButton {
+  min-height: 44px;
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 14px;
+  border-color: rgba(47, 111, 94, 0.34);
+  background: rgba(23, 63, 54, 0.94);
+  color: #fffdfa;
+  box-shadow: 0 16px 32px rgba(36, 31, 26, 0.18);
+}
+
+.cartCollapsedButton span,
+.cartCollapsedButton strong {
+  color: inherit;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.cartExpandedBody {
+  display: grid;
+  gap: 10px;
+  width: 360px;
+  margin-bottom: 8px;
+  padding: 12px;
+  border: 1px solid rgba(47, 111, 94, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 253, 250, 0.98);
+  box-shadow: var(--shadow);
+}
+
+.desktopShell .cartExpandedBody,
+.topNavShell .cartExpandedBody {
+  display: none;
+}
+
+.desktopShell.isCartExpanded .cartExpandedBody,
+.topNavShell.isCartExpanded .cartExpandedBody {
+  display: grid;
 }
 
 .panelHeading,
@@ -671,8 +800,16 @@ p {
   margin-top: 12px;
 }
 
+.desktopShell .orderHistoryBlock {
+  display: none;
+}
+
 .orderList {
   margin-top: 8px;
+}
+
+.orderPageList {
+  width: min(980px, 100%);
 }
 
 .orderRow {
@@ -791,6 +928,10 @@ p {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.topNavShell .settingsGrid {
+  margin-top: 0;
+}
+
 .settingsSection {
   display: grid;
   gap: 10px;
@@ -800,6 +941,18 @@ p {
 
 .settingsSection.isWide {
   grid-column: 1 / -1;
+}
+
+.settingsSaveBridge {
+  display: none;
+}
+
+.topNavShell .settingsSaveBridge {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  grid-column: 1 / -1;
+  min-height: 48px;
 }
 
 .fieldGrid {
@@ -904,6 +1057,84 @@ p {
   border-bottom: 1px solid rgba(222, 214, 201, 0.86);
   background: rgba(247, 244, 238, 0.94);
   backdrop-filter: blur(14px);
+}
+
+.topNavBar {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 50px;
+  padding: 7px 16px;
+  border-bottom: 1px solid rgba(222, 214, 201, 0.86);
+  background: rgba(247, 244, 238, 0.94);
+  backdrop-filter: blur(14px);
+}
+
+.topMainNav {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.topMainNav button {
+  min-height: 36px;
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 0 11px;
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.topMainNav button.isActive {
+  border-color: rgba(47, 111, 94, 0.45);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.isRailCollapsed.desktopShell .appShell {
+  grid-template-columns: 68px minmax(0, 1fr);
+}
+
+.isRailCollapsed.desktopShell .workbench {
+  width: min(100%, calc(100vw - 68px));
+}
+
+.isRailCollapsed .sideRail {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.isRailCollapsed .sideRail .brandBlock {
+  justify-content: center;
+}
+
+.isRailCollapsed .sideRail .brandBlock > div:last-child,
+.isRailCollapsed .mainNav button em,
+.isRailCollapsed .railStatus {
+  display: none;
+}
+
+.isRailCollapsed .railCollapseButton {
+  min-width: 0;
+  padding: 0;
+  font-size: 11px;
+}
+
+.isRailCollapsed .mainNav button {
+  justify-content: center;
+  padding: 0;
+}
+
+.isRailCollapsed .mainNav button span {
+  font-size: 16px;
 }
 
 .fieldChip {

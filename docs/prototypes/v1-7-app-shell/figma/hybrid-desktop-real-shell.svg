@@ -1,0 +1,73 @@
+<svg width="1440" height="900" viewBox="0 0 1440 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1440" height="900" fill="#F7F4EE"/>
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" stroke="#FFFFFF" stroke-opacity="0.55"/>
+    </pattern>
+  </defs>
+  <rect width="1440" height="900" fill="url(#grid)"/>
+  <rect x="0" y="0" width="176" height="900" fill="#FFFDF9" stroke="#DED6C9"/>
+  <rect x="16" y="18" width="36" height="36" rx="8" fill="#DBE9E4" stroke="#9DBFB4"/>
+  <text x="30" y="42" fill="#194A3F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="18" font-weight="900">E</text>
+  <text x="64" y="35" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="20" font-weight="900">ECRM</text>
+  <rect x="119" y="19" width="42" height="18" rx="9" fill="#FFFDF9" stroke="#9DBFB4"/>
+  <text x="128" y="32" fill="#194A3F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="10" font-weight="800">v1.7</text>
+  <text x="64" y="52" fill="#70685E" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="11">ECRM 摊位</text>
+  <rect x="12" y="78" width="152" height="32" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+  <text x="62" y="99" fill="#51493F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="850">收起菜单</text>
+  <g font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="15" font-weight="900">
+    <rect x="12" y="126" width="152" height="44" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+    <rect x="12" y="180" width="152" height="44" rx="8" fill="#DBE9E4" stroke="#76A093"/>
+    <rect x="12" y="234" width="152" height="44" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+    <rect x="12" y="288" width="152" height="44" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+    <rect x="12" y="342" width="152" height="44" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+    <text x="34" y="154" fill="#51493F">▧</text><text x="60" y="154" fill="#241F1A">商品</text>
+    <text x="34" y="208" fill="#194A3F">◇</text><text x="60" y="208" fill="#194A3F">售卖</text>
+    <text x="34" y="262" fill="#51493F">▤</text><text x="60" y="262" fill="#241F1A">订单</text>
+    <text x="34" y="316" fill="#51493F">▣</text><text x="60" y="316" fill="#241F1A">仪表盘</text>
+    <text x="34" y="370" fill="#51493F">○</text><text x="60" y="370" fill="#241F1A">设置</text>
+  </g>
+  <rect x="12" y="796" width="152" height="72" rx="8" fill="#FFF2DC" stroke="#DDAE73"/>
+  <text x="28" y="824" fill="#8A4512" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="13" font-weight="800">现场模式</text>
+  <text x="28" y="850" fill="#6F330C" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="18" font-weight="900">已锁定</text>
+
+  <g transform="translate(196 24)">
+    <text x="0" y="17" fill="#2F6F5E" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="13" font-weight="900">CHECKOUT</text>
+    <text x="0" y="50" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="31" font-weight="900">售卖</text>
+    <text x="0" y="78" fill="#51493F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="14">选择商品、确认购物车、手动收款后保存订单并扣减库存。</text>
+    <g transform="translate(0 112)">
+      <rect width="54" height="34" rx="8" fill="#DBE9E4" stroke="#76A093"/>
+      <rect x="64" width="96" height="34" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+      <rect x="170" width="64" height="34" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+      <rect x="244" width="76" height="34" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+      <text x="17" y="22" fill="#194A3F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="850">全部</text>
+      <text x="82" y="22" fill="#51493F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="850">亚克力挂件</text>
+      <text x="193" y="22" fill="#51493F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="850">贴纸</text>
+      <text x="262" y="22" fill="#51493F" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="850">明信片</text>
+    </g>
+    <g transform="translate(0 166)">
+      <rect width="425" height="78" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+      <rect x="438" width="425" height="78" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+      <rect y="92" width="425" height="78" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+      <rect x="14" y="10" width="58" height="58" rx="8" fill="#F1F4EF" stroke="#DED6C9"/>
+      <rect x="452" y="10" width="58" height="58" rx="8" fill="#F1F4EF" stroke="#DED6C9"/>
+      <rect x="14" y="102" width="58" height="58" rx="8" fill="#F1F4EF" stroke="#DED6C9"/>
+      <text x="90" y="31" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="16" font-weight="900">角色亚克力挂件 黑猫款</text>
+      <text x="528" y="31" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="16" font-weight="900">主题贴纸包 春日款</text>
+      <text x="90" y="123" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="16" font-weight="900">明信片套组 夜景款</text>
+    </g>
+    <g transform="translate(0 452)">
+      <text x="0" y="0" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="20" font-weight="900">订单记录独立页</text>
+      <rect y="20" width="860" height="58" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+      <rect y="88" width="860" height="58" rx="8" fill="#FFFDF9" stroke="#DED6C9"/>
+      <text x="16" y="55" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="15" font-weight="900">ECRM-20260624-001</text>
+      <text x="16" y="123" fill="#241F1A" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="15" font-weight="900">ECRM-20260624-002</text>
+    </g>
+  </g>
+  <g transform="translate(1188 770)">
+    <rect width="220" height="48" rx="8" fill="#173F36" stroke="#153F36"/>
+    <text x="18" y="30" fill="#FFFDF9" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="13" font-weight="900">购物车</text>
+    <text x="112" y="30" fill="#FFFDF9" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="13" font-weight="900">3 件 / ¥63.00</text>
+  </g>
+  <text x="196" y="850" fill="#8A4512" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="14" font-weight="800">方案 D 修正版：移除顶部临时状态栏，左侧导航可收起，订单记录独立成页，购物车默认右下角折叠。</text>
+</svg>
