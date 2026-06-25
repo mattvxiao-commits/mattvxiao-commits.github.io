@@ -2784,8 +2784,10 @@ p {
 
 .confirmDialog {
   width: min(560px, 100%);
+  max-height: min(86dvh, 720px);
   display: grid;
   gap: 10px;
+  overflow: auto;
   padding: 16px;
   border: 1px solid rgba(168, 95, 24, 0.28);
   border-radius: 8px;
@@ -3752,6 +3754,14 @@ p {
 
   .orderDetailActionButtons button {
     flex: 1 1 140px;
+  }
+
+  .orderDetailDialog {
+    max-height: calc(100dvh - var(--app-mobile-nav-height) - env(safe-area-inset-bottom) - 20px);
+  }
+
+  .orderDetailBody {
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
   }
 
   .settingsHeader .primaryButton,
