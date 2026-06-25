@@ -2002,6 +2002,11 @@ p {
   grid-template-rows: auto auto minmax(0, 1fr) auto;
 }
 
+.checkoutPanel {
+  max-height: calc(100dvh - 96px);
+  overflow: auto;
+}
+
 .checkoutOrderReview {
   grid-template-rows: auto minmax(0, 1fr) auto;
   max-height: calc(100vh - 96px);
@@ -2011,7 +2016,7 @@ p {
 .cartDrawerLayer {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 40;
   display: grid;
   justify-content: end;
   padding: 14px;
@@ -3699,6 +3704,7 @@ p {
 
   .salesDock {
     display: inline-flex;
+    bottom: calc(var(--app-mobile-nav-height) + env(safe-area-inset-bottom) + 10px);
   }
 
   .settingsGrid,
