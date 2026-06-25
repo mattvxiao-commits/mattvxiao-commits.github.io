@@ -57,7 +57,9 @@ test("rejects saving a product when the generated product code already exists", 
 
   fireEvent.click(screen.getByRole("button", { name: "保存商品" }));
 
+  const dialog = screen.getByRole("dialog", { name: "新增商品" });
   expect(await screen.findByText("完整商品编码已存在，请调整 SPU 编码或 SKU 编码。")).toBeVisible();
+  expect(dialog).toHaveTextContent("完整商品编码已存在，请调整 SPU 编码或 SKU 编码。");
   await waitFor(() => expect(repositories.upsertProduct).not.toHaveBeenCalled());
 });
 

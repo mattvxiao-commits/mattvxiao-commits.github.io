@@ -62,7 +62,7 @@ test("shows system version information for support and cache checks", async () =
   const systemInfo = await screen.findByRole("region", { name: "系统信息" });
 
   expect(within(systemInfo).getByText("当前版本")).toBeVisible();
-  expect(within(systemInfo).getByText("v1.6.2")).toBeVisible();
+  expect(within(systemInfo).getByText("v1.7.0")).toBeVisible();
   expect(within(systemInfo).getByText("部署方式")).toBeVisible();
   expect(within(systemInfo).getByText("GitHub Pages / PWA")).toBeVisible();
   expect(within(systemInfo).getByText("数据存储")).toBeVisible();
@@ -111,11 +111,19 @@ test("运营赠礼可以切换指定 SKU 和指定 SPU", async () => {
 test("enables and saves field mode immediately after setting matching four digit PIN", async () => {
   render(<SettingsPage />);
 
+  expect(await screen.findByRole("group", { name: "锁定范围" })).toBeVisible();
+  expect(screen.getByLabelText("锁定商品页")).toBeChecked();
+  expect(screen.getByLabelText("锁定订单详情")).toBeChecked();
+  expect(screen.getByLabelText("锁定数据页")).toBeChecked();
+  expect(screen.getByLabelText("锁定设置页")).toBeChecked();
+
+  fireEvent.click(screen.getByLabelText("锁定商品页"));
   fireEvent.change(await screen.findByLabelText("设置现场模式 PIN"), { target: { value: "2580" } });
   fireEvent.change(screen.getByLabelText("确认现场模式 PIN"), { target: { value: "2580" } });
   fireEvent.click(screen.getByRole("button", { name: "开启现场模式" }));
 
   await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalledTimes(1));
+  expect(await screen.findByText("现场模式已保存并启动，进入临时解锁状态。")).toBeVisible();
   expect(await screen.findByText("已开启 · 临时解锁")).toBeVisible();
   const savedSettings = repositories.saveSettings.mock.calls.at(-1)?.[0] as AppSettings;
   expect(savedSettings.fieldLock).toEqual(expect.objectContaining({
@@ -124,6 +132,7 @@ test("enables and saves field mode immediately after setting matching four digit
     pinSalt: expect.any(String),
     unlockExpiresAt: expect.any(String)
   }));
+  expect(savedSettings.fieldLock.protectedScopes).toEqual(["orderDetail", "dashboard", "settings"]);
   expect(JSON.stringify(savedSettings)).not.toContain("2580");
 });
 
@@ -176,10 +185,11 @@ test("disables field mode immediately from settings page", async () => {
 
   await waitFor(() => expect(repositories.saveSettings).toHaveBeenCalledTimes(1));
   const savedSettings = repositories.saveSettings.mock.calls[0][0] as AppSettings;
-  expect(savedSettings.fieldLock).toEqual({
+  expect(savedSettings.fieldLock).toEqual(expect.objectContaining({
     enabled: false,
     failedAttempts: 0
-  });
+  }));
+  expect(savedSettings.fieldLock.protectedScopes).toEqual(["products", "orderDetail", "dashboard", "settings"]);
 });
 
 test("keeps and warns about a configured discount SPU that is missing from products", async () => {

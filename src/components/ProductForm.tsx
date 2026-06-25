@@ -7,6 +7,7 @@ import { getImageUrl } from "../utils/image";
 
 export type ProductFormValues = {
   name: string;
+  series: string;
   spu: string;
   spuCode: string;
   skuCode: string;
@@ -20,6 +21,13 @@ export type ProductFormValues = {
   status: ProductStatus;
 };
 
+export class ProductFormUserError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ProductFormUserError";
+  }
+}
+
 type ProductFormProps = {
   mode: "create" | "edit";
   initialProduct?: Product;
@@ -29,6 +37,7 @@ type ProductFormProps = {
 
 type Draft = {
   name: string;
+  series: string;
   spu: string;
   spuCode: string;
   skuCode: string;
@@ -56,6 +65,7 @@ const requiredFieldLabels: Partial<Record<keyof Draft, string>> = {
 function productToDraft(product?: Product): Draft {
   return {
     name: product?.name ?? "",
+    series: product?.series ?? "",
     spu: product?.spu ?? "",
     spuCode: product?.spuCode ?? "",
     skuCode: product?.skuCode ?? "",
@@ -224,6 +234,7 @@ export default function ProductForm({
     try {
       await onSave({
         name: draft.name.trim(),
+        series: draft.series.trim(),
         spu: draft.spu.trim(),
         spuCode: draft.spuCode.trim(),
         skuCode: draft.skuCode.trim(),
@@ -236,8 +247,8 @@ export default function ProductForm({
         isGiftEligible: draft.isGiftEligible,
         status: draft.status
       });
-    } catch {
-      setSaveError("商品保存失败，请稍后重试。");
+    } catch (error) {
+      setSaveError(error instanceof ProductFormUserError ? error.message : "商品保存失败，请稍后重试。");
     } finally {
       setIsSubmitting(false);
     }
@@ -260,29 +271,41 @@ export default function ProductForm({
   return (
     <form className="productForm" onSubmit={handleSubmit} aria-label={mode === "edit" ? "编辑商品" : "新增商品"}>
       <div className="formMain">
-        <label>
-          <span>商品名称</span>
-          <input
-            aria-label="商品名称"
-            value={draft.name}
-            aria-invalid={fieldErrors.name ? "true" : undefined}
-            onChange={(event) => updateDraft("name", event.target.value)}
-            placeholder="例如：手作柠檬茶"
-          />
-          {fieldErrors.name ? <p className="fieldError">{fieldErrors.name}</p> : null}
-        </label>
+        <div className="fieldGrid">
+          <label>
+            <span>商品名称</span>
+            <input
+              aria-label="商品名称"
+              value={draft.name}
+              aria-invalid={fieldErrors.name ? "true" : undefined}
+              onChange={(event) => updateDraft("name", event.target.value)}
+              placeholder="例如：角色徽章"
+            />
+            {fieldErrors.name ? <p className="fieldError">{fieldErrors.name}</p> : null}
+          </label>
 
-        <label>
-          <span>SPU</span>
-          <input
-            aria-label="SPU"
-            value={draft.spu}
-            aria-invalid={fieldErrors.spu ? "true" : undefined}
-            onChange={(event) => updateDraft("spu", event.target.value)}
-            placeholder="例如：DRINK-LEMON"
-          />
-          {fieldErrors.spu ? <p className="fieldError">{fieldErrors.spu}</p> : null}
-        </label>
+          <label>
+            <span>系列（筛选）</span>
+            <input
+              aria-label="系列（筛选）"
+              value={draft.series}
+              onChange={(event) => updateDraft("series", event.target.value)}
+              placeholder="例如：作品A"
+            />
+          </label>
+
+          <label>
+            <span>SPU</span>
+            <input
+              aria-label="SPU"
+              value={draft.spu}
+              aria-invalid={fieldErrors.spu ? "true" : undefined}
+              onChange={(event) => updateDraft("spu", event.target.value)}
+              placeholder="例如：徽章"
+            />
+            {fieldErrors.spu ? <p className="fieldError">{fieldErrors.spu}</p> : null}
+          </label>
+        </div>
 
         <div className="fieldGrid">
           <label>

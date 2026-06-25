@@ -251,6 +251,16 @@ function validateSettings(settings: unknown[]): asserts settings is AppSettings[
     if (setting.fieldLock.lockedUntil !== undefined) {
       assertString(setting.fieldLock, "lockedUntil");
     }
+    if (setting.fieldLock.protectedScopes !== undefined) {
+      if (!Array.isArray(setting.fieldLock.protectedScopes)) {
+        throw new Error("备份文件格式不正确。");
+      }
+      for (const scope of setting.fieldLock.protectedScopes) {
+        if (typeof scope !== "string") {
+          throw new Error("备份文件格式不正确。");
+        }
+      }
+    }
     if (!isNonNegativeInteger(setting.fieldLock.failedAttempts)) {
       throw new Error("备份文件格式不正确。");
     }

@@ -11,26 +11,17 @@
       <aside class="sideRail" aria-label="主导航">
         <div class="brandBlock">
           <div class="brandMark" aria-hidden="true">E</div>
-          <div>
-            <div class="brandLine">
-              <strong>ECRM</strong>
-              <span>v1.7</span>
-            </div>
-            <p data-shop-name>轻量现场经营工具</p>
-          </div>
         </div>
-        <button type="button" class="railCollapseButton" data-collapse-rail aria-label="收起或展开左侧导航">收起菜单</button>
         <nav class="mainNav" aria-label="页面导航">
-          <button type="button" class="isActive" data-page="products"><span aria-hidden="true">▧</span><em>商品</em></button>
-          <button type="button" data-page="sales"><span aria-hidden="true">◇</span><em>售卖</em></button>
-          <button type="button" data-page="orders"><span aria-hidden="true">▤</span><em>订单</em></button>
-          <button type="button" data-page="dashboard"><span aria-hidden="true">▣</span><em>仪表盘</em></button>
-          <button type="button" data-page="settings"><span aria-hidden="true">○</span><em>设置</em></button>
+          <button type="button" class="modeStatusButton" data-action="show-mode-tip" data-mode-status-button><span class="navIcon navIconLock isUnlocked" aria-hidden="true" data-field-lock-icon></span><em data-field-lock-label>未锁定</em></button>
+          <button type="button" class="isActive" data-page="products"><span class="navIcon navIconBox" aria-hidden="true"></span><em>商品</em></button>
+          <button type="button" data-page="sales"><span class="navIcon navIconCart" aria-hidden="true"></span><em>售卖</em></button>
+          <button type="button" data-page="orders"><span class="navIcon navIconOrder" aria-hidden="true"></span><em>订单</em></button>
+          <button type="button" data-page="dashboard"><span class="navIcon navIconChart" aria-hidden="true"></span><em>数据</em></button>
+          <button type="button" data-page="settings"><span class="navIcon navIconGear" aria-hidden="true"></span><em>设置</em></button>
         </nav>
-        <div class="railStatus">
-          <span>现场模式</span>
-          <strong>已锁定</strong>
-        </div>
+        <div class="railFutureSlot" aria-hidden="true"><span>—</span><span>—</span></div>
+        <div class="modeTip" data-mode-tip role="status" aria-live="polite"></div>
       </aside>
 
       <main class="workbench">
@@ -42,6 +33,7 @@
       </main>
     </div>
 
+    <div class="modalHost" data-modal-host></div>
     <script src="./hybrid-real-shell.js"></script>
   </body>
 </html>

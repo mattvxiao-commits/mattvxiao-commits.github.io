@@ -1,18 +1,28 @@
 import {
   BarChart3,
+  ClipboardList,
+  LockKeyhole,
   PackageSearch,
   ReceiptText,
   Settings,
   Store,
+  UnlockKeyhole,
 } from "lucide-react";
 import { type MouseEvent, type ReactElement, useEffect, useRef, useState } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import FieldLockDialog from "./components/FieldLockDialog";
 import PwaUpdatePrompt from "./components/PwaUpdatePrompt";
 import { getSettings, saveSettings } from "./db/repositories";
-import { normalizeFieldLockSettings, requiresFieldLockUnlock, verifyFieldLockPin } from "./domain/fieldLock";
-import type { AppSettings } from "./domain/types";
+import {
+  fieldLockProtectsScope,
+  isFieldLockTemporarilyUnlocked,
+  normalizeFieldLockSettings,
+  requiresFieldLockUnlock,
+  verifyFieldLockPin
+} from "./domain/fieldLock";
+import type { AppSettings, FieldLockScope } from "./domain/types";
 import DashboardPage from "./pages/DashboardPage";
+import OrdersPage from "./pages/OrdersPage";
 import ProductsPage from "./pages/ProductsPage";
 import SalesPage from "./pages/SalesPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -40,11 +50,20 @@ const pages = [
     stats: ["快速开单", "待收款", "离线队列"],
   },
   {
+    to: "/orders",
+    label: "订单",
+    icon: ClipboardList,
+    eyebrow: "Orders",
+    title: "订单",
+    summary: "订单记录独立页将在 V1.7b 承接当前售卖页内的订单记录能力。",
+    stats: ["订单记录", "售后状态", "统计口径"],
+  },
+  {
     to: "/dashboard",
-    label: "仪表盘",
+    label: "数据",
     icon: BarChart3,
-    eyebrow: "Overview",
-    title: "仪表盘",
+    eyebrow: "Data",
+    title: "数据",
     summary: "查看今日销售、热卖商品与摊位经营状态的工作区占位。",
     stats: ["今日收入", "热卖商品", "同步状态"],
   },
@@ -59,7 +78,11 @@ const pages = [
   },
 ];
 
-const protectedPagePaths = new Set(["/products", "/settings", "/dashboard"]);
+const protectedPageScopes: Partial<Record<string, FieldLockScope>> = {
+  "/products": "products",
+  "/dashboard": "dashboard",
+  "/settings": "settings"
+};
 const defaultBrandSubtitle = "Booth POS 摊位工具";
 
 type PagePlaceholderProps = {
@@ -101,14 +124,28 @@ export default function App() {
   const [pendingPath, setPendingPath] = useState<string>();
   const [isLockDialogOpen, setIsLockDialogOpen] = useState(false);
   const [isUpdatePromptVisible, setIsUpdatePromptVisible] = useState(false);
+  const [fieldModeTip, setFieldModeTip] = useState<string>();
   const suppressNextUnlockDialogRef = useRef(false);
+  const fieldModeTipTimerRef = useRef<number | undefined>(undefined);
   const location = useLocation();
   const navigate = useNavigate();
   const brandSubtitle = settings?.shopName.trim() || defaultBrandSubtitle;
+  const isFieldModeEnabled = settings?.fieldLock.enabled === true;
+  const isFieldModeTemporaryUnlocked = Boolean(
+    settings?.fieldLock && isFieldLockTemporarilyUnlocked(settings.fieldLock)
+  );
+  const fieldModeStatusLabel = !isFieldModeEnabled
+    ? "未锁定"
+    : isFieldModeTemporaryUnlocked
+      ? "现场模式-临时解锁"
+      : "现场模式";
+  const fieldModeVisibleLabel = isFieldModeTemporaryUnlocked ? "临时解锁" : fieldModeStatusLabel;
+  const FieldModeIcon = isFieldModeEnabled && !isFieldModeTemporaryUnlocked ? LockKeyhole : UnlockKeyhole;
 
   useEffect(() => {
     return () => {
       revokeImageUrls();
+      window.clearTimeout(fieldModeTipTimerRef.current);
     };
   }, []);
 
@@ -155,7 +192,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!settings || !isProtectedPath(location.pathname)) {
+    if (!settings || !isProtectedPath(settings.fieldLock, location.pathname)) {
       return;
     }
 
@@ -175,7 +212,7 @@ export default function App() {
   }, [location.pathname, navigate, settings]);
 
   function shouldLockPath(path: string): boolean {
-    return Boolean(settings && isProtectedPath(path) && requiresFieldLockUnlock(settings.fieldLock));
+    return Boolean(settings && isProtectedPath(settings.fieldLock, path) && requiresFieldLockUnlock(settings.fieldLock));
   }
 
   function handleNavClick(event: MouseEvent<HTMLAnchorElement>, path: string) {
@@ -223,13 +260,32 @@ export default function App() {
     void applyPwaUpdate();
   }
 
+  function handleFieldModeStatusClick() {
+    const nextTip = !isFieldModeEnabled
+      ? "现场模式未开启"
+      : isFieldModeTemporaryUnlocked
+        ? "现场模式已启动，当前为临时解锁"
+        : "现场模式已启动，页面已锁定";
+
+    window.clearTimeout(fieldModeTipTimerRef.current);
+    setFieldModeTip(nextTip);
+    fieldModeTipTimerRef.current = window.setTimeout(() => {
+      setFieldModeTip(undefined);
+    }, 3000);
+  }
+
   function renderProtectedPage(path: string, element: ReactElement) {
-    if (!isProtectedPath(path)) {
+    const scope = protectedPageScopes[path];
+    if (!scope) {
       return element;
     }
 
     if (!settings) {
       return <p className="emptyState">正在加载现场模式...</p>;
+    }
+
+    if (!fieldLockProtectsScope(settings.fieldLock, scope)) {
+      return element;
     }
 
     if (requiresFieldLockUnlock(settings.fieldLock)) {
@@ -241,45 +297,67 @@ export default function App() {
 
   return (
     <div className="appShell">
-      <header className="topBar">
-        <div className="brandBlock">
-          <div className="brandMark" aria-hidden="true">
-            <Store size={21} strokeWidth={2.4} />
+      <aside className="appRail" aria-label="ECRM 应用侧栏">
+        <div className="railBrandBlock">
+          <div className="railBrandMark" aria-hidden="true">
+            <Store size={20} strokeWidth={2.4} />
           </div>
-          <div>
+          <div className="railBrandText">
             <div className="brandLine">
               <div className="brand">ECRM</div>
-              <span className="versionBadge">v{__APP_VERSION__}</span>
             </div>
-            <div className="subtitle">{brandSubtitle}</div>
+            <span className="versionBadge">v{__APP_VERSION__}</span>
+            <div className="subtitle railSubtitle">{brandSubtitle}</div>
           </div>
         </div>
-        <nav className="nav" aria-label="主导航">
+        <div className="fieldModeRailSlot">
+          <button
+            type="button"
+            className={[
+              "fieldModeRailButton",
+              isFieldModeEnabled && !isFieldModeTemporaryUnlocked ? "isLocked" : "",
+              isFieldModeTemporaryUnlocked ? "isTemporaryUnlocked" : ""
+            ].filter(Boolean).join(" ")}
+            aria-label={`现场模式状态：${fieldModeStatusLabel}`}
+            onClick={handleFieldModeStatusClick}
+          >
+            <FieldModeIcon size={24} strokeWidth={2.1} aria-hidden="true" />
+            <span>{fieldModeVisibleLabel}</span>
+          </button>
+          {fieldModeTip ? (
+            <div className="fieldModeRailTip" role="status">
+              {fieldModeTip}
+            </div>
+          ) : null}
+        </div>
+        <nav className="railNav" aria-label="应用导航">
           {pages.map((page) => {
             const Icon = page.icon;
             return (
               <NavLink key={page.to} to={page.to} onClick={(event) => handleNavClick(event, page.to)}>
-                <Icon size={18} strokeWidth={2.2} aria-hidden="true" />
+                <Icon size={21} strokeWidth={2.15} aria-hidden="true" />
                 <span>{page.label}</span>
               </NavLink>
             );
           })}
         </nav>
-      </header>
-      <PwaUpdatePrompt
-        isVisible={isUpdatePromptVisible}
-        onApply={handleApplyUpdate}
-        onDismiss={handleDismissUpdatePrompt}
-      />
-      <main>
+        <div className="railFooter" aria-hidden="true" />
+      </aside>
+      <main className="appMain">
+        <PwaUpdatePrompt
+          isVisible={isUpdatePromptVisible}
+          onApply={handleApplyUpdate}
+          onDismiss={handleDismissUpdatePrompt}
+        />
         <Routes>
           <Route path="/" element={<Navigate to="/products" replace />} />
           <Route path="/products" element={renderProtectedPage("/products", <ProductsPage />)} />
           <Route path="/sales" element={<SalesPage />} />
+          <Route path="/orders" element={<OrdersPage />} />
           <Route path="/dashboard" element={renderProtectedPage("/dashboard", <DashboardPage />)} />
           <Route path="/settings" element={renderProtectedPage("/settings", <SettingsPage />)} />
           {pages.map((page) => (
-            page.to === "/products" || page.to === "/sales" || page.to === "/dashboard" || page.to === "/settings" ? null :
+            page.to === "/products" || page.to === "/sales" || page.to === "/orders" || page.to === "/dashboard" || page.to === "/settings" ? null :
             <Route
               key={page.to}
               path={page.to}
@@ -298,6 +376,7 @@ export default function App() {
   );
 }
 
-function isProtectedPath(path: string): boolean {
-  return protectedPagePaths.has(path);
+function isProtectedPath(fieldLock: AppSettings["fieldLock"], path: string): boolean {
+  const scope = protectedPageScopes[path];
+  return Boolean(scope && fieldLockProtectsScope(fieldLock, scope));
 }

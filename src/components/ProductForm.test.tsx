@@ -79,6 +79,7 @@ test("submits numeric fields as numbers", async () => {
   expect(onSave).toHaveBeenCalledWith(
     expect.objectContaining({
       name: "手作柠檬茶",
+      series: "",
       spu: "DRINK-LEMON",
       spuCode: "DRINK-LEMON",
       skuCode: "COLD",
@@ -86,6 +87,38 @@ test("submits numeric fields as numbers", async () => {
       costPrice: 4.5,
       salePrice: 12,
       stockQty: 18
+    })
+  );
+});
+
+test("submits optional product series when provided", async () => {
+  const onSave = vi.fn();
+
+  render(<ProductForm mode="create" onCancel={() => undefined} onSave={onSave} />);
+
+  fireEvent.change(screen.getByLabelText("商品名称"), {
+    target: { value: "角色徽章" }
+  });
+  fireEvent.change(screen.getByLabelText("系列（筛选）"), {
+    target: { value: "作品A" }
+  });
+  fireEvent.change(screen.getByLabelText("SPU"), {
+    target: { value: "徽章" }
+  });
+  fireEvent.change(screen.getByLabelText("SPU 编码"), {
+    target: { value: "BADGE-24001" }
+  });
+  fireEvent.change(screen.getByLabelText("SKU 编码"), {
+    target: { value: "A-01" }
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "保存商品" }));
+
+  expect(onSave).toHaveBeenCalledWith(
+    expect.objectContaining({
+      name: "角色徽章",
+      series: "作品A",
+      spu: "徽章"
     })
   );
 });

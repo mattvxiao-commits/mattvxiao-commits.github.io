@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   createDefaultFieldLockSettings,
+  fieldLockProtectsScope,
   isFieldLockTemporarilyUnlocked,
   normalizeFieldLockSettings,
   sanitizeFieldLockForBackup,
@@ -70,4 +71,35 @@ test("sanitizes field lock secrets for backup and normalizes old settings", asyn
 
   expect(sanitized).toEqual(createDefaultFieldLockSettings());
   expect(normalizeFieldLockSettings(undefined)).toEqual(createDefaultFieldLockSettings());
+});
+
+test("normalizes field lock protected scopes with safe defaults and filters invalid values", () => {
+  expect(createDefaultFieldLockSettings().protectedScopes).toEqual(["products", "orderDetail", "dashboard", "settings"]);
+
+  expect(normalizeFieldLockSettings({ enabled: true, failedAttempts: 0 }).protectedScopes).toEqual([
+    "products",
+    "orderDetail",
+    "dashboard",
+    "settings"
+  ]);
+
+  expect(
+    normalizeFieldLockSettings({
+      enabled: true,
+      failedAttempts: 0,
+      protectedScopes: ["settings", "sales", "orderDetail", "settings"]
+    }).protectedScopes
+  ).toEqual(["settings", "orderDetail"]);
+});
+
+test("checks whether a locked field mode protects a specific scope", () => {
+  const configured = normalizeFieldLockSettings({
+    enabled: true,
+    failedAttempts: 0,
+    protectedScopes: ["settings"]
+  });
+
+  expect(fieldLockProtectsScope(configured, "settings")).toBe(true);
+  expect(fieldLockProtectsScope(configured, "products")).toBe(false);
+  expect(fieldLockProtectsScope({ ...configured, enabled: false }, "settings")).toBe(false);
 });

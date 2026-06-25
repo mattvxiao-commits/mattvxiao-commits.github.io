@@ -1,6 +1,6 @@
 import { Copy, Edit3, PackagePlus, Power, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import ProductForm, { type ProductFormValues } from "../components/ProductForm";
+import ProductForm, { ProductFormUserError, type ProductFormValues } from "../components/ProductForm";
 import { listProducts, makeId, upsertProduct } from "../db/repositories";
 import { displayProductCode } from "../domain/productCode";
 import type { Product, ProductStatus } from "../domain/types";
@@ -136,8 +136,7 @@ export default function ProductsPage() {
     });
 
     if (hasDuplicateProductCode) {
-      setError("完整商品编码已存在，请调整 SPU 编码或 SKU 编码。");
-      return;
+      throw new ProductFormUserError("完整商品编码已存在，请调整 SPU 编码或 SKU 编码。");
     }
 
     const now = new Date().toISOString();
@@ -289,6 +288,7 @@ export default function ProductsPage() {
               </div>
               <div className="productFacts">
                 <span className="productSpuChip">{product.spu}</span>
+                {product.series ? <span>系列 {product.series}</span> : null}
                 <span>售价 {formatMoney(product.salePrice)}</span>
                 <span>编码 {displayProductCode(product.productCode)}</span>
                 <span>成本 {formatMoney(product.costPrice)}</span>

@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, test, vi } from "vitest";
 import App from "./App";
 import { createDefaultSettings } from "./db/db";
-import { setFieldLockPin } from "./domain/fieldLock";
+import { setFieldLockPin, unlockFieldLock } from "./domain/fieldLock";
 import { notifyPwaUpdateReadyForTest } from "./utils/pwaUpdate";
 import { notifySettingsUpdated } from "./utils/settingsEvents";
 
@@ -32,6 +32,7 @@ vi.mock("./utils/pwaUpdate", () => ({
 }));
 vi.mock("./pages/ProductsPage", () => ({ default: () => <h1>商品</h1> }));
 vi.mock("./pages/SalesPage", () => ({ default: () => <h1>售卖</h1> }));
+vi.mock("./pages/OrdersPage", () => ({ default: () => <h1>订单</h1> }));
 vi.mock("./pages/DashboardPage", () => ({ default: () => <h1>仪表盘</h1> }));
 vi.mock("./pages/SettingsPage", () => ({ default: () => <h1>设置</h1> }));
 
@@ -43,23 +44,115 @@ beforeEach(() => {
   pwaUpdate.listeners.clear();
 });
 
-test("renders the app shell navigation and redirects to products by default", async () => {
+test("renders the left app shell navigation and redirects to products by default", async () => {
   render(
     <MemoryRouter>
       <App />
     </MemoryRouter>
   );
 
-  const nav = screen.getByRole("navigation", { name: "主导航" });
+  const nav = screen.getByRole("navigation", { name: "应用导航" });
 
   expect(nav).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "商品" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "售卖" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "仪表盘" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "订单" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "数据" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "设置" })).toBeInTheDocument();
   expect(
     await screen.findByRole("heading", { level: 1, name: "商品" })
   ).toBeVisible();
+});
+
+test("shows field mode status as a non-navigation rail item", async () => {
+  render(
+    <MemoryRouter initialEntries={["/sales"]}>
+      <App />
+    </MemoryRouter>
+  );
+
+  const fieldModeButton = await screen.findByRole("button", { name: "现场模式状态：未锁定" });
+
+  expect(fieldModeButton).toBeVisible();
+  expect(screen.queryByRole("link", { name: /未锁定/ })).not.toBeInTheDocument();
+
+  fireEvent.click(fieldModeButton);
+
+  expect(await screen.findByRole("status")).toHaveTextContent("现场模式未开启");
+  expect(screen.getByRole("heading", { level: 1, name: "售卖" })).toBeVisible();
+});
+
+test("keeps the same navigation contract for the responsive app shell", async () => {
+  render(
+    <MemoryRouter initialEntries={["/sales"]}>
+      <App />
+    </MemoryRouter>
+  );
+
+  const rail = await screen.findByRole("complementary", { name: "ECRM 应用侧栏" });
+  const nav = screen.getByRole("navigation", { name: "应用导航" });
+
+  expect(rail).toContainElement(screen.getByRole("button", { name: "现场模式状态：未锁定" }));
+  expect(nav).toContainElement(screen.getByRole("link", { name: "商品" }));
+  expect(nav).toContainElement(screen.getByRole("link", { name: "售卖" }));
+  expect(nav).toContainElement(screen.getByRole("link", { name: "订单" }));
+  expect(nav).toContainElement(screen.getByRole("link", { name: "数据" }));
+  expect(nav).toContainElement(screen.getByRole("link", { name: "设置" }));
+  expect(screen.queryByRole("link", { name: /未锁定/ })).not.toBeInTheDocument();
+});
+
+test("shows locked field mode status tip when field mode requires unlock", async () => {
+  repositories.getSettings.mockResolvedValue({
+    ...createDefaultSettings(),
+    fieldLock: {
+      ...createDefaultSettings().fieldLock,
+      enabled: true,
+      pinHash: "secret-hash",
+      pinSalt: "secret-salt",
+      failedAttempts: 0
+    }
+  });
+
+  render(
+    <MemoryRouter initialEntries={["/sales"]}>
+      <App />
+    </MemoryRouter>
+  );
+
+  const fieldModeButton = await screen.findByRole("button", { name: "现场模式状态：现场模式" });
+
+  fireEvent.click(fieldModeButton);
+
+  expect(await screen.findByRole("status")).toHaveTextContent("现场模式已启动，页面已锁定");
+  expect(screen.getByRole("heading", { level: 1, name: "售卖" })).toBeVisible();
+});
+
+test("shows temporary unlocked field mode status tip when field mode is enabled but unlocked", async () => {
+  repositories.getSettings.mockResolvedValue({
+    ...createDefaultSettings(),
+    fieldLock: unlockFieldLock({
+      ...createDefaultSettings().fieldLock,
+      enabled: true,
+      pinHash: "secret-hash",
+      pinSalt: "secret-salt",
+      failedAttempts: 0
+    })
+  });
+
+  render(
+    <MemoryRouter initialEntries={["/sales"]}>
+      <App />
+    </MemoryRouter>
+  );
+
+  const fieldModeButton = await screen.findByRole("button", { name: "现场模式状态：现场模式-临时解锁" });
+
+  expect(fieldModeButton).toBeVisible();
+
+  fireEvent.click(fieldModeButton);
+
+  expect(await screen.findByRole("status")).toHaveTextContent("现场模式已启动，当前为临时解锁");
+  expect(screen.getByRole("heading", { level: 1, name: "售卖" })).toBeVisible();
 });
 
 test("shows the running app version in the top bar", async () => {
@@ -69,7 +162,7 @@ test("shows the running app version in the top bar", async () => {
     </MemoryRouter>
   );
 
-  expect(await screen.findByText("v1.6.2")).toBeVisible();
+  expect(await screen.findByText("v1.7.0")).toBeVisible();
 });
 
 test("shows shop name in the top bar subtitle and refreshes it after settings update", async () => {
@@ -122,6 +215,30 @@ test("locks products navigation when field mode is enabled", async () => {
   expect(screen.queryByRole("heading", { level: 1, name: "商品" })).not.toBeInTheDocument();
 });
 
+test("does not lock products navigation when products are removed from the field mode scope", async () => {
+  repositories.getSettings.mockResolvedValue({
+    ...createDefaultSettings(),
+    fieldLock: {
+      enabled: true,
+      pinHash: "secret-hash",
+      pinSalt: "secret-salt",
+      failedAttempts: 0,
+      protectedScopes: ["settings"]
+    }
+  });
+
+  render(
+    <MemoryRouter initialEntries={["/sales"]}>
+      <App />
+    </MemoryRouter>
+  );
+
+  fireEvent.click(await screen.findByRole("link", { name: "商品" }));
+
+  expect(await screen.findByRole("heading", { level: 1, name: "商品" })).toBeVisible();
+  expect(screen.queryByRole("dialog", { name: "管理页面已锁定" })).not.toBeInTheDocument();
+});
+
 test("unlocks protected navigation with correct PIN", async () => {
   repositories.getSettings.mockResolvedValue({
     ...createDefaultSettings(),
@@ -145,6 +262,7 @@ test("silently returns to sales when field mode is relocked from settings", asyn
   const unlockedSettings = {
     ...createDefaultSettings(),
     fieldLock: {
+      ...createDefaultSettings().fieldLock,
       enabled: true,
       pinHash: "secret-hash",
       pinSalt: "secret-salt",
