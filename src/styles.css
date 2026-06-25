@@ -3444,6 +3444,70 @@ p {
   clip-path: inset(50%);
 }
 
+@media (max-width: 900px) {
+  .productsToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .toolbarActions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .toolbarActions .primaryButton,
+  .sortControl {
+    flex: 1 1 180px;
+  }
+
+  .dashboardHeader,
+  .settingsHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dashboardFilterPanel {
+    width: 100%;
+    max-width: 100%;
+    justify-items: stretch;
+  }
+
+  .dashboardFilterRow {
+    align-items: stretch;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .dashboardRangeSwitch,
+  .dashboardScopeSwitch {
+    display: grid;
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .dashboardRangeSwitch {
+    grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  }
+
+  .dashboardScopeSwitch {
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  }
+
+  .dashboardRangeSwitch .secondaryButton,
+  .dashboardScopeSwitch .secondaryButton {
+    width: 100%;
+  }
+
+  .dashboardCustomRange {
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .settingsHeader .primaryButton {
+    width: 100%;
+  }
+}
+
 @media (max-width: 720px) {
   :root {
     --app-mobile-nav-height: 72px;

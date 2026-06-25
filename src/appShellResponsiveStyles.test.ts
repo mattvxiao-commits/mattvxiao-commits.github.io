@@ -50,3 +50,12 @@ test("order detail dialogs keep actions reachable on constrained screens", () =>
     /@media\s*\(max-width:\s*720px\)[\s\S]*\.orderDetailBody\s*\{[\s\S]*padding-bottom:\s*calc\(18px \+ env\(safe-area-inset-bottom\)\)/
   );
 });
+
+test("management headers wrap before the mobile shell breakpoint", () => {
+  expect(styles).toMatch(/@media\s*\(max-width:\s*900px\)[\s\S]*\.productsToolbar\s*\{[\s\S]*align-items:\s*stretch/);
+  expect(styles).toMatch(/@media\s*\(max-width:\s*900px\)[\s\S]*\.toolbarActions\s*\{[\s\S]*width:\s*100%/);
+  expect(styles).toMatch(/@media\s*\(max-width:\s*900px\)[\s\S]*\.dashboardHeader\s*\{[\s\S]*align-items:\s*stretch/);
+  expect(styles).toMatch(/@media\s*\(max-width:\s*900px\)[\s\S]*\.dashboardFilterPanel\s*\{[\s\S]*width:\s*100%/);
+  expect(styles).toMatch(/@media\s*\(max-width:\s*900px\)[\s\S]*\.settingsHeader\s*\{[\s\S]*align-items:\s*stretch/);
+  expect(styles).toMatch(/@media\s*\(max-width:\s*900px\)[\s\S]*\.settingsHeader \.primaryButton\s*\{[\s\S]*width:\s*100%/);
+});
