@@ -59,3 +59,7 @@ test("management headers wrap before the mobile shell breakpoint", () => {
   expect(styles).toMatch(/@media\s*\(max-width:\s*900px\)[\s\S]*\.settingsHeader\s*\{[\s\S]*align-items:\s*stretch/);
   expect(styles).toMatch(/@media\s*\(max-width:\s*900px\)[\s\S]*\.settingsHeader \.primaryButton\s*\{[\s\S]*width:\s*100%/);
 });
+
+test("very narrow product card actions stack into one touch-friendly column", () => {
+  expect(styles).toMatch(/@media\s*\(max-width:\s*420px\)[\s\S]*\.cardActions\s*\{[\s\S]*grid-template-columns:\s*1fr/);
+});

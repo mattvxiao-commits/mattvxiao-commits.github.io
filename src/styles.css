@@ -3955,6 +3955,11 @@ p {
     flex-direction: column;
   }
 
+  .cardActions {
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
   .formActions button,
   .cardActions button,
   .orderDetailActionButtons button,
