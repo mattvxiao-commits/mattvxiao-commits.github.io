@@ -21,6 +21,13 @@ export type ProductFormValues = {
   status: ProductStatus;
 };
 
+export class ProductFormUserError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ProductFormUserError";
+  }
+}
+
 type ProductFormProps = {
   mode: "create" | "edit";
   initialProduct?: Product;
@@ -240,8 +247,8 @@ export default function ProductForm({
         isGiftEligible: draft.isGiftEligible,
         status: draft.status
       });
-    } catch {
-      setSaveError("商品保存失败，请稍后重试。");
+    } catch (error) {
+      setSaveError(error instanceof ProductFormUserError ? error.message : "商品保存失败，请稍后重试。");
     } finally {
       setIsSubmitting(false);
     }
