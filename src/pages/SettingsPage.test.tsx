@@ -62,7 +62,7 @@ test("shows system version information for support and cache checks", async () =
   const systemInfo = await screen.findByRole("region", { name: "系统信息" });
 
   expect(within(systemInfo).getByText("当前版本")).toBeVisible();
-  expect(within(systemInfo).getByText("v1.6.2")).toBeVisible();
+  expect(within(systemInfo).getByText("v1.7.0")).toBeVisible();
   expect(within(systemInfo).getByText("部署方式")).toBeVisible();
   expect(within(systemInfo).getByText("GitHub Pages / PWA")).toBeVisible();
   expect(within(systemInfo).getByText("数据存储")).toBeVisible();
