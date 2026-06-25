@@ -1,5 +1,5 @@
 import { Info, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   defaultFieldLockProtectedScopes,
   normalizeFieldLockSettings,
@@ -23,12 +23,17 @@ const scopeOptions: Array<{ value: FieldLockScope; label: string }> = [
 
 export default function FieldLockSettingsPanel({ fieldLock, onSave }: FieldLockSettingsPanelProps) {
   const normalizedFieldLock = normalizeFieldLockSettings(fieldLock);
+  const protectedScopeKey = normalizedFieldLock.protectedScopes.join("|");
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [protectedScopes, setProtectedScopes] = useState<FieldLockScope[]>(normalizedFieldLock.protectedScopes);
   const [error, setError] = useState<string>();
   const [isSaving, setIsSaving] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+
+  useEffect(() => {
+    setProtectedScopes(normalizedFieldLock.protectedScopes);
+  }, [protectedScopeKey]);
 
   async function handleEnable() {
     setError(undefined);

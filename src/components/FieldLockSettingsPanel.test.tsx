@@ -33,3 +33,26 @@ test("explains temporary unlock state and relock paths from field mode help", ()
   expect(within(helpPanel).getByText(/重新锁定/)).toBeVisible();
   expect(within(helpPanel).getByText(/立即重新锁定/)).toBeVisible();
 });
+
+test("syncs lock scope checkboxes when field mode settings change from parent", () => {
+  const onSave = vi.fn();
+  const { rerender } = render(<FieldLockSettingsPanel fieldLock={createDefaultFieldLockSettings()} onSave={onSave} />);
+
+  expect(screen.getByLabelText("锁定商品页")).toBeChecked();
+  expect(screen.getByLabelText("锁定设置页")).toBeChecked();
+
+  rerender(
+    <FieldLockSettingsPanel
+      fieldLock={{
+        ...createDefaultFieldLockSettings(),
+        protectedScopes: ["settings"]
+      }}
+      onSave={onSave}
+    />
+  );
+
+  expect(screen.getByLabelText("锁定商品页")).not.toBeChecked();
+  expect(screen.getByLabelText("锁定订单详情")).not.toBeChecked();
+  expect(screen.getByLabelText("锁定数据页")).not.toBeChecked();
+  expect(screen.getByLabelText("锁定设置页")).toBeChecked();
+});
